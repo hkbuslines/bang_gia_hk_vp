@@ -80,7 +80,7 @@
   th, td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
   th{background:var(--green-light); color:var(--green-dark); font-size:12.3px; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0;}
   tr:hover td{background:#fafdfb;}
-  td.route-cell{font-weight:600; white-space:nowrap;}
+  td.route-cell{font-weight:600; max-width:150px;}
   td.price{white-space:nowrap; font-variant-numeric:tabular-nums;}
   td.price .old{color:var(--muted); text-decoration:line-through; font-size:11.5px; display:block;}
   td.price .now{color:var(--green-dark); font-weight:700;}
@@ -294,7 +294,6 @@ function csvToGiaVe(records){
     gia_niem_yet: Number(String(rec["Giá niêm yết (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     gia_thuc: Number(String(rec["Giá bán thực tế (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     ghi_chu: rec["Ghi chú"] || "",
-    ngay_ap_dung: rec["Ngày áp dụng"] || "",
   })).filter(x => x.khu_vuc);
 }
 function csvToThueXe(records){
@@ -424,11 +423,11 @@ function renderGiaVeTable(rows, nhom){
 
 function renderCharterTable(rows){
   if(!rows.length) return `<div class="empty-note">Chưa có dữ liệu.</div>`;
-  let html = `<table class="charter-table"><thead><tr><th>Tuyến đường</th><th>Giá thuê / lượt xe</th><th>Ghi chú</th></tr></thead><tbody>`;
+  let html = `<div class="table-scroll"><table class="charter-table"><thead><tr><th>Tuyến đường</th><th>Giá thuê / lượt xe</th><th>Ghi chú</th></tr></thead><tbody>`;
   rows.forEach(row => {
     html += `<tr><td class="route-cell">${row.tuyen}</td><td class="price">${fmt(row.gia)}</td><td class="note">${row.ghi_chu||""}</td></tr>`;
   });
-  html += "</tbody></table>";
+  html += "</tbody></table></div>";
   return html;
 }
 
@@ -450,9 +449,7 @@ function renderRegionCard(region){
 
   let html = `<div class="card">`;
   html += `<div class="region-title">${region}</div>`;
-  const ngayApDung = (rowsAll.find(r => r.ngay_ap_dung) || {}).ngay_ap_dung;
-  const effectiveText = ngayApDung ? `Áp dụng bán vé từ ${ngayApDung}` : REGION_META[region];
-  if(effectiveText) html += `<div class="region-effective">${effectiveText}</div>`;
+  if(REGION_META[region]) html += `<div class="region-effective">${REGION_META[region]}</div>`;
   html += `<div class="subtabs">`;
   nhomList.forEach(n => {
     html += `<button class="subtab-btn ${n===nhom?'active':''}" data-region="${region}" data-nhom="${n}">${n}</button>`;
