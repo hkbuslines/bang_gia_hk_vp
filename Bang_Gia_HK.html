@@ -80,12 +80,21 @@
   th, td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
   th{background:var(--green-light); color:var(--green-dark); font-size:12.3px; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0;}
   tr:hover td{background:#fafdfb;}
-  td.route-cell{font-weight:600;}
+  td.route-cell{font-weight:600; white-space:nowrap;}
   td.price{white-space:nowrap; font-variant-numeric:tabular-nums;}
   td.price .old{color:var(--muted); text-decoration:line-through; font-size:11.5px; display:block;}
   td.price .now{color:var(--green-dark); font-weight:700;}
   td.price.now{color:var(--green-dark); font-weight:700; background:var(--green-light);}
-  td.note{color:var(--muted); font-size:12px;}
+  td.note{color:var(--muted); font-size:12px; white-space:normal; min-width:140px;}
+
+  /* Cột "Tuyến đi" đứng yên khi kéo ngang bảng trên mobile, để luôn biết đang xem tuyến nào */
+  .table-scroll table th:first-child,
+  .table-scroll table td:first-child{
+    position:sticky; left:0; z-index:3;
+  }
+  .table-scroll table th:first-child{ z-index:4; background:var(--green-light); }
+  .table-scroll table td.route-cell{ background:#fff; box-shadow:2px 0 5px -2px rgba(0,0,0,.12); }
+  .table-scroll table tr:hover td.route-cell{ background:#fafdfb; }
   .empty-note{padding:14px; color:var(--muted); font-size:13px; background:#fbfbfb; border-radius:8px;}
 
   .holiday-note{
@@ -207,8 +216,8 @@
    Nếu để trống, trang sẽ dùng dữ liệu mặc định đóng gói sẵn bên dưới (FALLBACK_DATA).
 ===================================================================== */
 const CONFIG = {
-  GIA_VE_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzAcGC_iXcEefWBjPty-GEW3oUpHsC6oRfXSat3PPxNxP-QMQZACsEhKjphkUCw/pub?gid=731419667&single=true&output=csv",
-  THUE_XE_CSV_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vRyzAcGC_iXcEefWBjPty-GEW3oUpHsC6oRfXSat3PPxNxP-QMQZACsEhKjphkUCw/pub?gid=1478439373&single=true&output=csv",
+  GIA_VE_CSV_URL: "",   // <-- dán link CSV của sheet "Gia_Ve" vào đây
+  THUE_XE_CSV_URL: "",  // <-- dán link CSV của sheet "Thue_Xe" vào đây
 };
 
 /* Dữ liệu mặc định (chụp từ file Excel gốc ngày 08/07/2026) — dùng khi CONFIG chưa được điền hoặc khi fetch lỗi */
