@@ -294,6 +294,7 @@ function csvToGiaVe(records){
     gia_niem_yet: Number(String(rec["Giá niêm yết (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     gia_thuc: Number(String(rec["Giá bán thực tế (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     ghi_chu: rec["Ghi chú"] || "",
+    ngay_ap_dung: rec["Ngày áp dụng"] || "",
   })).filter(x => x.khu_vuc);
 }
 function csvToThueXe(records){
@@ -449,7 +450,9 @@ function renderRegionCard(region){
 
   let html = `<div class="card">`;
   html += `<div class="region-title">${region}</div>`;
-  if(REGION_META[region]) html += `<div class="region-effective">${REGION_META[region]}</div>`;
+  const ngayApDung = (rowsAll.find(r => r.ngay_ap_dung) || {}).ngay_ap_dung;
+  const effectiveText = ngayApDung ? `Áp dụng bán vé từ ${ngayApDung}` : REGION_META[region];
+  if(effectiveText) html += `<div class="region-effective">${effectiveText}</div>`;
   html += `<div class="subtabs">`;
   nhomList.forEach(n => {
     html += `<button class="subtab-btn ${n===nhom?'active':''}" data-region="${region}" data-nhom="${n}">${n}</button>`;
