@@ -80,12 +80,12 @@
   th, td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
   th{background:var(--green-light); color:var(--green-dark); font-size:12.3px; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0;}
   tr:hover td{background:#fafdfb;}
-  td.route-cell{font-weight:600; max-width:150px;}
-  td.price{white-space:nowrap; font-variant-numeric:tabular-nums;}
-  td.price .old{color:var(--muted); text-decoration:line-through; font-size:11.5px; display:block;}
+  td.route-cell{font-weight:700; font-size:15px; max-width:150px;}
+  td.price{white-space:nowrap; font-variant-numeric:tabular-nums; font-size:15px;}
+  td.price .old{color:var(--muted); text-decoration:line-through; font-size:12.5px; display:block;}
   td.price .now{color:var(--green-dark); font-weight:700;}
   td.price.now{color:var(--green-dark); font-weight:700; background:var(--green-light);}
-  td.note{color:var(--muted); font-size:12px; white-space:normal; min-width:140px; vertical-align:middle;}
+  td.note{color:var(--muted); font-size:11px; white-space:normal; min-width:140px; vertical-align:middle;}
 
   /* Cột "Tuyến đi" đứng yên khi kéo ngang bảng trên mobile, để luôn biết đang xem tuyến nào */
   .table-scroll table th:first-child,
@@ -126,6 +126,8 @@
     table{font-size:12.5px;}
     th, td{padding:7px 6px;}
     .card{padding:12px;}
+    td.route-cell, td.price{font-size:13.5px;}
+    td.note{font-size:10.5px;}
   }
 </style>
 </head>
