@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HK Buslines - Bảng giá vé</title>
+<title>HK Buslines - Bảng giá Đại lý</title>
 <style>
   :root{
     --green:#00913f;
@@ -133,8 +133,8 @@
 
 <header>
   <div class="wrap">
-    <h1>🚌 HK BUSLINES — BẢNG GIÁ VÉ</h1>
-    <div class="sub">Sleeper Bus VIP Royal &amp; Limousine · Cập nhật trực tiếp</div>
+    <h1>🚌 HK BUSLINES — BẢNG GIÁ ĐẠI LÝ</h1>
+    <div class="sub">Sleeper Bus VIP Royal &amp; Limousine · Dành riêng cho Đại lý · Vui lòng không chia sẻ công khai</div>
     <div id="lastUpdated">Đang tải dữ liệu giá...</div>
     <div class="search-box">
       <input id="searchInput" type="text" placeholder="Tìm tuyến, ví dụ: Hà Nội, Sa Pa, Hội An...">
@@ -205,13 +205,20 @@
 </main>
 
 <footer>
-  HK Buslines · Bảng giá này được đồng bộ tự động từ Google Sheet nội bộ · Vui lòng liên hệ tổng đài để xác nhận trước khi đặt vé số lượng lớn.
+  HK Buslines · Bảng giá Đại lý — đồng bộ tự động từ Google Sheet nội bộ · Không chia sẻ link này ra ngoài hệ thống đại lý · Vui lòng liên hệ tổng đài để xác nhận trước khi đặt vé số lượng lớn.
 </footer>
 
 <script>
 /* =====================================================================
    CONFIG — DÁN LINK CSV ĐÃ PUBLISH TỪ GOOGLE SHEETS VÀO ĐÂY
-   Hướng dẫn lấy link: mở Google Sheet > File > Share > Publish to web >
+   Trang này CHỈ hiển thị các dòng có "Nhóm giá" bắt đầu bằng "Đại lý"
+   (được lọc tự động ở hàm loadData bên dưới) — giá "Khách lẻ" sẽ bị ẩn hoàn toàn.
+
+   Mặc định trang đang dùng CHUNG 1 Google Sheet với bảng giá khách lẻ
+   (đã có sẵn cột "Nhóm giá" = Đại lý). Nếu muốn tách riêng dữ liệu cho
+   đại lý, tạo 1 Google Sheet mới với cùng cấu trúc cột rồi thay link CSV
+   bên dưới:
+   mở Google Sheet > File > Share > Publish to web >
    chọn sheet "Gia_Ve" (hoặc "Thue_Xe") > định dạng "Comma-separated values (.csv)" > Publish > Copy link.
    Nếu để trống, trang sẽ dùng dữ liệu mặc định đóng gói sẵn bên dưới (FALLBACK_DATA).
 ===================================================================== */
@@ -332,7 +339,7 @@ async function loadData(){
     console.error("Lỗi tải dữ liệu trực tiếp, dùng dữ liệu mặc định:", e);
     err = true;
   }
-  DATA.gia_ve = giaVe;
+  DATA.gia_ve = giaVe.filter(r => r.nhom_gia.indexOf("Đại lý") === 0);
   DATA.thue_xe = thueXe;
 
   const el = document.getElementById("lastUpdated");
@@ -450,11 +457,13 @@ function renderRegionCard(region){
   let html = `<div class="card">`;
   html += `<div class="region-title">${region}</div>`;
   if(REGION_META[region]) html += `<div class="region-effective">${REGION_META[region]}</div>`;
-  html += `<div class="subtabs">`;
-  nhomList.forEach(n => {
-    html += `<button class="subtab-btn ${n===nhom?'active':''}" data-region="${region}" data-nhom="${n}">${n}</button>`;
-  });
-  html += `</div>`;
+  if(nhomList.length > 1){
+    html += `<div class="subtabs">`;
+    nhomList.forEach(n => {
+      html += `<button class="subtab-btn ${n===nhom?'active':''}" data-region="${region}" data-nhom="${n}">${n}</button>`;
+    });
+    html += `</div>`;
+  }
 
   if(dayList.length > 1){
     html += `<div class="daytype-toggle">`;
