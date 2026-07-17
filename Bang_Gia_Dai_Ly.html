@@ -85,7 +85,7 @@
   td.price .old{color:var(--muted); text-decoration:line-through; font-size:12.5px; display:block;}
   td.price .now{color:var(--green-dark); font-weight:700;}
   td.price.now{color:var(--green-dark); font-weight:700; background:var(--green-light);}
-  td.note{color:var(--muted); font-size:11px; white-space:normal; min-width:140px; vertical-align:middle;}
+  td.note{color:var(--muted); font-size:11px; white-space:normal; min-width:140px; max-width:260px; word-wrap:break-word; vertical-align:middle;}
 
   /* Cột "Tuyến đi" đứng yên khi kéo ngang bảng trên mobile, để luôn biết đang xem tuyến nào */
   .table-scroll table th:first-child,
@@ -412,12 +412,42 @@ function computeNoteRowspans(items, getNoteText){
   }
 }
 
+/* Nếu 2+ tuyến liền kề có giá (và ghi chú) giống hệt nhau ở mọi loại chỗ,
+   gộp tên tuyến lại thành 1 dòng duy nhất thay vì lặp lại số giá. */
+function combineTuyenNames(names){
+  const marker = " đi - ";
+  const parts = names.map(n => {
+    const idx = n.indexOf(marker);
+    return idx === -1 ? {prefix: "", suffix: n} : {prefix: n.slice(0, idx + marker.length), suffix: n.slice(idx + marker.length)};
+  });
+  const firstPrefix = parts[0].prefix;
+  if(firstPrefix && parts.every(p => p.prefix === firstPrefix)){
+    return firstPrefix + parts.map(p => p.suffix).join(" / ");
+  }
+  return names.join(" / ");
+}
+
+function mergeIdenticalPriceRows(byTuyen, chos){
+  const merged = [];
+  byTuyen.forEach(g => {
+    const sig = chos.map(c => { const cell = g.cells[c]; return cell ? (cell.gia_niem_yet + "|" + cell.gia_thuc) : "x"; }).join(";") + "||" + g.noteText;
+    const last = merged[merged.length - 1];
+    if(last && last._sig === sig){
+      last._names.push(g.tuyen);
+    } else {
+      merged.push({ ...g, _sig: sig, _names: [g.tuyen] });
+    }
+  });
+  merged.forEach(g => { g.tuyen = combineTuyenNames(g._names); });
+  return merged;
+}
+
 function renderGiaVeTable(rows, nhom){
   if(!rows.length) return `<div class="empty-note">Chưa có dữ liệu.</div>`;
   const chos = uniqueOrdered(rows.map(r=>r.loai_cho), LOAI_CHO_ORDER);
   const hasDiscount = rows.some(r => Number(r.gia_niem_yet) !== Number(r.gia_thuc));
 
-  const byTuyen = [];
+  let byTuyen = [];
   rows.forEach(r => {
     let g = byTuyen.find(x => x.tuyen === r.tuyen);
     if(!g){ g = {tuyen: r.tuyen, cells:{}, notes: []}; byTuyen.push(g); }
@@ -425,6 +455,7 @@ function renderGiaVeTable(rows, nhom){
     if(r.ghi_chu && g.notes.indexOf(r.ghi_chu) === -1) g.notes.push(r.ghi_chu);
   });
   byTuyen.forEach(g => { g.noteText = g.notes.join("; "); });
+  byTuyen = mergeIdenticalPriceRows(byTuyen, chos);
   computeNoteRowspans(byTuyen, g => g.noteText);
 
   let html = `<div class="table-scroll"><table><thead>`;
