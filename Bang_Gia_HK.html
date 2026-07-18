@@ -75,11 +75,13 @@
   }
   .daytype-btn.active{background:var(--yellow);}
 
-  .table-scroll{overflow-x:auto; margin-top:8px; -webkit-overflow-scrolling:touch;}
+  .table-scroll{overflow:auto; margin-top:8px; -webkit-overflow-scrolling:touch; border:1px solid var(--border); border-radius:8px;}
   table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:520px;}
-  th, td{padding:9px 10px; border-bottom:1px solid var(--border); text-align:left; vertical-align:top;}
-  th{background:var(--green-light); color:var(--green-dark); font-size:12.3px; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0;}
-  tr:hover td{background:#fafdfb;}
+  th, td{padding:9px 10px; border-bottom:1px solid var(--border); border-right:1px solid var(--border); text-align:left; vertical-align:top;}
+  th:last-child, td:last-child{border-right:none;}
+  th{background:var(--green-light); color:var(--green-dark); font-size:12.3px; text-transform:uppercase; letter-spacing:.3px; position:sticky; top:0; border-bottom:2px solid #b9dfc7;}
+  tbody tr:nth-child(even) td{background:#fafcfa;}
+  tr:hover td{background:#eef7f1 !important;}
   td.route-cell{font-weight:700; font-size:15px; max-width:220px; line-height:1.3;}
   td.price{white-space:nowrap; font-variant-numeric:tabular-nums; font-size:15px;}
   td.price .old{color:var(--muted); text-decoration:line-through; font-size:12.5px; display:block;}
@@ -87,12 +89,14 @@
   td.price.now{color:var(--green-dark); font-weight:700; background:var(--green-light);}
   td.note{color:var(--muted); font-size:11px; white-space:normal; min-width:140px; max-width:260px; word-wrap:break-word; vertical-align:middle;}
 
-  /* Cột "Tuyến đi" đứng yên khi kéo ngang bảng trên mobile, để luôn biết đang xem tuyến nào */
-  .table-scroll table th:first-child,
+  /* Cột "Tuyến đi" đứng yên khi kéo ngang bảng trên mobile, để luôn biết đang xem tuyến nào.
+     Dùng class riêng (.sticky-th) thay vì :first-child cho <th>, vì hàng tiêu đề phụ (Cabin đơn Tầng 2...)
+     không có ô đầu tiên thực sự (do ô "Tuyến đi" dùng rowspan="2"), nên :first-child sẽ trỏ nhầm ô. */
+  .table-scroll table th.sticky-th,
   .table-scroll table td:first-child{
     position:sticky; left:0; z-index:3;
   }
-  .table-scroll table th:first-child{ z-index:4; background:var(--green-light); }
+  .table-scroll table th.sticky-th{ z-index:4; background:var(--green-light); }
   .table-scroll table td.route-cell{ background:#fff; box-shadow:2px 0 5px -2px rgba(0,0,0,.12); }
   .table-scroll table tr:hover td.route-cell{ background:#fafdfb; }
   .empty-note{padding:14px; color:var(--muted); font-size:13px; background:#fbfbfb; border-radius:8px;}
@@ -459,7 +463,7 @@ function renderGiaVeTable(rows, nhom){
   computeNoteRowspans(byTuyen, g => g.noteText);
 
   let html = `<div class="table-scroll"><table><thead>`;
-  html += `<tr><th rowspan="2">Tuyến đi</th><th colspan="${chos.length}">Giá niêm yết (đồng)</th>`;
+  html += `<tr><th class="sticky-th" rowspan="2">Tuyến đi</th><th colspan="${chos.length}">Giá niêm yết (đồng)</th>`;
   if(hasDiscount) html += `<th colspan="${chos.length}">${discountLabel(nhom)}</th>`;
   html += `<th rowspan="2">Ghi chú</th></tr><tr>`;
   chos.forEach(c => html += `<th>${c}</th>`);
@@ -482,7 +486,7 @@ function renderGiaVeTable(rows, nhom){
 function renderCharterTable(rows){
   if(!rows.length) return `<div class="empty-note">Chưa có dữ liệu.</div>`;
   computeNoteRowspans(rows, r => r.ghi_chu || "");
-  let html = `<div class="table-scroll"><table class="charter-table"><thead><tr><th>Tuyến đường</th><th>Giá thuê / lượt xe</th><th>Ghi chú</th></tr></thead><tbody>`;
+  let html = `<div class="table-scroll"><table class="charter-table"><thead><tr><th class="sticky-th">Tuyến đường</th><th>Giá thuê / lượt xe</th><th>Ghi chú</th></tr></thead><tbody>`;
   rows.forEach(row => {
     html += `<tr><td class="route-cell">${row.tuyen}</td><td class="price">${fmt(row.gia)}</td>`;
     if(row._noteRowspan !== 0){
