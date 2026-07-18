@@ -466,7 +466,7 @@ function computeHoverGroups(items){
 function renderGiaVeTable(rows, nhom){
   if(!rows.length) return `<div class="empty-note">Chưa có dữ liệu.</div>`;
   const chos = uniqueOrdered(rows.map(r=>r.loai_cho), LOAI_CHO_ORDER);
-  const hasDiscount = rows.some(r => Number(r.gia_niem_yet) !== Number(r.gia_thuc));
+  const hasDiscount = nhom && nhom.indexOf("Đại lý") === 0;
 
   const byTuyen = [];
   rows.forEach(r => {
@@ -483,8 +483,11 @@ function renderGiaVeTable(rows, nhom){
   const priceColCount = chos.length * (hasDiscount ? 2 : 1);
   const stickyPct = 22, notePct = 24;
   const pricePct = ((100 - stickyPct - notePct) / priceColCount).toFixed(2);
+  // Càng nhiều cột giá (vd Đại lý hiện cả niêm yết + giá bán) thì bảng càng cần rộng tối thiểu
+  // hơn để số tiền không bị bóp vỡ dòng/đè chữ lên nhau trên màn hình hẹp — khi đó cho cuộn ngang thay vì bóp.
+  const tableMinWidth = 150 + priceColCount * 88 + 170;
 
-  let html = `<div class="table-scroll"><table class="fixed-cols"><colgroup><col style="width:${stickyPct}%">`;
+  let html = `<div class="table-scroll"><table class="fixed-cols" style="min-width:${tableMinWidth}px"><colgroup><col style="width:${stickyPct}%">`;
   for(let k=0;k<priceColCount;k++) html += `<col style="width:${pricePct}%">`;
   html += `<col style="width:${notePct}%"></colgroup><thead>`;
   html += `<tr><th class="sticky-th" rowspan="2">Tuyến đi</th><th colspan="${chos.length}">Giá niêm yết (đồng)</th>`;
