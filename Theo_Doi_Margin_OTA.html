@@ -91,11 +91,6 @@
   .card{background:var(--card); border-radius:14px; padding:18px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.05); border:1px solid var(--border);}
   .region-title{font-size:18px; font-weight:700; color:var(--green-dark); margin:0 0 10px;}
 
-  .summary-row{display:flex; flex-wrap:wrap; gap:18px; margin-bottom:14px; font-size:13px;}
-  .summary-item .label{color:var(--muted); font-size:11.5px; text-transform:uppercase; letter-spacing:.3px;}
-  .summary-item .value{font-size:17px; font-weight:700; color:var(--green-dark);}
-  .summary-item .value.negative{color:var(--red);}
-
   .table-scroll{overflow:auto; -webkit-overflow-scrolling:touch; border:1px solid var(--table-border); border-radius:8px;}
   table{width:100%; border-collapse:collapse; font-size:13px; min-width:820px;}
   th, td{padding:8px 9px; border-bottom:1px solid var(--table-border); border-right:1px solid var(--table-border); text-align:center; vertical-align:middle;}
@@ -259,6 +254,7 @@ const LOAI_CHO_ORDER = ["Cabin đơn Tầng 2","Cabin đơn Tầng 1","Cabin đ�
    Vé Xe Rẻ và 12Go không có trong danh sách này => hiển thị đầy đủ như bình thường.
    Mỗi phần tử là [Khu vực, Tuyến đi] khớp đúng với cột trong Google Sheet. */
 const KLOOK_ROUTES = [
+  ["Hà Nội - Lào Cai - Sa Pa", "Hà Nội <-> Sa Pa"],
   ["Ninh Bình - Sa Pa", "Phú Thọ đi - TP. Hoa Lư (Ninh Bình)"],
   ["Ninh Bình - Sa Pa", "Phú Thọ đi - TP. Phủ Lý (Ninh Bình)"],
   ["Ninh Bình - Sa Pa", "TP. Lào Cai đi - TP. Hoa Lư (Ninh Bình)"],
@@ -297,10 +293,18 @@ const ROUTE_ALLOWLIST = {
   klook: new Set(KLOOK_ROUTES.map(([kv,t]) => kv + "|||" + t)),
   tripcom: new Set(TRIPCOM_ROUTES.map(([kv,t]) => kv + "|||" + t)),
 };
+/* Một số tuyến chỉ bán một phần loại chỗ (vd Klook không bán Cabin đôi cho sleeper Hà Nội - Sa Pa) */
+const OTA_EXCLUDE_LOAI_CHO = {
+  klook: new Set([
+    "Hà Nội - Lào Cai - Sa Pa|||Hà Nội <-> Sa Pa|||Cabin đôi (2 người)",
+  ]),
+};
 function routesForOTA(otaKey){
   const allow = ROUTE_ALLOWLIST[otaKey];
-  if(!allow) return ROUTES;
-  return ROUTES.filter(r => allow.has(r.khu_vuc + "|||" + r.tuyen));
+  let list = allow ? ROUTES.filter(r => allow.has(r.khu_vuc + "|||" + r.tuyen)) : ROUTES;
+  const exclude = OTA_EXCLUDE_LOAI_CHO[otaKey];
+  if(exclude) list = list.filter(r => !exclude.has(r.khu_vuc + "|||" + r.tuyen + "|||" + r.loai_cho));
+  return list;
 }
 
 function fmt(n){
@@ -426,12 +430,6 @@ function writeField(otaKey, routeKey, field, value){
   }
 }
 
-const debounceTimers = {};
-function debouncedWrite(otaKey, routeKey, field, value, delay){
-  const tKey = otaKey + "|" + routeKey + "|" + field;
-  clearTimeout(debounceTimers[tKey]);
-  debounceTimers[tKey] = setTimeout(() => writeField(otaKey, routeKey, field, value), delay || 500);
-}
 
 /* ===================== Xác thực (Firebase Auth) ===================== */
 function showAuthGate(show){
@@ -506,23 +504,16 @@ function getEntry(otaKey, routeKey){
 function renderTable(rows){
   if(!rows.length) return `<div class="empty-note">Chưa có dữ liệu giá niêm yết cho khu vực này.</div>`;
 
-  let totalMargin = 0, filledCount = 0;
-
   let html = `<div class="table-scroll"><table><thead><tr>
     <th>Tuyến đi</th><th>Loại chỗ</th><th>Giá niêm yết</th>
     <th>Giá thu về</th><th>Giá bán trên sàn OTA</th><th>Margin OTA</th>
   </tr></thead><tbody>`;
-  // Cột "Giá niêm yết" mặc định lấy từ Google Sheet nhưng cho sửa tay khi cần (vd sheet chưa kịp cập nhật) —
-  // giá trị sửa tay được lưu riêng theo từng OTA/tuyến, không ghi ngược lại sheet.
-
   rows.forEach(r => {
     const entry = getEntry(activeOTA, r.key);
-    const niemYet = (entry.niemYet !== undefined && entry.niemYet !== null) ? entry.niemYet : r.gia_niem_yet;
-    const thu = (entry.thu !== undefined && entry.thu !== null) ? entry.thu : niemYet;
+    const thu = (entry.thu !== undefined && entry.thu !== null) ? entry.thu : r.gia_niem_yet;
     const ban = (entry.ban !== undefined && entry.ban !== null) ? entry.ban : "";
     const hasBan = ban !== "" && ban !== null && !isNaN(ban);
     const margin = hasBan ? (Number(ban) - Number(thu)) : null;
-    if(hasBan){ totalMargin += margin; filledCount++; }
     const marginCls = margin === null ? "" : (margin >= 0 ? "positive" : "negative");
     const marginText = margin === null ? "-" : (margin >= 0 ? "+" : "") + fmt(margin);
     const pctText = (margin !== null && Number(ban) > 0) ? ` (${((margin/Number(ban))*100).toFixed(1)}%)` : "";
@@ -530,13 +521,10 @@ function renderTable(rows){
     html += `<tr>
       <td class="route-cell">${formatTuyen(r.tuyen)}</td>
       <td>${r.loai_cho}</td>
-      <td><div class="input-cell">
-        <input type="number" step="1000" min="0" class="in-niemyet" data-route="${r.key}" value="${niemYet}">
-        <button type="button" class="reset-btn" data-reset="${r.key}" data-field="niemYet" data-default="${r.gia_niem_yet}" title="Đặt lại theo giá niêm yết trên Google Sheet">↺</button>
-      </div></td>
+      <td class="price">${fmt(r.gia_niem_yet)}</td>
       <td><div class="input-cell">
         <input type="number" step="1000" min="0" class="in-thu" data-route="${r.key}" value="${thu}">
-        <button type="button" class="reset-btn" data-reset="${r.key}" data-field="thu" data-default="${niemYet}" title="Đặt lại theo giá niêm yết">↺</button>
+        <button type="button" class="reset-btn" data-reset="${r.key}" data-field="thu" data-default="${r.gia_niem_yet}" title="Đặt lại theo giá niêm yết">↺</button>
       </div></td>
       <td><div class="input-cell">
         <input type="number" step="1000" min="0" class="in-ban" data-route="${r.key}" value="${ban}" placeholder="Nhập giá OTA">
@@ -545,13 +533,7 @@ function renderTable(rows){
     </tr>`;
   });
   html += `</tbody></table></div>`;
-
-  const summary = `<div class="summary-row">
-    <div class="summary-item"><div class="label">Số tuyến đã nhập giá OTA</div><div class="value">${filledCount}/${rows.length}</div></div>
-    <div class="summary-item"><div class="label">Tổng margin OTA (khu vực này)</div><div class="value ${totalMargin<0?'negative':''}">${filledCount? (totalMargin>=0?'+':'') + fmt(totalMargin) : '-'}</div></div>
-  </div>`;
-
-  return summary + html;
+  return html;
 }
 
 function render(){
@@ -565,23 +547,15 @@ function render(){
   const html = `<div class="card"><div class="region-title">${activeRegion || ""} · ${OTA_LIST.find(o=>o.key===activeOTA).label}</div>${renderTable(rows)}</div>`;
   document.getElementById("content").innerHTML = html;
 
-  document.querySelectorAll(".in-niemyet").forEach(inp => {
-    inp.addEventListener("input", () => debouncedWrite(activeOTA, inp.dataset.route, "niemYet", inp.value === "" ? null : Number(inp.value)));
-  });
-  document.querySelectorAll(".in-thu").forEach(inp => {
-    inp.addEventListener("input", () => debouncedWrite(activeOTA, inp.dataset.route, "thu", inp.value === "" ? null : Number(inp.value)));
-  });
-  document.querySelectorAll(".in-ban").forEach(inp => {
-    inp.addEventListener("input", () => debouncedWrite(activeOTA, inp.dataset.route, "ban", inp.value === "" ? null : Number(inp.value)));
+  // Chỉ ghi + tính lại (và vẽ lại bảng) khi rời khỏi ô (blur) hoặc bấm Enter — không tính khi đang gõ dở,
+  // vì vẽ lại bảng giữa chừng sẽ làm ô input mất focus, phải bấm lại nhiều lần mới gõ xong một số.
+  document.querySelectorAll(".in-thu, .in-ban").forEach(inp => {
+    const field = inp.classList.contains("in-thu") ? "thu" : "ban";
+    inp.addEventListener("change", () => writeField(activeOTA, inp.dataset.route, field, inp.value === "" ? null : Number(inp.value)));
+    inp.addEventListener("keydown", e => { if(e.key === "Enter") inp.blur(); });
   });
   document.querySelectorAll(".reset-btn").forEach(btn => {
-    btn.onclick = () => {
-      if(btn.dataset.field === "niemYet"){
-        writeField(activeOTA, btn.dataset.reset, "niemYet", null);
-      } else {
-        writeField(activeOTA, btn.dataset.reset, "thu", Number(btn.dataset.default));
-      }
-    };
+    btn.onclick = () => writeField(activeOTA, btn.dataset.reset, "thu", Number(btn.dataset.default));
   });
 }
 
