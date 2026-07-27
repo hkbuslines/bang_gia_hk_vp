@@ -255,6 +255,7 @@ const LOAI_CHO_ORDER = ["Cabin đơn Tầng 2","Cabin đơn Tầng 1","Cabin đ�
    Mỗi phần tử là [Khu vực, Tuyến đi] khớp đúng với cột trong Google Sheet. */
 const KLOOK_ROUTES = [
   ["Hà Nội - Lào Cai - Sa Pa", "Hà Nội <-> Sa Pa"],
+  ["Hà Nội - Lào Cai - Sa Pa", "Hà Nội <-> Lào Cai"],
   ["Ninh Bình - Sa Pa", "Phú Thọ đi - TP. Hoa Lư (Ninh Bình)"],
   ["Ninh Bình - Sa Pa", "Phú Thọ đi - TP. Phủ Lý (Ninh Bình)"],
   ["Ninh Bình - Sa Pa", "TP. Lào Cai đi - TP. Hoa Lư (Ninh Bình)"],
@@ -294,16 +295,11 @@ const ROUTE_ALLOWLIST = {
   tripcom: new Set(TRIPCOM_ROUTES.map(([kv,t]) => kv + "|||" + t)),
 };
 /* Một số tuyến chỉ bán một phần loại chỗ (vd Klook không bán Cabin đôi cho sleeper Hà Nội - Sa Pa) */
-const OTA_EXCLUDE_LOAI_CHO = {
-  klook: new Set([
-    "Hà Nội - Lào Cai - Sa Pa|||Hà Nội <-> Sa Pa|||Cabin đôi (2 người)",
-  ]),
-};
+/* Chỉ Vé Xe Rẻ bán Cabin đôi (2 người) — các OTA khác không bán loại này ở bất kỳ tuyến nào */
 function routesForOTA(otaKey){
   const allow = ROUTE_ALLOWLIST[otaKey];
   let list = allow ? ROUTES.filter(r => allow.has(r.khu_vuc + "|||" + r.tuyen)) : ROUTES;
-  const exclude = OTA_EXCLUDE_LOAI_CHO[otaKey];
-  if(exclude) list = list.filter(r => !exclude.has(r.khu_vuc + "|||" + r.tuyen + "|||" + r.loai_cho));
+  if(otaKey !== "vexere") list = list.filter(r => r.loai_cho !== "Cabin đôi (2 người)");
   return list;
 }
 
