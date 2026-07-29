@@ -399,6 +399,29 @@ const LOAI_CHO_EN = {
   "Ghế tiêu chuẩn (hàng cuối)": "Standard seat (back row)",
   "Ghế tiêu chuẩn": "Standard seat",
 };
+const GHI_CHU_EN = {
+  "Cabin đơn, đôi giảm 50k/cabin": "Single & double cabin: discount 50,000₫/cabin",
+  "Chiều Hà Nội đi: giảm 50.000đ/cabin (cả tuần T2-CN). Chiều Quảng Bình đi: giảm 100.000đ/cabin (T2-T7), giảm 50.000đ/cabin (Chủ Nhật)":
+    "Hanoi-bound: discount 50,000₫/cabin (all week Mon-Sun). Quang Binh-bound: discount 100,000₫/cabin (Mon-Sat), 50,000₫/cabin (Sunday)",
+  "Chiều Hà Nội đi: giảm 50.000đ/cabin (cả tuần). Chiều Huế đi: giảm 100.000đ/cabin (T2-T7), giảm 50.000đ/cabin (CN)":
+    "Hanoi-bound: discount 50,000₫/cabin (all week). Hue-bound: discount 100,000₫/cabin (Mon-Sat), 50,000₫/cabin (Sun)",
+  "Giá vé thu đại lý đã bao gồm thuế VAT": "Agent fare already includes VAT",
+  "Giảm 100.000đ/cabin": "Discount 100,000₫/cabin",
+  "Giảm 30.000đ/ghế": "Discount 30,000₫/seat",
+  "Giảm 50.000đ/cabin": "Discount 50,000₫/cabin",
+  "Giảm 50.000đ/cabin. Đổi xe tại Hà Nội - vẫn là xe HK Buslines": "Discount 50,000₫/cabin. Vehicle change at Hanoi - still an HK Buslines vehicle",
+  "Giảm 50.000đ/ghế (giờ vàng 14h-17h chiều HN đi Lào Cai)": "Discount 50,000₫/seat (off-peak 2-5pm, Hanoi → Lao Cai)",
+  "Giảm 50.000đ/ghế (giờ vàng 14h-17h chiều HN đi Sapa)": "Discount 50,000₫/seat (off-peak 2-5pm, Hanoi → Sapa)",
+  "Giảm 50K/Cabin cho chiều Hội An, Đà Nẵng, Huế, Quảng Bình về": "Discount 50,000₫/cabin for the return direction from Hoi An, Da Nang, Hue, Quang Binh",
+  "Giảm 50k/ghế": "Discount 50,000₫/seat",
+  "Giảm 70k/cabin": "Discount 70,000₫/cabin",
+  "Không giảm giá": "No discount",
+  "Tối đa không quá 28 người": "Maximum 28 people",
+  "Vé 1 chiều: giảm 20.000đ/cabin đơn, giảm 30.000đ/cabin đôi. Vé khứ hồi: giảm 70.000đ/cabin đơn, giảm 100.000đ/cabin đôi":
+    "One-way ticket: discount 20,000₫/single cabin, 30,000₫/double cabin. Round-trip ticket: discount 70,000₫/single cabin, 100,000₫/double cabin",
+  "Đặt trực tiếp HK: Tổng đài/Wesai/Fanpage giảm 20k/cabin": "Book directly with HK: Hotline/Wesai/Fanpage, discount 20,000₫/cabin",
+  "Đặt trực tiếp HK: Tổng đài/Wesai/Fanpage giảm 30k/cabin": "Book directly with HK: Hotline/Wesai/Fanpage, discount 30,000₫/cabin",
+};
 function trVal(map, val){ return (LANG === "en" && map[val]) ? map[val] : val; }
 function trRegionMeta(text){
   if(LANG !== "en" || !text) return text;
@@ -551,6 +574,7 @@ function csvToGiaVe(records){
     gia_niem_yet: Number(String(rec["Giá niêm yết (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     gia_thuc: Number(String(rec["Giá bán thực tế (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     ghi_chu: rec["Ghi chú"] || "",
+    ghi_chu_en: rec["Ghi chú (EN)"] || "",
   })).filter(x => x.khu_vuc);
 }
 function csvToThueXe(records){
@@ -559,6 +583,7 @@ function csvToThueXe(records){
     loai_ngay: rec["Loại ngày"] || "",
     gia: Number(String(rec["Giá thuê/lượt xe (đ)"]||"0").replace(/[^\d.-]/g,"")) || 0,
     ghi_chu: rec["Ghi chú"] || "",
+    ghi_chu_en: rec["Ghi chú (EN)"] || "",
   })).filter(x => x.tuyen);
 }
 let DATA = { gia_ve: [], thue_xe: [] };
@@ -696,9 +721,12 @@ function renderGiaVeTable(rows, nhom){
     let g = byTuyen.find(x => x.tuyen === r.tuyen);
     if(!g){ g = {tuyen: r.tuyen, cells:{}, notes: []}; byTuyen.push(g); }
     g.cells[r.loai_cho] = r;
-    if(r.ghi_chu && g.notes.indexOf(r.ghi_chu) === -1) g.notes.push(r.ghi_chu);
+    if(r.ghi_chu && !g.notes.some(n => n.vi === r.ghi_chu)) g.notes.push({vi: r.ghi_chu, en: r.ghi_chu_en || ""});
   });
-  byTuyen.forEach(g => { g.noteText = g.notes.join("; "); });
+  byTuyen.forEach(g => {
+    g.noteText = g.notes.map(n => n.vi).join("; ");
+    g.noteTextEn = g.notes.map(n => n.en || GHI_CHU_EN[n.vi] || n.vi).join("; ");
+  });
   computeGiaRowspans(byTuyen, chos);
   computeNoteRowspans(byTuyen);
   computeHoverGroups(byTuyen);
@@ -729,7 +757,7 @@ function renderGiaVeTable(rows, nhom){
     }
     if(g._noteRowspan !== 0){
       const nrs = g._noteRowspan > 1 ? ` rowspan="${g._noteRowspan}"` : "";
-      html += `<td class="note"${nrs}>${g.noteText}</td>`;
+      html += `<td class="note"${nrs}>${LANG === "en" ? g.noteTextEn : g.noteText}</td>`;
     }
     html += `</tr>`;
   });
@@ -767,7 +795,7 @@ function renderCharterTable(rows){
     }
     if(row._noteRowspan !== 0){
       const nrs = row._noteRowspan > 1 ? ` rowspan="${row._noteRowspan}"` : "";
-      html += `<td class="note"${nrs}>${row.ghi_chu||""}</td>`;
+      html += `<td class="note"${nrs}>${LANG === "en" ? (row.ghi_chu_en || GHI_CHU_EN[row.ghi_chu] || row.ghi_chu || "") : (row.ghi_chu||"")}</td>`;
     }
     html += `</tr>`;
   });
