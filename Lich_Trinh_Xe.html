@@ -75,6 +75,13 @@
   .card{background:var(--card); border-radius:14px; padding:18px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.05); border:1px solid var(--border);}
   .route-title{font-size:17px; font-weight:700; color:var(--green-dark); margin:0 0 12px;}
 
+  .dir-toggle{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
+  .dir-btn{
+    padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface-2);
+    font-size:13px; cursor:pointer; font-weight:600; color:var(--text);
+  }
+  .dir-btn.active{background:var(--green-light); border-color:var(--green); color:var(--green-dark);}
+
   .dep-label{font-size:12.5px; color:var(--muted); margin-bottom:8px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
   .dep-chips{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:20px;}
   .dep-chip{
@@ -125,33 +132,69 @@ const ROUTES = [
     "id": "hl-sp",
     "from": "Hạ Long",
     "to": "Sapa",
-    "name": "Hạ Long → Sapa",
-    "departures": [
-      "08:15",
-      "12:15",
-      "21:00",
-      "22:30"
-    ],
-    "stops": [
+    "name": "Hạ Long ⇄ Sapa",
+    "directions": [
       {
-        "offset": 0,
-        "name": "Văn phòng Hạ Long"
+        "label": "Hạ Long → Sapa",
+        "departures": [
+          "08:15",
+          "12:15",
+          "21:00",
+          "22:30"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng Hạ Long"
+          },
+          {
+            "offset": 135,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          },
+          {
+            "offset": 180,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 435,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 495,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          }
+        ]
       },
       {
-        "offset": 135,
-        "name": "Văn phòng 70 Nguyễn Hữu Huân"
-      },
-      {
-        "offset": 180,
-        "name": "Sân bay Nội Bài"
-      },
-      {
-        "offset": 435,
-        "name": "Văn Phòng Lào Cai"
-      },
-      {
-        "offset": 495,
-        "name": "Văn phòng 732 Điện Biên Phủ"
+        "label": "Sapa → Hạ Long",
+        "departures": [
+          "08:30",
+          "11:30",
+          "21:30",
+          "22:15"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          },
+          {
+            "offset": 60,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 315,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 360,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          },
+          {
+            "offset": 495,
+            "name": "Văn phòng Hạ Long"
+          }
+        ]
       }
     ]
   },
@@ -159,35 +202,571 @@ const ROUTES = [
     "id": "nb-sp",
     "from": "Ninh Bình",
     "to": "Sapa",
-    "name": "Ninh Bình → Sapa",
-    "departures": [
-      "06:30",
-      "09:00",
-      "11:30",
-      "21:00",
-      "21:30",
-      "22:30"
-    ],
-    "stops": [
+    "name": "Ninh Bình ⇄ Sapa",
+    "directions": [
       {
-        "offset": 0,
-        "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+        "label": "Ninh Bình → Sapa",
+        "departures": [
+          "06:30",
+          "09:00",
+          "11:30",
+          "21:00",
+          "21:30",
+          "22:30"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          },
+          {
+            "offset": 120,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân (Hà Nội)"
+          },
+          {
+            "offset": 165,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 405,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 465,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          }
+        ]
       },
       {
-        "offset": 120,
-        "name": "Văn phòng 70 Nguyễn Hữu Huân (Hà Nội)"
+        "label": "Sapa → Ninh Bình",
+        "departures": [
+          "00:00",
+          "02:45",
+          "03:00",
+          "03:15",
+          "03:30",
+          "04:00",
+          "04:05",
+          "04:15",
+          "04:30",
+          "04:45",
+          "07:00",
+          "08:00",
+          "08:15",
+          "08:30",
+          "09:00",
+          "09:15",
+          "09:30",
+          "10:00",
+          "10:15",
+          "10:30",
+          "11:00",
+          "11:15",
+          "11:30",
+          "12:00",
+          "12:30",
+          "13:00",
+          "13:15",
+          "13:30",
+          "13:45",
+          "14:00",
+          "14:15",
+          "14:30",
+          "15:00",
+          "15:15",
+          "15:30",
+          "16:00",
+          "16:15",
+          "16:30",
+          "16:45",
+          "17:00",
+          "17:30",
+          "18:00",
+          "18:15",
+          "18:30",
+          "19:00",
+          "19:15",
+          "19:30",
+          "20:00",
+          "21:00",
+          "21:15",
+          "22:00",
+          "22:15",
+          "22:30",
+          "23:00",
+          "23:05",
+          "23:15",
+          "23:30",
+          "23:45"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          },
+          {
+            "offset": 60,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 300,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 345,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân (Hà Nội)"
+          },
+          {
+            "offset": 465,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hn-sp",
+    "from": "Hà Nội",
+    "to": "Sapa",
+    "name": "Hà Nội ⇄ Sapa",
+    "directions": [
+      {
+        "label": "Hà Nội → Sapa",
+        "departures": [
+          "01:30",
+          "03:15",
+          "06:15",
+          "06:30",
+          "06:45",
+          "06:46",
+          "07:00",
+          "07:01",
+          "07:05",
+          "08:00",
+          "09:00",
+          "09:15",
+          "09:30",
+          "10:00",
+          "10:30",
+          "11:00",
+          "11:15",
+          "12:30",
+          "13:30",
+          "14:00",
+          "14:30",
+          "15:00",
+          "16:00",
+          "17:00",
+          "21:30",
+          "22:00",
+          "22:15",
+          "22:16",
+          "22:30",
+          "22:31",
+          "22:45",
+          "23:00",
+          "23:01",
+          "23:30",
+          "23:45",
+          "23:46",
+          "23:55",
+          "23:59"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          },
+          {
+            "offset": 60,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 300,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 360,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          }
+        ]
       },
       {
-        "offset": 165,
-        "name": "Sân bay Nội Bài"
+        "label": "Sapa → Hà Nội",
+        "departures": [
+          "07:00",
+          "08:00",
+          "08:15",
+          "08:30",
+          "09:00",
+          "09:15",
+          "09:30",
+          "10:00",
+          "10:15",
+          "11:00",
+          "11:15",
+          "11:30",
+          "12:30",
+          "13:00",
+          "13:15",
+          "13:30",
+          "14:00",
+          "14:15",
+          "14:30",
+          "15:00",
+          "16:00",
+          "16:15",
+          "17:00",
+          "18:00",
+          "19:00",
+          "21:30",
+          "22:00",
+          "22:15",
+          "23:00",
+          "23:05",
+          "23:15",
+          "23:30",
+          "23:45"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          },
+          {
+            "offset": 60,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 300,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 360,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          }
+        ]
       },
       {
-        "offset": 405,
-        "name": "Văn Phòng Lào Cai"
+        "label": "Sân bay Nội Bài → Sapa",
+        "departures": [
+          "00:00",
+          "00:01",
+          "00:15",
+          "00:30",
+          "00:45",
+          "00:46",
+          "00:55",
+          "00:59",
+          "01:15",
+          "01:30",
+          "02:30",
+          "04:15",
+          "07:15",
+          "07:30",
+          "07:45",
+          "07:46",
+          "08:00",
+          "08:01",
+          "08:05",
+          "09:00",
+          "09:15",
+          "10:00",
+          "10:15",
+          "10:30",
+          "11:00",
+          "11:15",
+          "11:30",
+          "11:45",
+          "12:00",
+          "12:15",
+          "13:30",
+          "14:15",
+          "14:30",
+          "15:00",
+          "15:15",
+          "15:30",
+          "16:00",
+          "17:00",
+          "18:00",
+          "22:30",
+          "23:00",
+          "23:15",
+          "23:16",
+          "23:30",
+          "23:31",
+          "23:45"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Sân bay Nội Bài"
+          },
+          {
+            "offset": 240,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 300,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          }
+        ]
       },
       {
-        "offset": 465,
-        "name": "Văn phòng 732 Điện Biên Phủ"
+        "label": "Sapa → Sân bay Nội Bài",
+        "departures": [
+          "00:00",
+          "02:45",
+          "03:00",
+          "03:15",
+          "03:30",
+          "04:00",
+          "04:05",
+          "04:15",
+          "04:30",
+          "04:45",
+          "08:30",
+          "11:30",
+          "12:00",
+          "13:00",
+          "13:15",
+          "13:30",
+          "13:45",
+          "14:00",
+          "14:15",
+          "14:30",
+          "15:00",
+          "15:15",
+          "15:30",
+          "16:00",
+          "16:15",
+          "16:30",
+          "16:45",
+          "17:30",
+          "18:00",
+          "18:15",
+          "18:30",
+          "19:00",
+          "19:15",
+          "19:30",
+          "20:00",
+          "21:00",
+          "21:15",
+          "21:30",
+          "22:00",
+          "22:15",
+          "23:00"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 732 Điện Biên Phủ"
+          },
+          {
+            "offset": 60,
+            "name": "Văn Phòng Lào Cai"
+          },
+          {
+            "offset": 300,
+            "name": "Sân bay Nội Bài"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hn-ha",
+    "from": "Hà Nội",
+    "to": "Hội An",
+    "name": "Hà Nội ⇄ Hội An",
+    "directions": [
+      {
+        "label": "Hà Nội → Hội An",
+        "departures": [
+          "18:00",
+          "18:30",
+          "19:00",
+          "19:30",
+          "19:36",
+          "20:00",
+          "20:30",
+          "20:35",
+          "21:00"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          },
+          {
+            "offset": 120,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          },
+          {
+            "offset": 480,
+            "name": "Khách sạn Thượng Hải"
+          },
+          {
+            "offset": 525,
+            "name": "Ga Đồng Hới"
+          },
+          {
+            "offset": 630,
+            "name": "Khách sạn Long Khang"
+          },
+          {
+            "offset": 720,
+            "name": "Văn phòng Huế"
+          },
+          {
+            "offset": 840,
+            "name": "Văn phòng Đà Nẵng"
+          },
+          {
+            "offset": 900,
+            "name": "Văn phòng Hội An"
+          }
+        ]
+      },
+      {
+        "label": "Hội An → Hà Nội",
+        "departures": [
+          "15:00",
+          "16:00",
+          "17:00",
+          "18:30",
+          "19:30",
+          "20:30",
+          "21:00"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng Hội An"
+          },
+          {
+            "offset": 60,
+            "name": "Văn phòng Đà Nẵng"
+          },
+          {
+            "offset": 180,
+            "name": "Văn phòng Huế"
+          },
+          {
+            "offset": 270,
+            "name": "Khách sạn Long Khang"
+          },
+          {
+            "offset": 375,
+            "name": "Ga Đồng Hới"
+          },
+          {
+            "offset": 420,
+            "name": "Khách sạn Thượng Hải"
+          },
+          {
+            "offset": 780,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          },
+          {
+            "offset": 900,
+            "name": "Văn phòng 70 Nguyễn Hữu Huân"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "nb-ha",
+    "from": "Ninh Bình",
+    "to": "Hội An",
+    "name": "Ninh Bình ⇄ Hội An",
+    "directions": [
+      {
+        "label": "Ninh Bình → Hội An",
+        "departures": [
+          "20:00",
+          "20:30",
+          "21:00",
+          "21:30",
+          "21:36",
+          "22:00",
+          "22:30",
+          "22:35",
+          "23:00"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          },
+          {
+            "offset": 360,
+            "name": "Khách sạn Thượng Hải"
+          },
+          {
+            "offset": 405,
+            "name": "Ga Đồng Hới"
+          },
+          {
+            "offset": 510,
+            "name": "Khách sạn Long Khang"
+          },
+          {
+            "offset": 600,
+            "name": "Văn phòng Huế"
+          },
+          {
+            "offset": 720,
+            "name": "Văn phòng Đà Nẵng"
+          },
+          {
+            "offset": 780,
+            "name": "Văn phòng Hội An"
+          }
+        ]
+      },
+      {
+        "label": "Hội An → Ninh Bình",
+        "departures": [
+          "15:00",
+          "16:00",
+          "17:00",
+          "18:30",
+          "19:30",
+          "20:30",
+          "21:00"
+        ],
+        "stops": [
+          {
+            "offset": 0,
+            "name": "Văn phòng Hội An"
+          },
+          {
+            "offset": 60,
+            "name": "Văn phòng Đà Nẵng"
+          },
+          {
+            "offset": 180,
+            "name": "Văn phòng Huế"
+          },
+          {
+            "offset": 270,
+            "name": "Khách sạn Long Khang"
+          },
+          {
+            "offset": 375,
+            "name": "Ga Đồng Hới"
+          },
+          {
+            "offset": 420,
+            "name": "Khách sạn Thượng Hải"
+          },
+          {
+            "offset": 780,
+            "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"
+          }
+        ]
       }
     ]
   }
@@ -213,6 +792,7 @@ function durLabel(mins){
 
 let activeRoute = ROUTES[0].id;
 let activeDep = {};
+let activeDir = {};
 
 function render(){
   const tabsEl = document.getElementById('routeTabs');
@@ -224,21 +804,39 @@ function render(){
   });
 
   const route = ROUTES.find(r=>r.id===activeRoute);
-  if(!activeDep[route.id]) activeDep[route.id] = route.departures[0];
-  const dep = activeDep[route.id];
+
+  let dirToggleHtml = '';
+  let departures, stops;
+  if(route.directions){
+    if(activeDir[route.id]===undefined) activeDir[route.id] = 0;
+    const dirIdx = activeDir[route.id];
+    const dir = route.directions[dirIdx];
+    departures = dir.departures;
+    stops = dir.stops;
+    dirToggleHtml = `<div class="dir-toggle">${route.directions.map((d,i)=>
+      `<button class="dir-btn ${i===dirIdx?'active':''}" data-dir="${i}">${d.label}</button>`
+    ).join('')}</div>`;
+  } else {
+    departures = route.departures;
+    stops = route.stops;
+  }
+
+  const depKey = route.id + (route.directions ? ':' + activeDir[route.id] : '');
+  if(!activeDep[depKey]) activeDep[depKey] = departures[0];
+  const dep = activeDep[depKey];
   const depMin = parseHM(dep);
 
-  const chips = route.departures.map(d =>
+  const chips = departures.map(d =>
     `<button class="dep-chip ${d===dep?'active':''}" data-dep="${d}">${d}</button>`
   ).join('');
 
-  const stops = route.stops.map((s,i)=>{
+  const stopsHtml = stops.map((s,i)=>{
     const t = fmtTime(depMin + s.offset);
     const dayBadge = t.day>0 ? `<span class="daybadge">+${t.day} ngày</span>` : '';
     let durHtml = '';
     if(i>0){
-      const prevOffset = route.stops[i-1].offset;
-      durHtml = `<div class="duration">${durLabel(s.offset-prevOffset)} từ ${route.stops[i-1].name}</div>`;
+      const prevOffset = stops[i-1].offset;
+      durHtml = `<div class="duration">${durLabel(s.offset-prevOffset)} từ ${stops[i-1].name}</div>`;
     }
     return `<div class="stop">
       <div class="dot"></div>
@@ -251,14 +849,18 @@ function render(){
   document.getElementById('routeContent').innerHTML = `
     <div class="card">
       <div class="route-title">${route.name}</div>
+      ${dirToggleHtml}
       <div class="dep-label">Giờ xuất bến</div>
       <div class="dep-chips">${chips}</div>
-      <div class="timeline">${stops}</div>
+      <div class="timeline">${stopsHtml}</div>
     </div>
   `;
 
+  document.querySelectorAll('.dir-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ activeDir[route.id] = Number(btn.dataset.dir); render(); });
+  });
   document.querySelectorAll('.dep-chip').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ activeDep[route.id] = btn.dataset.dep; render(); });
+    btn.addEventListener('click', ()=>{ activeDep[depKey] = btn.dataset.dep; render(); });
   });
 }
 
