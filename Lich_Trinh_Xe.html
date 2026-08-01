@@ -84,11 +84,13 @@
   .dep-chip.active{background:var(--green); border-color:var(--green); color:#fff;}
 
   .timeline{position:relative; margin-left:6px;}
-  .stop{position:relative; padding:0 0 22px 30px; border-left:2px solid var(--line);}
-  .stop:last-child{border-left:2px solid transparent; padding-bottom:0;}
+  .stop{position:relative; padding:0 0 22px 30px;}
+  .stop::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--line);}
+  .stop:last-child{padding-bottom:0;}
+  .stop:last-child::before{display:none;}
   .stop .dot{
-    position:absolute; left:-8px; top:2px; width:14px; height:14px; border-radius:50%;
-    background:var(--green); border:3px solid var(--card); box-shadow:0 0 0 2px var(--green);
+    position:absolute; left:-6px; top:2px; width:14px; height:14px; border-radius:50%;
+    background:var(--green); border:3px solid var(--card); box-shadow:0 0 0 2px var(--green); z-index:1;
   }
   .stop:first-child .dot{background:#c9770a; box-shadow:0 0 0 2px #c9770a;}
   .stop:last-child .dot{background:var(--green-dark); box-shadow:0 0 0 2px var(--green-dark);}
