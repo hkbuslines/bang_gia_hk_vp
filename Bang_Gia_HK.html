@@ -184,11 +184,11 @@
   /* ===== Lịch trình xe (schedule timeline) ===== */
   .sched-timeline{position:relative; margin-left:6px; margin-top:12px;}
   .sched-stop{position:relative; padding:0 0 22px 30px;}
-  .sched-stop::before{content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--table-border);}
+  .sched-stop::before{content:""; position:absolute; left:8px; top:0; bottom:0; width:2px; background:var(--table-border);}
   .sched-stop:last-child{padding-bottom:0;}
   .sched-stop:last-child::before{display:none;}
   .sched-stop .sched-dot{
-    position:absolute; left:-6px; top:2px; width:14px; height:14px; border-radius:50%;
+    position:absolute; left:2px; top:2px; width:14px; height:14px; border-radius:50%;
     background:var(--green); border:3px solid var(--card); box-shadow:0 0 0 2px var(--green); z-index:1;
   }
   .sched-stop:first-child .sched-dot{background:#c9770a; box-shadow:0 0 0 2px #c9770a;}
