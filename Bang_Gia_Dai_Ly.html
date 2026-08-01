@@ -72,7 +72,7 @@
     background:#fff; color:var(--green-dark); border:none; border-radius:10px;
     padding:0 16px; font-weight:600; cursor:pointer; font-size:14px;
   }
-  main{max-width:1100px; margin:0 auto; padding:16px;}
+  main{max-width:1100px; margin:0 auto; padding:10px;}
   nav.region-tabs{
     display:flex; gap:8px; overflow-x:auto; padding:14px 0 6px; -webkit-overflow-scrolling:touch;
   }
@@ -87,7 +87,7 @@
   .tab-btn.active{background:var(--green); border-color:var(--green); color:#fff;}
   .tab-btn.charter-tab.active{background:#c9770a; border-color:#c9770a;}
 
-  .card{background:var(--card); border-radius:14px; padding:18px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.05); border:1px solid var(--border);}
+  .card{background:var(--card); border-radius:14px; padding:12px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,.05); border:1px solid var(--border);}
   .region-title{font-size:18px; font-weight:700; color:var(--green-dark); margin:0 0 2px;}
   .region-effective{font-size:12.5px; color:var(--muted); margin-bottom:14px;}
 
@@ -171,6 +171,41 @@
     td.route-cell{max-width:150px;}
     td.note{font-size:10.5px;}
   }
+
+  /* ===== Page-mode switcher (Bảng giá / Hàng hoá / Lịch trình xe) ===== */
+  .page-mode-tabs{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 4px;}
+  .page-mode-btn{
+    padding:10px 18px; border-radius:10px; border:2px solid var(--green); background:var(--surface);
+    color:var(--green-dark); font-size:14.5px; font-weight:700; cursor:pointer; transition:.15s;
+  }
+  .page-mode-btn:hover{background:var(--green-light);}
+  .page-mode-btn.active{background:var(--green); border-color:var(--green); color:#fff;}
+
+  /* ===== Lịch trình xe (schedule timeline) ===== */
+  .sched-timeline{position:relative; margin-left:6px; margin-top:12px;}
+  .sched-stop{position:relative; padding:0 0 22px 30px; border-left:2px solid var(--table-border);}
+  .sched-stop:last-child{border-left:2px solid transparent; padding-bottom:0;}
+  .sched-stop .sched-dot{
+    position:absolute; left:-8px; top:2px; width:14px; height:14px; border-radius:50%;
+    background:var(--green); border:3px solid var(--card); box-shadow:0 0 0 2px var(--green);
+  }
+  .sched-stop:first-child .sched-dot{background:#c9770a; box-shadow:0 0 0 2px #c9770a;}
+  .sched-stop:last-child .sched-dot{background:var(--green-dark); box-shadow:0 0 0 2px var(--green-dark);}
+  .sched-stop .sched-time-row{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;}
+  .sched-stop .sched-time{font-size:17px; font-weight:800; color:var(--green-dark); font-variant-numeric:tabular-nums;}
+  .sched-stop .sched-daybadge{font-size:10.5px; font-weight:700; color:#fff; background:#c9770a; border-radius:5px; padding:1px 6px;}
+  .sched-stop .sched-place{font-size:14.5px; font-weight:600; margin-top:2px;}
+  .sched-stop .sched-duration{font-size:12px; color:var(--muted); margin-top:6px;}
+  .sched-dep-label{font-size:12.5px; color:var(--muted); margin:12px 0 8px; font-weight:600; text-transform:uppercase; letter-spacing:.3px;}
+
+  /* ===== Hàng hoá (cargo pricing) ===== */
+  .cargo-table{width:100%; border-collapse:collapse; font-size:12.5px; min-width:640px;}
+  .cargo-table td{padding:7px 9px; border:1px solid var(--table-border); text-align:center; vertical-align:middle;}
+  .cargo-table tr.cargo-head td{background:var(--green-light); font-weight:700; color:var(--green-dark); font-size:12px; text-transform:uppercase; letter-spacing:.2px;}
+  .cargo-table td.cargo-name{text-align:left; font-weight:600;}
+  .cargo-table td.cargo-desc{text-align:left;}
+  .cargo-note{font-size:12.5px; color:var(--muted); margin-bottom:10px; line-height:1.5;}
+
 </style>
 </head>
 <body>
@@ -188,6 +223,8 @@
 </header>
 
 <main>
+  <nav class="page-mode-tabs" id="pageModeTabs"><button class="page-mode-btn active" data-mode="gia">Bảng giá vé</button><button class="page-mode-btn" data-mode="lichtrinh">Lịch trình xe chạy</button></nav>
+  <div id="modeBangGia">
   <div id="searchBanner" class="search-results-banner hidden">
     <span id="searchBannerText"></span>
     <button id="clearSearch">Xoá tìm kiếm ✕</button>
@@ -246,6 +283,13 @@
       </ul>
     </div>
   </details>
+  </div>
+  <div id="modeLichTrinh" style="display:none">
+<div class="card">
+  <nav class="region-tabs" id="scheduleTabs"></nav>
+  <div id="scheduleContent"></div>
+</div>
+</div>
 </main>
 
 <footer>
@@ -958,6 +1002,118 @@ document.getElementById("themeToggle").onclick = () => {
 
 applyLanguage();
 loadData().then(render);
+
+(function(){
+  const SCHEDULE_ROUTES = [{"id": "hl-sp", "from": "Hạ Long", "to": "Sapa", "name": "Hạ Long ⇄ Sapa", "directions": [{"label": "Hạ Long → Sapa", "departures": ["08:15", "12:15", "21:00", "22:30"], "stops": [{"offset": 0, "name": "Văn phòng Hạ Long"}, {"offset": 135, "name": "Văn phòng 70 Nguyễn Hữu Huân"}, {"offset": 180, "name": "Sân bay Nội Bài"}, {"offset": 435, "name": "Văn Phòng Lào Cai"}, {"offset": 495, "name": "Văn phòng 732 Điện Biên Phủ"}]}, {"label": "Sapa → Hạ Long", "departures": ["08:30", "11:30", "21:30", "22:15"], "stops": [{"offset": 0, "name": "Văn phòng 732 Điện Biên Phủ"}, {"offset": 60, "name": "Văn Phòng Lào Cai"}, {"offset": 315, "name": "Sân bay Nội Bài"}, {"offset": 360, "name": "Văn phòng 70 Nguyễn Hữu Huân"}, {"offset": 495, "name": "Văn phòng Hạ Long"}]}]}, {"id": "nb-sp", "from": "Ninh Bình", "to": "Sapa", "name": "Ninh Bình ⇄ Sapa", "directions": [{"label": "Ninh Bình → Sapa", "departures": ["06:30", "09:00", "11:30", "21:00", "21:30", "22:30"], "stops": [{"offset": 0, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}, {"offset": 120, "name": "Văn phòng 70 Nguyễn Hữu Huân (Hà Nội)"}, {"offset": 165, "name": "Sân bay Nội Bài"}, {"offset": 405, "name": "Văn Phòng Lào Cai"}, {"offset": 465, "name": "Văn phòng 732 Điện Biên Phủ"}]}, {"label": "Sapa → Ninh Bình", "departures": ["00:00", "02:45", "03:00", "03:15", "03:30", "04:00", "04:05", "04:15", "04:30", "04:45", "07:00", "08:00", "08:15", "08:30", "09:00", "09:15", "09:30", "10:00", "10:15", "10:30", "11:00", "11:15", "11:30", "12:00", "12:30", "13:00", "13:15", "13:30", "13:45", "14:00", "14:15", "14:30", "15:00", "15:15", "15:30", "16:00", "16:15", "16:30", "16:45", "17:00", "17:30", "18:00", "18:15", "18:30", "19:00", "19:15", "19:30", "20:00", "21:00", "21:15", "22:00", "22:15", "22:30", "23:00", "23:05", "23:15", "23:30", "23:45"], "stops": [{"offset": 0, "name": "Văn phòng 732 Điện Biên Phủ"}, {"offset": 60, "name": "Văn Phòng Lào Cai"}, {"offset": 300, "name": "Sân bay Nội Bài"}, {"offset": 345, "name": "Văn phòng 70 Nguyễn Hữu Huân (Hà Nội)"}, {"offset": 465, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}]}]}, {"id": "hn-sp", "from": "Hà Nội", "to": "Sapa", "name": "Hà Nội ⇄ Sapa", "directions": [{"label": "Hà Nội → Sapa", "departures": ["01:30", "03:15", "06:15", "06:30", "06:45", "06:46", "07:00", "07:01", "07:05", "08:00", "09:00", "09:15", "09:30", "10:00", "10:30", "11:00", "11:15", "12:30", "13:30", "14:00", "14:30", "15:00", "16:00", "17:00", "21:30", "22:00", "22:15", "22:16", "22:30", "22:31", "22:45", "23:00", "23:01", "23:30", "23:45", "23:46", "23:55", "23:59"], "stops": [{"offset": 0, "name": "Văn phòng 70 Nguyễn Hữu Huân"}, {"offset": 60, "name": "Sân bay Nội Bài"}, {"offset": 300, "name": "Văn Phòng Lào Cai"}, {"offset": 360, "name": "Văn phòng 732 Điện Biên Phủ"}]}, {"label": "Sapa → Hà Nội", "departures": ["07:00", "08:00", "08:15", "08:30", "09:00", "09:15", "09:30", "10:00", "10:15", "11:00", "11:15", "11:30", "12:30", "13:00", "13:15", "13:30", "14:00", "14:15", "14:30", "15:00", "16:00", "16:15", "17:00", "18:00", "19:00", "21:30", "22:00", "22:15", "23:00", "23:05", "23:15", "23:30", "23:45"], "stops": [{"offset": 0, "name": "Văn phòng 732 Điện Biên Phủ"}, {"offset": 60, "name": "Văn Phòng Lào Cai"}, {"offset": 300, "name": "Sân bay Nội Bài"}, {"offset": 360, "name": "Văn phòng 70 Nguyễn Hữu Huân"}]}, {"label": "Sân bay Nội Bài → Sapa", "departures": ["00:00", "00:01", "00:15", "00:30", "00:45", "00:46", "00:55", "00:59", "01:15", "01:30", "02:30", "04:15", "07:15", "07:30", "07:45", "07:46", "08:00", "08:01", "08:05", "09:00", "09:15", "10:00", "10:15", "10:30", "11:00", "11:15", "11:30", "11:45", "12:00", "12:15", "13:30", "14:15", "14:30", "15:00", "15:15", "15:30", "16:00", "17:00", "18:00", "22:30", "23:00", "23:15", "23:16", "23:30", "23:31", "23:45"], "stops": [{"offset": 0, "name": "Sân bay Nội Bài"}, {"offset": 240, "name": "Văn Phòng Lào Cai"}, {"offset": 300, "name": "Văn phòng 732 Điện Biên Phủ"}]}, {"label": "Sapa → Sân bay Nội Bài", "departures": ["00:00", "02:45", "03:00", "03:15", "03:30", "04:00", "04:05", "04:15", "04:30", "04:45", "08:30", "11:30", "12:00", "13:00", "13:15", "13:30", "13:45", "14:00", "14:15", "14:30", "15:00", "15:15", "15:30", "16:00", "16:15", "16:30", "16:45", "17:30", "18:00", "18:15", "18:30", "19:00", "19:15", "19:30", "20:00", "21:00", "21:15", "21:30", "22:00", "22:15", "23:00"], "stops": [{"offset": 0, "name": "Văn phòng 732 Điện Biên Phủ"}, {"offset": 60, "name": "Văn Phòng Lào Cai"}, {"offset": 300, "name": "Sân bay Nội Bài"}]}]}, {"id": "hn-ha", "from": "Hà Nội", "to": "Hội An", "name": "Hà Nội ⇄ Hội An", "directions": [{"label": "Hà Nội → Hội An", "departures": ["18:00", "18:30", "19:00", "19:30", "19:36", "20:00", "20:30", "20:35", "21:00"], "stops": [{"offset": 0, "name": "Văn phòng 70 Nguyễn Hữu Huân"}, {"offset": 120, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}, {"offset": 480, "name": "Khách sạn Thượng Hải"}, {"offset": 525, "name": "Ga Đồng Hới"}, {"offset": 630, "name": "Khách sạn Long Khang"}, {"offset": 720, "name": "Văn phòng Huế"}, {"offset": 840, "name": "Văn phòng Đà Nẵng"}, {"offset": 900, "name": "Văn phòng Hội An"}]}, {"label": "Hội An → Hà Nội", "departures": ["15:00", "16:00", "17:00", "18:30", "19:30", "20:30", "21:00"], "stops": [{"offset": 0, "name": "Văn phòng Hội An"}, {"offset": 60, "name": "Văn phòng Đà Nẵng"}, {"offset": 180, "name": "Văn phòng Huế"}, {"offset": 270, "name": "Khách sạn Long Khang"}, {"offset": 375, "name": "Ga Đồng Hới"}, {"offset": 420, "name": "Khách sạn Thượng Hải"}, {"offset": 780, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}, {"offset": 900, "name": "Văn phòng 70 Nguyễn Hữu Huân"}]}]}, {"id": "nb-ha", "from": "Ninh Bình", "to": "Hội An", "name": "Ninh Bình ⇄ Hội An", "directions": [{"label": "Ninh Bình → Hội An", "departures": ["20:00", "20:30", "21:00", "21:30", "21:36", "22:00", "22:30", "22:35", "23:00"], "stops": [{"offset": 0, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}, {"offset": 360, "name": "Khách sạn Thượng Hải"}, {"offset": 405, "name": "Ga Đồng Hới"}, {"offset": 510, "name": "Khách sạn Long Khang"}, {"offset": 600, "name": "Văn phòng Huế"}, {"offset": 720, "name": "Văn phòng Đà Nẵng"}, {"offset": 780, "name": "Văn phòng Hội An"}]}, {"label": "Hội An → Ninh Bình", "departures": ["15:00", "16:00", "17:00", "18:30", "19:30", "20:30", "21:00"], "stops": [{"offset": 0, "name": "Văn phòng Hội An"}, {"offset": 60, "name": "Văn phòng Đà Nẵng"}, {"offset": 180, "name": "Văn phòng Huế"}, {"offset": 270, "name": "Khách sạn Long Khang"}, {"offset": 375, "name": "Ga Đồng Hới"}, {"offset": 420, "name": "Khách sạn Thượng Hải"}, {"offset": 780, "name": "Văn phòng 2A đường 27/7 Thành phố Ninh Bình"}]}]}];
+
+  function schedFmtTime(totalMin){
+    const m = ((totalMin % 1440) + 1440) % 1440;
+    const day = Math.floor(totalMin / 1440);
+    const hh = String(Math.floor(m/60)).padStart(2,'0');
+    const mm = String(m%60).padStart(2,'0');
+    return {label: hh+':'+mm, day};
+  }
+  function schedParseHM(s){
+    const [h,m] = s.split(':').map(Number);
+    return h*60+m;
+  }
+  function schedDurLabel(mins){
+    const h = Math.floor(mins/60), m = mins%60;
+    if(h && m) return h+' giờ '+m+' phút';
+    if(h) return h+' giờ';
+    return m+' phút';
+  }
+
+  let schedActiveRoute = SCHEDULE_ROUTES[0].id;
+  let schedActiveDep = {};
+  let schedActiveDir = {};
+
+  function renderSchedule(){
+    const tabsEl = document.getElementById('scheduleTabs');
+    if(!tabsEl) return;
+    tabsEl.innerHTML = SCHEDULE_ROUTES.map(r =>
+      `<button class="tab-btn ${r.id===schedActiveRoute?'active':''}" data-route="${r.id}">${r.name}</button>`
+    ).join('');
+    tabsEl.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ schedActiveRoute = btn.dataset.route; renderSchedule(); });
+    });
+
+    const route = SCHEDULE_ROUTES.find(r=>r.id===schedActiveRoute);
+
+    let dirToggleHtml = '';
+    let departures, stops;
+    if(route.directions){
+      if(schedActiveDir[route.id]===undefined) schedActiveDir[route.id] = 0;
+      const dirIdx = schedActiveDir[route.id];
+      const dir = route.directions[dirIdx];
+      departures = dir.departures;
+      stops = dir.stops;
+      dirToggleHtml = `<div class="subtabs">${route.directions.map((d,i)=>
+        `<button class="subtab-btn ${i===dirIdx?'active':''}" data-dir="${i}">${d.label}</button>`
+      ).join('')}</div>`;
+    } else {
+      departures = route.departures;
+      stops = route.stops;
+    }
+
+    const depKey = route.id + (route.directions ? ':' + schedActiveDir[route.id] : '');
+    if(!schedActiveDep[depKey]) schedActiveDep[depKey] = departures[0];
+    const dep = schedActiveDep[depKey];
+    const depMin = schedParseHM(dep);
+
+    const chips = departures.map(d =>
+      `<button class="daytype-btn ${d===dep?'active':''}" data-dep="${d}">${d}</button>`
+    ).join('');
+
+    const stopsHtml = stops.map((s,i)=>{
+      const t = schedFmtTime(depMin + s.offset);
+      const dayBadge = t.day>0 ? `<span class="sched-daybadge">+${t.day} ngày</span>` : '';
+      let durHtml = '';
+      if(i>0){
+        const prevOffset = stops[i-1].offset;
+        durHtml = `<div class="sched-duration">${schedDurLabel(s.offset-prevOffset)} từ ${stops[i-1].name}</div>`;
+      }
+      return `<div class="sched-stop">
+        <div class="sched-dot"></div>
+        <div class="sched-time-row"><span class="sched-time">${t.label}</span>${dayBadge}</div>
+        <div class="sched-place">${s.name}</div>
+        ${durHtml}
+      </div>`;
+    }).join('');
+
+    document.getElementById('scheduleContent').innerHTML = `
+      <div class="region-title">${route.name}</div>
+      ${dirToggleHtml}
+      <div class="sched-dep-label">Giờ xuất bến</div>
+      <div class="daytype-toggle">${chips}</div>
+      <div class="sched-timeline">${stopsHtml}</div>
+    `;
+
+    document.querySelectorAll('#scheduleContent [data-dir]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ schedActiveDir[route.id] = Number(btn.dataset.dir); renderSchedule(); });
+    });
+    document.querySelectorAll('#scheduleContent [data-dep]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{ schedActiveDep[depKey] = btn.dataset.dep; renderSchedule(); });
+    });
+  }
+
+  renderSchedule();
+})();
+
+
+(function(){
+  function setPageMode(m){
+    document.getElementById('modeBangGia').style.display = m==='gia' ? '' : 'none';
+    
+    document.getElementById('modeLichTrinh').style.display = m==='lichtrinh' ? '' : 'none';
+    document.querySelectorAll('.page-mode-btn').forEach(b=> b.classList.toggle('active', b.dataset.mode===m));
+  }
+  document.querySelectorAll('.page-mode-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> setPageMode(btn.dataset.mode));
+  });
+  window.setPageMode = setPageMode;
+})();
+
 </script>
 </body>
 </html>
