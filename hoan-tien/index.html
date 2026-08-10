@@ -22,9 +22,11 @@
   .my-row:hover{background:var(--green-light);}
   .my-row:last-child{border-bottom:none;}
   .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
-  .my-row .amt{width:100px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
-  .my-row .reason{flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0;}
+  .my-row .badge{width:88px; text-align:center; flex-shrink:0;}
+  .my-row .amt{width:110px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
+  .my-row .row-flags{width:70px; flex-shrink:0;}
+  .my-row .reason{flex:1; min-width:0; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0; width:80px; text-align:right;}
   .partial-flag{color:var(--warn); font-weight:700;}
   .row-flags{display:flex; gap:4px; flex-shrink:0;}
   .flag-icon{font-size:13px; cursor:help; flex-shrink:0;}
@@ -541,7 +543,7 @@ async function loadMyRequests() {
         <span class="code">${r.reqCode}</span>
         <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
         <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
-        ${flags ? `<span class="row-flags">${flags}</span>` : ""}
+        <span class="row-flags">${flags}</span>
         <span class="reason">${reasonText}</span>
         <span class="view-hint no-print">Xem chi tiết →</span>
       </div>`;
