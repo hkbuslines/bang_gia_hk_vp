@@ -625,7 +625,12 @@ function openDetail(reqCode) {
     </div>
   `;
   document.getElementById("btnDetailClose").addEventListener("click", closeDetail);
-  document.getElementById("btnDetailPrint").addEventListener("click", () => window.print());
+  document.getElementById("btnDetailPrint").addEventListener("click", () => {
+    // Đánh dấu để CSS @media print chỉ in đúng nội dung modal, không in
+    // lẫn cả form tạo đơn phía sau (xem styles.css: #app.printing-detail).
+    document.getElementById("app").classList.add("printing-detail");
+    window.print();
+  });
   document.getElementById("btnDetailEdit")?.addEventListener("click", () => startEdit(d.reqCode));
   document.getElementById("detailOverlay").classList.add("show");
 }
@@ -693,6 +698,7 @@ function startEdit(reqCode) {
 document.getElementById("detailOverlay").addEventListener("click", e => {
   if (e.target.id === "detailOverlay") closeDetail();
 });
+window.addEventListener("afterprint", () => document.getElementById("app").classList.remove("printing-detail"));
 
 updateDateText();
 newReqCode();

@@ -313,9 +313,10 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   .totals-label{ font-size:12px; }
   .totals-value{ font-size:16px; }
 
-  /* Modal xem lại đơn: chiếm toàn màn hình cho dễ đọc */
-  .detail-overlay{ padding:0; }
-  .detail-modal{ max-width:none; }
+  /* Modal xem lại đơn: chiếm toàn màn hình cho dễ đọc, phủ trắng kín —
+     không để lộ 1 dải nền/toolbar của trang gốc phía sau ở mép trên. */
+  .detail-overlay{ padding:0; background:#fff; align-items:flex-start; }
+  .detail-modal{ max-width:none; min-height:100%; }
   .detail-modal .detail-toolbar{ border-radius:0; }
   .detail-modal .sheet{ border-radius:0; }
   .my-row{ flex-wrap:wrap; row-gap:4px; }
@@ -329,7 +330,12 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
 @media print{
   body{background:#fff;}
   .toolbar, .no-print{display:none !important;}
-  .detail-overlay{position:static !important; background:none !important; padding:0 !important; display:block !important;}
+
+  /* In từ trong modal xem lại đơn (id="app" được gắn thêm class này ngay
+     trước khi gọi window.print()): chỉ in đúng nội dung modal, ẩn hẳn form
+     tạo đơn / banner phía sau — tránh in ra 2 trang lẫn cả 2 nội dung. */
+  #app.printing-detail > *:not(.detail-overlay){display:none !important;}
+  .detail-overlay.show{position:static !important; background:none !important; padding:0 !important; display:block !important;}
   .detail-modal{max-width:none !important;}
   .page-wrap{padding:0;}
   .sheet{box-shadow:none; width:auto; min-height:0; padding:0; margin:0;}
