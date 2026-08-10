@@ -205,7 +205,7 @@ function renderDetail() {
   if (editable) {
     actionsHtml =
       '<span style="font-size:12px; color:var(--muted);">Tổng sẽ duyệt: <b id="computedApprovedTotal" style="color:var(--green-dark);">' + fmtVND(d.totalRequest) + '</b></span>' +
-      '<button class="btn primary" id="btnConfirmApprove">✅ Xác nhận duyệt</button>' +
+      '<button class="btn primary" id="btnConfirmApprove">Xác nhận duyệt</button>' +
       '<button class="btn danger" id="btnReject">❌ Từ chối tất cả</button>';
   } else if (d.status === "da_duyet") {
     // Còn mục bị từ chối mà VP chưa xử lý (chưa chấp nhận / chưa gửi bổ sung)

@@ -57,7 +57,7 @@ document.getElementById("app").innerHTML = `
     <button class="btn" id="btnRemoveRow">– Xóa dòng cuối</button>
     <button class="btn danger" id="btnReset">🗑 Làm mới form</button>
     <button class="btn" id="btnPrint">🖨 In</button>
-    <button class="btn primary" id="btnSubmit">✅ Gửi duyệt</button>
+    <button class="btn primary" id="btnSubmit">Gửi duyệt</button>
   </div>
 
   <div class="edit-banner no-print" id="editBanner">
@@ -151,7 +151,7 @@ document.getElementById("app").innerHTML = `
   </div>
 
   <div class="submitted-banner no-print" id="submittedBanner">
-    <span>✅ Đã gửi đơn <b id="submittedCode"></b> — đang chờ Ban Giám Đốc duyệt.</span>
+    <span>Đã gửi đơn <b id="submittedCode"></b> — đang chờ Ban Giám Đốc duyệt.</span>
     <button class="btn primary" id="btnNewRequest">+ Tạo đơn mới</button>
   </div>
   <div style="height:16px;"></div>
@@ -427,7 +427,7 @@ function resetForm() {
   editingReqCode = null;
   supplementalSourceReqCode = null;
   document.getElementById("editBanner").classList.remove("show");
-  document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt";
+  document.getElementById("btnSubmit").textContent = "Gửi duyệt";
   document.getElementById("btnSubmit").disabled = false;
   document.getElementById("submittedBanner").classList.remove("show");
 }
@@ -487,10 +487,10 @@ async function submitRequest() {
       }
     }
     document.querySelector("#submittedBanner span").innerHTML = isResubmit
-      ? `✅ Đã gửi lại đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt lại.`
+      ? `Đã gửi lại đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt lại.`
       : isSupplemental
-        ? `✅ Đã gửi đơn bổ sung <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`
-        : `✅ Đã gửi đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`;
+        ? `Đã gửi đơn bổ sung <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`
+        : `Đã gửi đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`;
     document.getElementById("submittedBanner").classList.add("show");
     document.getElementById("submittedBanner").scrollIntoView({ behavior: "smooth" });
     if (result && result.warning) alert(result.warning);
@@ -606,7 +606,7 @@ function openDetail(reqCode) {
       ${rejectedLines.map(r => `<div class="hist-item">${r.code || "(không mã)"} — ${fmtVND(r.goods + r.vat)}${r.lineRejectReason ? " — Lý do: " + r.lineRejectReason : ""}</div>`).join("")}
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn primary" id="btnSupplemental">🔁 Gửi đơn bổ sung cho các mục này</button>
-        <button class="btn" id="btnAcceptRejected">✅ Chấp nhận, không gửi lại</button>
+        <button class="btn" id="btnAcceptRejected">Chấp nhận, không gửi lại</button>
       </div>
     </div>` : "";
 
@@ -635,7 +635,7 @@ function openDetail(reqCode) {
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${statusLabelFor(d)}</span>
       <div class="spacer"></div>
-      ${d.status === "tu_choi" && !isDismissed ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button><button class="btn" id="btnDismissReject">✅ Chấp nhận, không gửi lại</button>' : ""}
+      ${d.status === "tu_choi" && !isDismissed ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button><button class="btn" id="btnDismissReject">Chấp nhận, không gửi lại</button>' : ""}
       <button class="btn" id="btnDetailPrint">🖨 In</button>
       <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
     </div>
@@ -839,9 +839,9 @@ function startSupplementalRequest(reqCode) {
   document.getElementById("editBannerText").innerHTML =
     `🔁 Đang tạo đơn <b>bổ sung</b> cho ${rejectedLines.length} mục bị từ chối trong đơn <b>${reqCode}</b>.` +
     `<div class="edit-reject-reason">Đơn gốc (${statusLabelFor(d)}) sẽ được giữ nguyên, không bị thay đổi.</div>` +
-    `Kiểm tra lại nội dung / thêm file chứng từ (nếu có) rồi bấm "✅ Gửi duyệt" để gửi đơn bổ sung này.`;
+    `Kiểm tra lại nội dung / thêm file chứng từ (nếu có) rồi bấm "Gửi duyệt" để gửi đơn bổ sung này.`;
   document.getElementById("editBanner").classList.add("show");
-  document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt đơn bổ sung";
+  document.getElementById("btnSubmit").textContent = "Gửi duyệt đơn bổ sung";
   document.getElementById("btnSubmit").disabled = false;
   document.getElementById("submittedBanner").classList.remove("show");
   document.getElementById("editBanner").scrollIntoView({ behavior: "smooth" });
