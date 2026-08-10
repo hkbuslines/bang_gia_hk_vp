@@ -26,6 +26,8 @@
   .my-row .reason{flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0;}
   .partial-flag{color:var(--warn); font-weight:700;}
+  .row-flags{display:flex; gap:4px; flex-shrink:0;}
+  .flag-icon{font-size:13px; cursor:help; flex-shrink:0;}
   .raw-paste-panel{margin:-8px 0 16px; padding:12px; background:var(--green-light); border:1px solid var(--green); border-radius:8px;}
   .raw-paste-panel textarea{
     width:100%; font-family:"Courier New",monospace; font-size:13px; padding:8px 10px;
@@ -524,20 +526,20 @@ async function loadMyRequests() {
       // Hiện cờ này bất kể status là gì (đã duyệt, đã chi...) — dòng bị từ
       // chối vẫn cần văn phòng xử lý dù phần còn lại của đơn đã xong.
       const needsAction = r.status !== "tu_choi" && hasUnresolvedRejectedLine(r);
-      let reasonText = r.reason || "";
-      if (r.status === "tu_choi") {
-        reasonText += (r.rejectReason ? " — Lý do từ chối: " + r.rejectReason : "") +
-          ' — <span class="resubmit-hint">bấm để sửa &amp; gửi lại</span>';
-      } else if (needsAction) {
-        reasonText += ' — <span class="partial-flag">⚠ có mục bị từ chối, bấm xem chi tiết để xử lý</span>';
-      }
-      if (r.history && r.history.length) reasonText += ` <span class="resubmit-hint">🔁 đã gửi lại ${r.history.length} lần</span>`;
-      if (r.attachments && r.attachments.length) reasonText += ` <span class="attach-hint">📎 ${r.attachments.length}</span>`;
+      const reasonText = r.status === "tu_choi" && r.rejectReason ? r.reason + " — " + r.rejectReason : (r.reason || "");
+      // Các cờ trạng thái để RIÊNG, không nhét vào chung dòng lý do — tránh
+      // bị cắt mất thành "..." khi lý do dài (dòng lý do vẫn tự cắt khi cần).
+      let flags = "";
+      if (r.status === "tu_choi") flags += `<span class="flag-icon flag-warn" title="Bấm để sửa & gửi lại">✏️</span>`;
+      if (needsAction) flags += `<span class="flag-icon flag-warn" title="Có mục bị từ chối, bấm xem chi tiết">⚠</span>`;
+      if (r.history && r.history.length) flags += `<span class="flag-icon" title="Đã gửi lại ${r.history.length} lần">🔁</span>`;
+      if (r.attachments && r.attachments.length) flags += `<span class="flag-icon" title="${r.attachments.length} file đính kèm">📎</span>`;
       return `
       <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
         <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
         <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
+        ${flags ? `<span class="row-flags">${flags}</span>` : ""}
         <span class="reason">${reasonText}</span>
         <span class="view-hint no-print">Xem chi tiết →</span>
       </div>`;
