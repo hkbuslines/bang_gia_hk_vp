@@ -105,6 +105,14 @@ export function attachmentLinksHtml(attachments) {
   ).join("");
 }
 
+// Đơn có dòng nào bị từ chối MÀ CHƯA XỬ LÝ (chưa gửi bổ sung / chưa bấm chấp
+// nhận bỏ qua) — hiện cờ này bất kể đơn đang ở trạng thái nào (đã duyệt, đã
+// chi...), vì phần dòng bị từ chối vẫn cần văn phòng quyết định dù đơn đã
+// được xử lý xong phần còn lại.
+export function hasUnresolvedRejectedLine(r) {
+  return (r.rows || []).some(row => row.lineStatus === "tu_choi" && !row.lineResolved);
+}
+
 export function buildVietQRUrl(bankName, account, amount, addInfo, accountName) {
   var bank = BANKS.find(function (b) { return b.name === bankName; });
   if (!bank || !account) return "";

@@ -41,7 +41,7 @@
 <script type="module">
 import {
   DEPARTMENTS, BANKS, STATUS_LABEL, fmtVND, parseNum, fmtDate, fmtDateTime,
-  soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, pad, apiList, apiPost
+  soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, pad, apiList, apiPost
 } from "./shared.js";
 
 const params = new URLSearchParams(location.search);
@@ -69,11 +69,7 @@ document.getElementById("app").innerHTML = `
   </div>
 
   <div class="edit-banner no-print" id="editBanner">
-    <div class="edit-banner-text">
-      🔁 Đang sửa lại đơn <b id="editReqCodeLabel"></b> — đã bị <b>từ chối</b> trước đó.
-      <div class="edit-reject-reason">Lý do bị từ chối: <span id="editRejectReason"></span></div>
-      Sửa nội dung / bổ sung file đính kèm bên dưới rồi bấm "🔁 Gửi lại đơn này".
-    </div>
+    <div class="edit-banner-text" id="editBannerText"></div>
     <button class="btn" id="btnCancelEdit">✕ Huỷ, tạo đơn mới</button>
   </div>
 
@@ -189,6 +185,8 @@ let existingAttachments = []; // file đã gửi từ trước (khi đang sửa 
 
 // ---- Sửa & gửi lại đơn bị từ chối ----
 let editingReqCode = null;
+// ---- Gửi đơn bổ sung riêng cho các dòng bị từ chối trong 1 đơn đã duyệt/đã chi ----
+let supplementalSourceReqCode = null;
 
 function fmtBytes(n) {
   if (n < 1024) return n + " B";
@@ -428,6 +426,7 @@ function resetForm() {
   addRow(); recalcGrandTotal(); newReqCode(); updateRangeText();
   selectedFiles = []; existingAttachments = []; renderAttachList();
   editingReqCode = null;
+  supplementalSourceReqCode = null;
   document.getElementById("editBanner").classList.remove("show");
   document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt";
   document.getElementById("btnSubmit").disabled = false;
@@ -472,18 +471,29 @@ async function submitRequest() {
       beneficiary,
       attachments
     };
-    await apiPost(payload);
+    const result = await apiPost(payload);
+    const isSupplemental = !!supplementalSourceReqCode;
     if (isResubmit) {
       editingReqCode = null;
       document.getElementById("editBanner").classList.remove("show");
     } else {
       saveToMyRequests(reqCode);
+      if (isSupplemental) {
+        // Đơn bổ sung gửi thành công — đánh dấu các dòng bị từ chối ở đơn gốc
+        // là đã xử lý, để không còn bị nhắc lại trong danh sách nữa.
+        try { await apiPost({ action: "acknowledgeRejectedLines", reqCode: supplementalSourceReqCode }); } catch (e) { /* không chặn luồng chính nếu bước này lỗi */ }
+        supplementalSourceReqCode = null;
+        document.getElementById("editBanner").classList.remove("show");
+      }
     }
     document.querySelector("#submittedBanner span").innerHTML = isResubmit
       ? `✅ Đã gửi lại đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt lại.`
-      : `✅ Đã gửi đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`;
+      : isSupplemental
+        ? `✅ Đã gửi đơn bổ sung <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`
+        : `✅ Đã gửi đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`;
     document.getElementById("submittedBanner").classList.add("show");
     document.getElementById("submittedBanner").scrollIntoView({ behavior: "smooth" });
+    if (result && result.warning) alert(result.warning);
     loadMyRequests();
   } catch (e) {
     alert("Gửi thất bại: " + e.message + "\n\nKiểm tra lại API_URL trong shared.js và cấu hình Apps Script.");
@@ -501,10 +511,6 @@ function saveToMyRequests(reqCode) {
 
 let myRequestsCache = [];
 
-function hasRejectedLine(r) {
-  return (r.rows || []).some(row => row.lineStatus === "tu_choi");
-}
-
 async function loadMyRequests() {
   const container = document.getElementById("myRequestsList");
   try {
@@ -515,13 +521,15 @@ async function loadMyRequests() {
     myRequestsCache = mine;
     if (!mine.length) { container.innerHTML = '<div class="empty-note">Chưa có đơn nào.</div>'; return; }
     container.innerHTML = mine.map(r => {
-      const partial = r.status === "da_duyet" && hasRejectedLine(r);
+      // Hiện cờ này bất kể status là gì (đã duyệt, đã chi...) — dòng bị từ
+      // chối vẫn cần văn phòng xử lý dù phần còn lại của đơn đã xong.
+      const needsAction = r.status !== "tu_choi" && hasUnresolvedRejectedLine(r);
       let reasonText = r.reason || "";
       if (r.status === "tu_choi") {
         reasonText += (r.rejectReason ? " — Lý do từ chối: " + r.rejectReason : "") +
           ' — <span class="resubmit-hint">bấm để sửa &amp; gửi lại</span>';
-      } else if (partial) {
-        reasonText += ' — <span class="partial-flag">⚠ có dòng bị từ chối, bấm xem chi tiết</span>';
+      } else if (needsAction) {
+        reasonText += ' — <span class="partial-flag">⚠ có mục bị từ chối, bấm xem chi tiết để xử lý</span>';
       }
       if (r.history && r.history.length) reasonText += ` <span class="resubmit-hint">🔁 đã gửi lại ${r.history.length} lần</span>`;
       if (r.attachments && r.attachments.length) reasonText += ` <span class="attach-hint">📎 ${r.attachments.length}</span>`;
@@ -564,6 +572,19 @@ function openDetail(reqCode) {
       ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""}</div>`).join("")}
     </div>` : "";
 
+  // Đơn đã duyệt/đã chi nhưng còn dòng bị từ chối chưa xử lý — cho văn phòng
+  // chọn: gửi đơn bổ sung riêng cho các dòng đó, hoặc chấp nhận bỏ qua.
+  const rejectedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && !r.lineResolved);
+  const needsActionHtml = (d.status !== "tu_choi" && rejectedLines.length) ? `
+    <div class="resend-history no-print" style="background:#fdecea; border-color:var(--danger);">
+      <div class="hist-title" style="color:var(--danger);">⚠ Đơn này có ${rejectedLines.length} mục bị từ chối, phần còn lại vẫn ${STATUS_LABEL[d.status] || d.status}</div>
+      ${rejectedLines.map(r => `<div class="hist-item">${r.code || "(không mã)"} — ${fmtVND(r.goods + r.vat)}${r.lineRejectReason ? " — Lý do: " + r.lineRejectReason : ""}</div>`).join("")}
+      <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn primary" id="btnSupplemental">🔁 Gửi đơn bổ sung cho các mục này</button>
+        <button class="btn" id="btnAcceptRejected">✅ Chấp nhận, không gửi lại</button>
+      </div>
+    </div>` : "";
+
   document.getElementById("detailModal").innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${STATUS_LABEL[d.status] || d.status}</span>
@@ -573,6 +594,7 @@ function openDetail(reqCode) {
       <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
     </div>
     ${historyHtml}
+    ${needsActionHtml}
     <div class="page-wrap">
       <div class="sheet">
         <div class="doc-header">
@@ -632,6 +654,8 @@ function openDetail(reqCode) {
     window.print();
   });
   document.getElementById("btnDetailEdit")?.addEventListener("click", () => startEdit(d.reqCode));
+  document.getElementById("btnSupplemental")?.addEventListener("click", () => startSupplementalRequest(d.reqCode));
+  document.getElementById("btnAcceptRejected")?.addEventListener("click", () => acceptRejectedLines(d.reqCode));
   document.getElementById("detailOverlay").classList.add("show");
 }
 function closeDetail() {
@@ -687,14 +711,86 @@ function startEdit(reqCode) {
   existingAttachments = d.attachments || [];
   renderAttachList();
 
-  document.getElementById("editReqCodeLabel").textContent = reqCode;
-  document.getElementById("editRejectReason").textContent = d.rejectReason || "(không ghi lý do)";
+  document.getElementById("editBannerText").innerHTML =
+    `🔁 Đang sửa lại đơn <b>${reqCode}</b> — đã bị <b>từ chối</b> trước đó.` +
+    `<div class="edit-reject-reason">Lý do bị từ chối: ${d.rejectReason || "(không ghi lý do)"}</div>` +
+    `Sửa nội dung / bổ sung file đính kèm bên dưới rồi bấm "🔁 Gửi lại đơn này".`;
   document.getElementById("editBanner").classList.add("show");
   document.getElementById("btnSubmit").textContent = "🔁 Gửi lại đơn này";
   document.getElementById("btnSubmit").disabled = false;
   document.getElementById("submittedBanner").classList.remove("show");
   document.getElementById("editBanner").scrollIntoView({ behavior: "smooth" });
 }
+
+// Đơn đã duyệt/đã chi một phần, còn vài dòng bị từ chối (vd thiếu hoá đơn) —
+// tạo 1 đơn MỚI (mã REQ mới) chỉ chứa các dòng đó, không đụng gì tới đơn gốc
+// (đơn gốc đã có tiền được duyệt/chi cho phần còn lại, không được sửa lại).
+function startSupplementalRequest(reqCode) {
+  const d = myRequestsCache.find(r => r.reqCode === reqCode);
+  if (!d) return;
+  const rejectedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && !r.lineResolved);
+  if (!rejectedLines.length) return;
+
+  closeDetail();
+  editingReqCode = null;
+  supplementalSourceReqCode = reqCode;
+
+  document.getElementById("requesterName").value = d.requesterName || "";
+  document.getElementById("fromDate").value = toDateInputValue(d.fromDate);
+  document.getElementById("toDate").value = toDateInputValue(d.toDate);
+  document.getElementById("reasonText").value = "Bổ sung mục bị từ chối từ đơn " + reqCode + (d.reason ? " — " + d.reason : "");
+  document.getElementById("bankAccount").value = d.bankAccount || "937869080";
+  bankSelect.value = d.bankName || "MB Bank";
+  document.getElementById("beneficiary").value = d.beneficiary || "";
+  newReqCode(); // mã đơn mới, không dùng lại mã cũ
+  updateRangeText();
+
+  invoiceBody.innerHTML = "";
+  rejectedLines.forEach(r => {
+    addRow();
+    const trs = invoiceBody.querySelectorAll("tr");
+    const tr = trs[trs.length - 1];
+    tr.querySelector(".inv-date").value = r.date || "";
+    updateRowDateText(tr);
+    tr.querySelector(".inv-code").value = r.code || "";
+    tr.querySelector(".inv-goods").value = r.goods || "";
+    tr.querySelector(".inv-goods").dispatchEvent(new Event("input", { bubbles: true }));
+    if (r.vat) {
+      tr.querySelector(".inv-vat").value = r.vat;
+      tr.querySelector(".inv-vat").dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    tr.querySelector(".inv-reason").value = (r.reason || "") + (r.lineRejectReason ? " (trước bị từ chối: " + r.lineRejectReason + ")" : "");
+  });
+  recalcGrandTotal();
+
+  selectedFiles = [];
+  existingAttachments = [];
+  renderAttachList();
+
+  document.getElementById("editBannerText").innerHTML =
+    `🔁 Đang tạo đơn <b>bổ sung</b> cho ${rejectedLines.length} mục bị từ chối trong đơn <b>${reqCode}</b>.` +
+    `<div class="edit-reject-reason">Đơn gốc (${STATUS_LABEL[d.status] || d.status}) sẽ được giữ nguyên, không bị thay đổi.</div>` +
+    `Kiểm tra lại nội dung / thêm file chứng từ (nếu có) rồi bấm "✅ Gửi duyệt" để gửi đơn bổ sung này.`;
+  document.getElementById("editBanner").classList.add("show");
+  document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt đơn bổ sung";
+  document.getElementById("btnSubmit").disabled = false;
+  document.getElementById("submittedBanner").classList.remove("show");
+  document.getElementById("editBanner").scrollIntoView({ behavior: "smooth" });
+}
+
+// Văn phòng xem lý do bị từ chối và quyết định KHÔNG gửi lại — đóng lại,
+// không cần theo dõi/nhắc nữa.
+async function acceptRejectedLines(reqCode) {
+  if (!confirm("Xác nhận chấp nhận các mục bị từ chối này, không gửi lại nữa?")) return;
+  try {
+    await apiPost({ action: "acknowledgeRejectedLines", reqCode });
+    closeDetail();
+    await loadMyRequests();
+  } catch (e) {
+    alert("Lỗi: " + e.message);
+  }
+}
+
 document.getElementById("detailOverlay").addEventListener("click", e => {
   if (e.target.id === "detailOverlay") closeDetail();
 });

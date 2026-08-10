@@ -97,6 +97,7 @@ function doPost(e) {
       paidAt: nowIso_()
     });
   }
+  if (action === "acknowledgeRejectedLines") return handleAcknowledgeRejectedLines_(sheet, body);
   return jsonOut_({ ok: false, error: "Unknown action: " + action });
 }
 
@@ -151,11 +152,17 @@ function handleCreate_(sheet, body) {
   if (!body.reqCode || !body.requesterName || !body.department) {
     return jsonOut_({ ok: false, error: "Thiếu dữ liệu bắt buộc" });
   }
-  var attachments;
+  // Lỗi khi lưu file đính kèm (vd thiếu quyền Drive) không được chặn cả đơn —
+  // đơn vẫn lưu bình thường, chỉ báo "warning" riêng cho người dùng biết file
+  // chưa lưu được, để họ không mất toàn bộ dữ liệu đã nhập chỉ vì việc này.
+  var attachments = [];
+  var attachmentWarning = "";
   try {
     attachments = saveAttachments_(body.reqCode, body.attachments);
   } catch (err) {
-    return jsonOut_({ ok: false, error: err.message });
+    if (body.attachments && body.attachments.length) {
+      attachmentWarning = "Đơn đã được gửi nhưng KHÔNG lưu được file đính kèm: " + err.message;
+    }
   }
   var headers = getHeaders_(sheet);
   var record = {
@@ -180,7 +187,9 @@ function handleCreate_(sheet, body) {
   };
   var rowArr = headers.map(function (h) { return record[h] !== undefined ? record[h] : ""; });
   sheet.appendRow(rowArr);
-  return jsonOut_({ ok: true, reqCode: record.reqCode });
+  var result = { ok: true, reqCode: record.reqCode };
+  if (attachmentWarning) result.warning = attachmentWarning;
+  return jsonOut_(result);
 }
 
 function getRecordByReqCode_(sheet, reqCode) {
@@ -211,11 +220,14 @@ function handleResubmit_(sheet, body) {
     return jsonOut_({ ok: false, error: "Chỉ có thể gửi lại đơn đang ở trạng thái Từ chối (đơn này hiện là \"" + current.status + "\")." });
   }
 
-  var newAttachments;
+  var newAttachments = [];
+  var attachmentWarning = "";
   try {
     newAttachments = saveAttachments_(body.reqCode, body.attachments);
   } catch (err) {
-    return jsonOut_({ ok: false, error: err.message });
+    if (body.attachments && body.attachments.length) {
+      attachmentWarning = "Đơn đã được gửi lại nhưng KHÔNG lưu được file đính kèm mới: " + err.message;
+    }
   }
   var existingAttachments = [];
   try { existingAttachments = current.attachmentsJson ? JSON.parse(current.attachmentsJson) : []; } catch (e) { existingAttachments = []; }
@@ -248,15 +260,35 @@ function handleResubmit_(sheet, body) {
     attachmentsJson: JSON.stringify(finalAttachments),
     historyJson: JSON.stringify(history)
   };
-  return handleUpdate_(sheet, body.reqCode, fields);
+  var success = applyUpdate_(sheet, body.reqCode, fields);
+  if (!success) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
+  var result = { ok: true };
+  if (attachmentWarning) result.warning = attachmentWarning;
+  return jsonOut_(result);
 }
 
-function handleUpdate_(sheet, reqCode, fields) {
-  if (!reqCode) return jsonOut_({ ok: false, error: "Thiếu reqCode" });
+// Văn phòng đã "xử lý xong" các dòng bị từ chối trong 1 đơn (đã duyệt/đã chi
+// một phần) — hoặc bằng cách gửi đơn bổ sung riêng, hoặc bấm "chấp nhận, bỏ
+// qua". Đánh dấu lineResolved=true để không còn bị nhắc lại trong danh sách.
+// Không cần thêm cột Sheet mới vì lineResolved nằm trong rowsJson (mảng dòng).
+function handleAcknowledgeRejectedLines_(sheet, body) {
+  if (!body.reqCode) return jsonOut_({ ok: false, error: "Thiếu reqCode" });
+  var current = getRecordByReqCode_(sheet, body.reqCode);
+  if (!current) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
+  var rows = [];
+  try { rows = current.rowsJson ? JSON.parse(current.rowsJson) : []; } catch (e) { rows = []; }
+  rows.forEach(function (r) { if (r.lineStatus === "tu_choi") r.lineResolved = true; });
+  return handleUpdate_(sheet, body.reqCode, { rowsJson: JSON.stringify(rows) });
+}
+
+// Ghi các field vào đúng dòng của reqCode, trả về true/false (không tự bọc JSON)
+// để những nơi cần gắn thêm dữ liệu vào response (vd "warning") tự lo phần đó.
+function applyUpdate_(sheet, reqCode, fields) {
+  if (!reqCode) return false;
   var headers = getHeaders_(sheet);
   var reqCodeCol = headers.indexOf("reqCode") + 1;
   var lastRow = sheet.getLastRow();
-  if (lastRow < 2) return jsonOut_({ ok: false, error: "Không có dữ liệu" });
+  if (lastRow < 2) return false;
 
   var ids = sheet.getRange(2, reqCodeCol, lastRow - 1, 1).getValues();
   for (var i = 0; i < ids.length; i++) {
@@ -266,8 +298,15 @@ function handleUpdate_(sheet, reqCode, fields) {
         var col = headers.indexOf(key) + 1;
         if (col > 0) sheet.getRange(rowIndex, col).setValue(fields[key]);
       });
-      return jsonOut_({ ok: true });
+      return true;
     }
   }
-  return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + reqCode });
+  return false;
+}
+
+function handleUpdate_(sheet, reqCode, fields) {
+  if (!reqCode) return jsonOut_({ ok: false, error: "Thiếu reqCode" });
+  var success = applyUpdate_(sheet, reqCode, fields);
+  if (!success) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + reqCode });
+  return jsonOut_({ ok: true });
 }

@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -76,22 +76,26 @@ function renderOverview() {
 
   const totalPending = allRequests.filter(r => r.status === "cho_duyet").length;
   const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
+  const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
   const summaryHtml = `
     <div class="overview-summary">
       <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
       <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
+      <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn có mục bị từ chối, VP chưa xử lý</div>
     </div>`;
 
   const html = DEPARTMENTS.map(d => {
     const items = allRequests.filter(r => r.department === d.name);
     const pending = items.filter(r => r.status === "cho_duyet").length;
     const awaitingPay = items.filter(r => r.status === "da_duyet").length;
+    const needsAction = items.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
     return `
       <div class="dept-card" data-name="${d.name}">
         <div class="name">${d.name} <span class="arrow">→</span></div>
         <div class="stats">
           <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
           <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
+          ${needsAction ? `<span class="needs-action-count">⚠ ${needsAction} chưa xử lý</span>` : ""}
           <span style="color:var(--muted); font-size:12.5px;">${items.length} đơn tổng</span>
         </div>
       </div>`;
@@ -127,7 +131,7 @@ function renderDeptView() {
   const listHtml = list.length ? list.map(r => `
     <div class="req-card" data-code="${r.reqCode}">
       <div class="row1"><span class="code">${r.reqCode}</span><span class="amt">${fmtVND(r.totalRequest)}</span></div>
-      <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}</div>
+      <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}${r.status !== "tu_choi" && hasUnresolvedRejectedLine(r) ? ` · <span class="partial-flag">⚠ có mục bị từ chối, VP chưa xử lý</span>` : ""}</div>
       <div class="reason">${r.reason || ""}</div>
     </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
 
@@ -157,6 +161,9 @@ function renderDetail() {
     let reasonCell = r.reason || "";
     if (!editable && r.lineStatus === "tu_choi") {
       reasonCell += `<div style="color:var(--danger); font-size:11px; margin-top:2px;">✕ Từ chối dòng${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
+      reasonCell += r.lineResolved
+        ? `<div style="color:var(--green-dark); font-size:11px;">✓ VP đã xử lý (gửi bổ sung hoặc chấp nhận)</div>`
+        : `<div style="color:var(--warn); font-size:11px; font-weight:700;">⚠ VP chưa xử lý dòng này</div>`;
     }
     let decisionHtml = "";
     if (editable) {
