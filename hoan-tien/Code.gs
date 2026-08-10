@@ -310,3 +310,13 @@ function handleUpdate_(sheet, reqCode, fields) {
   if (!success) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + reqCode });
   return jsonOut_({ ok: true });
 }
+
+// ==== CHỈ DÙNG ĐỂ TEST CẤP QUYỀN DRIVE (xem hướng dẫn trong README/chat) ====
+// Chọn hàm này ở dropdown cạnh nút Run rồi bấm Run — hàm này LUÔN gọi thẳng
+// tới Drive (không thoát sớm như saveAttachments_), nên chắc chắn Google sẽ
+// hỏi xin quyền nếu chưa có. Sau khi chạy xong thấy dòng "OK: ..." trong
+// Execution log là đã cấp quyền thành công, lúc đó có thể xoá hàm này đi.
+function testDriveAuth() {
+  var folder = getAttachmentFolder_();
+  Logger.log("OK: đã có quyền Drive, thư mục đính kèm id = " + folder.getId());
+}
