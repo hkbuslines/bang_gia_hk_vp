@@ -77,11 +77,15 @@ function renderOverview() {
   const totalPending = allRequests.filter(r => r.status === "cho_duyet").length;
   const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
   const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
+  // Đơn gốc bị từ chối (1 phần hoặc toàn bộ) mà VP đã gửi đơn bổ sung —
+  // đếm theo mã đơn GỐC (không đếm trùng nếu gửi bổ sung nhiều lần).
+  const totalSupplemented = new Set(allRequests.filter(r => r.supplementOf).map(r => r.supplementOf)).size;
   const summaryHtml = `
     <div class="overview-summary">
       <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
       <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
       <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn có mục bị từ chối, VP chưa xử lý</div>
+      <div class="sum-item supplement ${totalSupplemented === 0 ? "zero" : ""}"><b>${totalSupplemented}</b> đơn từ chối đã được gửi bổ sung</div>
     </div>`;
 
   const html = DEPARTMENTS.map(d => {
@@ -89,6 +93,7 @@ function renderOverview() {
     const pending = items.filter(r => r.status === "cho_duyet").length;
     const awaitingPay = items.filter(r => r.status === "da_duyet").length;
     const needsAction = items.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
+    const supplemented = new Set(items.filter(r => r.supplementOf).map(r => r.supplementOf)).size;
     return `
       <div class="dept-card" data-name="${d.name}">
         <div class="name">${d.name} <span class="arrow">→</span></div>
@@ -96,6 +101,7 @@ function renderOverview() {
           <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
           <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
           ${needsAction ? `<span class="needs-action-count">⚠ ${needsAction} chưa xử lý</span>` : ""}
+          ${supplemented ? `<span class="supplement-count">➕ ${supplemented} đã gửi bổ sung</span>` : ""}
           <span style="color:var(--muted); font-size:12.5px;">${items.length} đơn tổng</span>
         </div>
       </div>`;
@@ -131,6 +137,7 @@ function renderDeptView() {
   const listHtml = list.length ? list.map(r => `
     <div class="req-card" data-code="${r.reqCode}">
       <div class="row1"><span class="code">${r.reqCode}</span><span class="amt">${fmtVND(r.totalRequest)}</span></div>
+      ${r.supplementOf ? `<div class="supplement-tag">➕ Đơn bổ sung cho <b>${r.supplementOf}</b> (đơn từng bị từ chối 1 phần)</div>` : ""}
       <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}${r.status !== "tu_choi" && hasUnresolvedRejectedLine(r) ? ` · <span class="partial-flag">⚠ có mục bị từ chối, VP chưa xử lý</span>` : ""}</div>
       <div class="reason">${r.reason || ""}</div>
     </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
@@ -187,7 +194,12 @@ function renderDetail() {
       '<button class="btn primary" id="btnConfirmApprove">✅ Xác nhận duyệt</button>' +
       '<button class="btn danger" id="btnReject">❌ Từ chối tất cả</button>';
   } else if (d.status === "da_duyet") {
-    actionsHtml = '<button class="btn primary" id="btnPaid">💰 Đánh dấu đã chi</button>';
+    // Còn mục bị từ chối mà VP chưa xử lý (chưa chấp nhận / chưa gửi bổ sung)
+    // — vẫn cho chi nếu cần gấp, nhưng cảnh báo rõ trước khi bấm.
+    const unresolved = hasUnresolvedRejectedLine(d);
+    actionsHtml =
+      (unresolved ? '<span style="font-size:12px; color:var(--danger); font-weight:700;">⚠ VP chưa xử lý mục bị từ chối</span>' : '') +
+      '<button class="btn primary" id="btnPaid">💰 Đánh dấu đã chi</button>';
   }
 
   const historyHtml = (d.history && d.history.length) ? `
@@ -222,6 +234,7 @@ function renderDetail() {
           <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
+          ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:#254a9c; font-weight:600;">${d.supplementOf} (đơn từng bị từ chối 1 phần)</td></tr>` : ""}
           ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
         </table>
         <div class="invoice-scroll view-only">
@@ -330,6 +343,13 @@ async function rejectRequest(d) {
   } catch (e) { alert("Lỗi: " + e.message); }
 }
 async function markPaid(d) {
+  if (hasUnresolvedRejectedLine(d)) {
+    const proceed = confirm(
+      "Đơn này còn mục bị từ chối mà văn phòng CHƯA xử lý (chưa chấp nhận, chưa gửi bổ sung).\n\n" +
+      "Vẫn tiếp tục đánh dấu đã chi cho phần đã duyệt?"
+    );
+    if (!proceed) return;
+  }
   const name = prompt("Tên kế toán xác nhận đã chi:", "");
   if (name === null) return;
   if (!name.trim()) return alert("Vui lòng nhập tên.");

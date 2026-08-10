@@ -6,7 +6,7 @@
  * 2. Dán các cột sau vào hàng 1 (đúng thứ tự, đúng tên):
  *    reqCode | createdAt | department | requesterName | fromDate | toDate | reason | rowsJson |
  *    totalRequest | totalApproved | bankAccount | bankName | beneficiary | status | rejectReason |
- *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson
+ *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson | supplementOf
  * 3. Trong Sheet: Extensions (Tiện ích mở rộng) → Apps Script.
  * 4. Xóa hết code mẫu, dán TOÀN BỘ file Code.gs này vào.
  * 5. Bấm Deploy → New deployment → chọn loại "Web app".
@@ -183,7 +183,8 @@ function handleCreate_(sheet, body) {
     rejectReason: "",
     approvedBy: "", approvedAt: "",
     paidBy: "", paidAt: "",
-    attachmentsJson: JSON.stringify(attachments)
+    attachmentsJson: JSON.stringify(attachments),
+    supplementOf: body.supplementOf || ""
   };
   var rowArr = headers.map(function (h) { return record[h] !== undefined ? record[h] : ""; });
   sheet.appendRow(rowArr);
@@ -270,14 +271,17 @@ function handleResubmit_(sheet, body) {
 // Văn phòng đã "xử lý xong" các dòng bị từ chối trong 1 đơn (đã duyệt/đã chi
 // một phần) — hoặc bằng cách gửi đơn bổ sung riêng, hoặc bấm "chấp nhận, bỏ
 // qua". Đánh dấu lineResolved=true để không còn bị nhắc lại trong danh sách.
+// body.resolved = false → REVOKE (huỷ chấp nhận), đưa dòng về lại trạng thái
+// "chưa xử lý" để Ban Giám Đốc biết mà xem lại trước khi duyệt chi.
 // Không cần thêm cột Sheet mới vì lineResolved nằm trong rowsJson (mảng dòng).
 function handleAcknowledgeRejectedLines_(sheet, body) {
   if (!body.reqCode) return jsonOut_({ ok: false, error: "Thiếu reqCode" });
   var current = getRecordByReqCode_(sheet, body.reqCode);
   if (!current) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
+  var resolved = body.resolved !== false; // mặc định true để tương thích lời gọi cũ
   var rows = [];
   try { rows = current.rowsJson ? JSON.parse(current.rowsJson) : []; } catch (e) { rows = []; }
-  rows.forEach(function (r) { if (r.lineStatus === "tu_choi") r.lineResolved = true; });
+  rows.forEach(function (r) { if (r.lineStatus === "tu_choi") r.lineResolved = resolved; });
   return handleUpdate_(sheet, body.reqCode, { rowsJson: JSON.stringify(rows) });
 }
 

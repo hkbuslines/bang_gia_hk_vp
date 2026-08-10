@@ -457,6 +457,7 @@ async function submitRequest() {
   const reqCode = document.getElementById("reqCode").textContent;
   const beneficiary = document.getElementById("beneficiary").value.trim() || requesterName;
   const isResubmit = !!editingReqCode;
+  const isSupplemental = !!supplementalSourceReqCode;
 
   document.getElementById("btnSubmit").disabled = true;
   try {
@@ -473,8 +474,8 @@ async function submitRequest() {
       beneficiary,
       attachments
     };
+    if (isSupplemental) payload.supplementOf = supplementalSourceReqCode;
     const result = await apiPost(payload);
-    const isSupplemental = !!supplementalSourceReqCode;
     if (isResubmit) {
       editingReqCode = null;
       document.getElementById("editBanner").classList.remove("show");
@@ -534,6 +535,7 @@ async function loadMyRequests() {
       if (needsAction) flags += `<span class="flag-icon flag-warn" title="Có mục bị từ chối, bấm xem chi tiết">⚠</span>`;
       if (r.history && r.history.length) flags += `<span class="flag-icon" title="Đã gửi lại ${r.history.length} lần">🔁</span>`;
       if (r.attachments && r.attachments.length) flags += `<span class="flag-icon" title="${r.attachments.length} file đính kèm">📎</span>`;
+      if (r.supplementOf) flags += `<span class="flag-icon" title="Đơn bổ sung cho ${r.supplementOf}">➕</span>`;
       return `
       <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
@@ -587,6 +589,17 @@ function openDetail(reqCode) {
       </div>
     </div>` : "";
 
+  // Đã xử lý xong (chấp nhận hoặc đã gửi bổ sung) — cho phép huỷ nếu bấm nhầm,
+  // để Ban Giám Đốc biết mà xem lại trước khi duyệt chi.
+  const resolvedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && r.lineResolved);
+  const resolvedHtml = (d.status !== "tu_choi" && !rejectedLines.length && resolvedLines.length) ? `
+    <div class="resend-history no-print" style="background:var(--green-light); border-color:var(--green);">
+      <div class="hist-title" style="color:var(--green-dark);">✓ Bạn đã xử lý xong ${resolvedLines.length} mục bị từ chối trong đơn này (chấp nhận hoặc đã gửi bổ sung)</div>
+      <div style="margin-top:8px;">
+        <button class="btn" id="btnRevokeAccept">↩ Huỷ, xem lại</button>
+      </div>
+    </div>` : "";
+
   document.getElementById("detailModal").innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${STATUS_LABEL[d.status] || d.status}</span>
@@ -597,6 +610,7 @@ function openDetail(reqCode) {
     </div>
     ${historyHtml}
     ${needsActionHtml}
+    ${resolvedHtml}
     <div class="page-wrap">
       <div class="sheet">
         <div class="doc-header">
@@ -616,6 +630,7 @@ function openDetail(reqCode) {
           <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
+          ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:var(--green-dark); font-weight:600;">${d.supplementOf}</td></tr>` : ""}
           ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
         </table>
         <div class="invoice-scroll view-only">
@@ -658,6 +673,7 @@ function openDetail(reqCode) {
   document.getElementById("btnDetailEdit")?.addEventListener("click", () => startEdit(d.reqCode));
   document.getElementById("btnSupplemental")?.addEventListener("click", () => startSupplementalRequest(d.reqCode));
   document.getElementById("btnAcceptRejected")?.addEventListener("click", () => acceptRejectedLines(d.reqCode));
+  document.getElementById("btnRevokeAccept")?.addEventListener("click", () => revokeAcceptRejectedLines(d.reqCode));
   document.getElementById("detailOverlay").classList.add("show");
 }
 function closeDetail() {
@@ -727,6 +743,14 @@ function startEdit(reqCode) {
 // Đơn đã duyệt/đã chi một phần, còn vài dòng bị từ chối (vd thiếu hoá đơn) —
 // tạo 1 đơn MỚI (mã REQ mới) chỉ chứa các dòng đó, không đụng gì tới đơn gốc
 // (đơn gốc đã có tiền được duyệt/chi cho phần còn lại, không được sửa lại).
+// Sinh mã đơn bổ sung dựa trên mã gốc (REQ-xxx-BS, -BS2, -BS3...) thay vì mã
+// ngẫu nhiên hoàn toàn mới — để nhìn mã là biết ngay liên quan đơn nào.
+function nextSupplementReqCode(originalReqCode) {
+  const siblings = myRequestsCache.filter(r => r.supplementOf === originalReqCode);
+  const n = siblings.length + 1;
+  return originalReqCode + "-BS" + (n > 1 ? n : "");
+}
+
 function startSupplementalRequest(reqCode) {
   const d = myRequestsCache.find(r => r.reqCode === reqCode);
   if (!d) return;
@@ -740,11 +764,13 @@ function startSupplementalRequest(reqCode) {
   document.getElementById("requesterName").value = d.requesterName || "";
   document.getElementById("fromDate").value = toDateInputValue(d.fromDate);
   document.getElementById("toDate").value = toDateInputValue(d.toDate);
-  document.getElementById("reasonText").value = "Bổ sung mục bị từ chối từ đơn " + reqCode + (d.reason ? " — " + d.reason : "");
+  // Giữ ngắn gọn — mã đơn gốc đã lưu riêng ở supplementOf, không cần nhắc lại
+  // đầy đủ lý do gốc ở đây (tránh dòng lý do quá dài, hiển thị bị cắt "...").
+  document.getElementById("reasonText").value = "Bổ sung cho đơn " + reqCode;
   document.getElementById("bankAccount").value = d.bankAccount || "937869080";
   bankSelect.value = d.bankName || "MB Bank";
   document.getElementById("beneficiary").value = d.beneficiary || "";
-  newReqCode(); // mã đơn mới, không dùng lại mã cũ
+  document.getElementById("reqCode").textContent = nextSupplementReqCode(reqCode); // giữ mã gốc làm tiền tố
   updateRangeText();
 
   invoiceBody.innerHTML = "";
@@ -785,7 +811,21 @@ function startSupplementalRequest(reqCode) {
 async function acceptRejectedLines(reqCode) {
   if (!confirm("Xác nhận chấp nhận các mục bị từ chối này, không gửi lại nữa?")) return;
   try {
-    await apiPost({ action: "acknowledgeRejectedLines", reqCode });
+    await apiPost({ action: "acknowledgeRejectedLines", reqCode, resolved: true });
+    closeDetail();
+    await loadMyRequests();
+  } catch (e) {
+    alert("Lỗi: " + e.message);
+  }
+}
+
+// Huỷ quyết định "chấp nhận" trước đó (bấm nhầm, hoặc đổi ý muốn gửi bổ sung
+// sau cùng) — đưa các dòng về lại trạng thái "chưa xử lý" để Ban Giám Đốc
+// biết mà xem lại trước khi duyệt chi.
+async function revokeAcceptRejectedLines(reqCode) {
+  if (!confirm("Huỷ trạng thái đã xử lý cho các mục bị từ chối này? Ban Giám Đốc sẽ thấy lại là chưa xử lý.")) return;
+  try {
+    await apiPost({ action: "acknowledgeRejectedLines", reqCode, resolved: false });
     closeDetail();
     await loadMyRequests();
   } catch (e) {
