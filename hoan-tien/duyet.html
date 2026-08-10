@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -147,7 +147,7 @@ function renderDeptView() {
   const list = deptItems.filter(r => r.status === currentTab).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const listHtml = list.length ? list.map(r => `
     <div class="req-card" data-code="${r.reqCode}">
-      <div class="row1"><span class="code">${r.reqCode}</span><span class="amt">${fmtVND(r.totalRequest)}</span></div>
+      <div class="row1"><span class="code">${r.reqCode}</span><span class="amt">${amountSummaryHtml(r)}</span></div>
       ${r.supplementOf ? `<div class="supplement-tag">➕ Đơn bổ sung cho <b>${r.supplementOf}</b> (đơn từng bị từ chối 1 phần)</div>` : ""}
       <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}${r.status !== "tu_choi" && hasUnresolvedRejectedLine(r) ? ` · <span class="partial-flag">⚠ có mục bị từ chối, VP chưa xử lý</span>` : ""}</div>
       <div class="reason">${r.reason || ""}</div>

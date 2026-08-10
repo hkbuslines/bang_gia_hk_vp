@@ -32,7 +32,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, BANKS, STATUS_LABEL, statusLabelFor, fmtVND, parseNum, fmtDate, fmtDateTime,
+  DEPARTMENTS, BANKS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, parseNum, fmtDate, fmtDateTime,
   soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, pad, apiList, apiPost
 } from "./shared.js";
 
@@ -530,7 +530,7 @@ async function loadMyRequests() {
       <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
         <span class="badge ${r.status}">${statusLabelFor(r)}</span>
-        <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
+        <span class="amt">${amountSummaryHtml(r)}</span>
         <div class="my-row-meta">
           <span class="row-flags">${flags}</span>
           <span class="reason">${reasonText}</span>

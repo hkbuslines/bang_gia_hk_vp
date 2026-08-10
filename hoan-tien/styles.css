@@ -123,7 +123,7 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 .my-row:last-child{border-bottom:none;}
 .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
 .my-row .badge{width:88px; text-align:center; flex-shrink:0;}
-.my-row .amt{width:110px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
+.my-row .amt{width:130px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0; line-height:1.4;}
 /* Gom cờ + lý do + "Xem chi tiết" thành 1 cụm riêng — để trên mobile cụm
    này luôn xuống dòng trọn vẹn của nó, không làm số tiền bị đẩy lệch theo
    số lượng icon (mỗi đơn có nhiều/ít cờ khác nhau). */

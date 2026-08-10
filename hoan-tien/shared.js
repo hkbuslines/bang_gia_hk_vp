@@ -53,6 +53,20 @@ export function fmtVND(n) {
   n = Math.round(n || 0);
   return "đ" + n.toLocaleString("vi-VN");
 }
+
+// Hiện rõ đã duyệt bao nhiêu / bị từ chối bao nhiêu, thay vì chỉ hiện 1 số
+// tổng tiền đề nghị ban đầu (dễ hiểu lầm là số đó = số đã duyệt/đã chi).
+export function amountSummaryHtml(r) {
+  const total = r.totalRequest || 0;
+  const approved = r.totalApproved != null ? r.totalApproved : total;
+  const rejected = Math.max(0, total - approved);
+  if (r.status === "cho_duyet") return fmtVND(total);
+  if (r.status === "tu_choi") return `<span style="color:var(--danger);">${fmtVND(total)}</span>`;
+  if (rejected > 0) {
+    return `${fmtVND(approved)}<br><span style="color:var(--danger); font-weight:600; font-size:11px;">(từ chối ${fmtVND(rejected)})</span>`;
+  }
+  return fmtVND(approved);
+}
 export function parseNum(v) {
   // VNĐ không có số lẻ nên bỏ hết ký tự không phải chữ số (kể cả dấu chấm
   // ngăn cách nghìn kiểu "đ280.000") thay vì dùng parseFloat — tránh lỗi
