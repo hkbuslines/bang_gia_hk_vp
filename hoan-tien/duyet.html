@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -178,10 +178,12 @@ function renderDetail() {
   const rowsHtml = (d.rows || []).map((r, i) => {
     let reasonCell = r.reason || "";
     if (!editable && r.lineStatus === "tu_choi") {
-      reasonCell += `<div style="color:var(--danger); font-size:11px; margin-top:2px;">✕ Từ chối dòng${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
+      // Đã xử lý xong: gộp lại 1 dòng gọn, không lặp lại "Từ chối" 2 lần.
+      // Chưa xử lý: cần cảnh báo rõ nên vẫn giữ 2 dòng để dễ thấy.
       reasonCell += r.lineResolved
-        ? `<div style="color:var(--green-dark); font-size:11px;">✓ VP đã xử lý (gửi bổ sung hoặc chấp nhận)</div>`
-        : `<div style="color:var(--warn); font-size:11px; font-weight:700;">⚠ VP chưa xử lý dòng này</div>`;
+        ? `<div style="color:var(--green-dark); font-size:11px;">✓ Từ chối (VP đã xử lý)${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`
+        : `<div style="color:var(--danger); font-size:11px; margin-top:2px;">✕ Từ chối dòng${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>` +
+          `<div style="color:var(--warn); font-size:11px; font-weight:700;">⚠ VP chưa xử lý dòng này</div>`;
     }
     let decisionHtml = "";
     if (editable) {
@@ -229,7 +231,7 @@ function renderDetail() {
 
   container.innerHTML = `
     <div class="detail-toolbar no-print">
-      <span class="badge ${d.status}">${STATUS_LABEL[d.status]}</span>
+      <span class="badge ${d.status}">${statusLabelFor(d)}</span>
       <div class="spacer"></div>${actionsHtml}
       <button class="btn" id="btnPrintDetail">🖨 In</button>
     </div>

@@ -32,7 +32,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, BANKS, STATUS_LABEL, fmtVND, parseNum, fmtDate, fmtDateTime,
+  DEPARTMENTS, BANKS, STATUS_LABEL, statusLabelFor, fmtVND, parseNum, fmtDate, fmtDateTime,
   soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, pad, apiList, apiPost
 } from "./shared.js";
 
@@ -529,7 +529,7 @@ async function loadMyRequests() {
       return `
       <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
-        <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
+        <span class="badge ${r.status}">${statusLabelFor(r)}</span>
         <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
         <div class="my-row-meta">
           <span class="row-flags">${flags}</span>
@@ -553,7 +553,9 @@ function openDetail(reqCode) {
   const rowsHtml = (d.rows || []).map((r, i) => {
     let noteCell = r.reason || "";
     if (r.lineStatus === "tu_choi") {
-      noteCell += `<div class="line-reject-note">✕ Dòng này bị từ chối${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
+      noteCell += r.lineResolved
+        ? `<div style="color:var(--green-dark); font-size:11px;">✓ Từ chối (đã xử lý)${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`
+        : `<div class="line-reject-note">✕ Dòng này bị từ chối${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
     }
     return `<tr><td class="idx" data-label="STT">${i + 1}</td><td data-label="Ngày">${fmtDate(r.date)}</td><td data-label="Nội dung">${r.code || ""}</td>
       <td data-label="Tiền hàng">${fmtVND(r.goods)}</td><td data-label="Thuế GTGT">${fmtVND(r.vat)}</td><td class="total-cell" data-label="Tổng tiền">${fmtVND(r.goods + r.vat)}</td>
@@ -579,7 +581,7 @@ function openDetail(reqCode) {
   const rejectedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && !r.lineResolved);
   const needsActionHtml = (d.status !== "tu_choi" && rejectedLines.length) ? `
     <div class="resend-history no-print" style="background:#fdecea; border-color:var(--danger);">
-      <div class="hist-title" style="color:var(--danger);">⚠ Đơn này có ${rejectedLines.length} mục bị từ chối, phần còn lại vẫn ${STATUS_LABEL[d.status] || d.status}</div>
+      <div class="hist-title" style="color:var(--danger);">⚠ Đơn này có ${rejectedLines.length} mục bị từ chối, phần còn lại vẫn ${statusLabelFor(d)}</div>
       ${rejectedLines.map(r => `<div class="hist-item">${r.code || "(không mã)"} — ${fmtVND(r.goods + r.vat)}${r.lineRejectReason ? " — Lý do: " + r.lineRejectReason : ""}</div>`).join("")}
       <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
         <button class="btn primary" id="btnSupplemental">🔁 Gửi đơn bổ sung cho các mục này</button>
@@ -600,7 +602,7 @@ function openDetail(reqCode) {
 
   document.getElementById("detailModal").innerHTML = `
     <div class="detail-toolbar no-print">
-      <span class="badge ${d.status}">${STATUS_LABEL[d.status] || d.status}</span>
+      <span class="badge ${d.status}">${statusLabelFor(d)}</span>
       <div class="spacer"></div>
       ${d.status === "tu_choi" ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button>' : ""}
       <button class="btn" id="btnDetailPrint">🖨 In</button>
@@ -795,7 +797,7 @@ function startSupplementalRequest(reqCode) {
 
   document.getElementById("editBannerText").innerHTML =
     `🔁 Đang tạo đơn <b>bổ sung</b> cho ${rejectedLines.length} mục bị từ chối trong đơn <b>${reqCode}</b>.` +
-    `<div class="edit-reject-reason">Đơn gốc (${STATUS_LABEL[d.status] || d.status}) sẽ được giữ nguyên, không bị thay đổi.</div>` +
+    `<div class="edit-reject-reason">Đơn gốc (${statusLabelFor(d)}) sẽ được giữ nguyên, không bị thay đổi.</div>` +
     `Kiểm tra lại nội dung / thêm file chứng từ (nếu có) rồi bấm "✅ Gửi duyệt" để gửi đơn bổ sung này.`;
   document.getElementById("editBanner").classList.add("show");
   document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt đơn bổ sung";

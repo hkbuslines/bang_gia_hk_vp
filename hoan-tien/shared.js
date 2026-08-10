@@ -36,6 +36,19 @@ export const STATUS_LABEL = {
   da_chi: "Đã chi"
 };
 
+// Nhãn trạng thái hiện đúng thực tế: nếu đơn có ít nhất 1 dòng bị từ chối
+// (dù đơn tổng thể đang "đã duyệt"/"đã chi") thì không nên hiện trơn là
+// "Đã duyệt" — dễ hiểu lầm là toàn bộ đơn được duyệt hết, trong khi có
+// phần đã bị từ chối. Trạng thái "Từ chối" (từ chối toàn bộ) không đổi.
+export function statusLabelFor(r) {
+  const hasRejectedLine = (r.rows || []).some(row => row.lineStatus === "tu_choi");
+  if (hasRejectedLine) {
+    if (r.status === "da_duyet") return "Duyệt 1 phần";
+    if (r.status === "da_chi") return "Chi 1 phần";
+  }
+  return STATUS_LABEL[r.status] || r.status;
+}
+
 export function fmtVND(n) {
   n = Math.round(n || 0);
   return "đ" + n.toLocaleString("vi-VN");
