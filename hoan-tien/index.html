@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gửi đề nghị hoàn tiền</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  .wrong-link{max-width:600px; margin:60px auto; background:#fff; border-radius:12px; padding:32px; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,.1); font-family:"Segoe UI",Arial,sans-serif;}
+  .wrong-link h2{color:var(--danger); margin-top:0;}
+  .wrong-link a{display:block; margin:6px 0; color:var(--green-dark); font-weight:600;}
+  .submitted-banner{
+    max-width:900px; margin:0 auto 16px; background:var(--green-light); border:1.5px solid var(--green);
+    border-radius:8px; padding:14px 18px; font-family:"Segoe UI",Arial,sans-serif; font-size:13.5px;
+    color:var(--green-dark); display:none; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .submitted-banner.show{display:flex;}
+  .my-requests{max-width:900px; margin:0 auto 60px; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.12); border-radius:12px; padding:20px 24px; font-family:"Segoe UI",Arial,sans-serif;}
+  .my-requests h3{margin:0 0 10px; font-size:15px; color:var(--green-dark);}
+  .my-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .my-row:last-child{border-bottom:none;}
+  .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
+  .my-row .amt{width:100px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
+  .my-row .reason{flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<div id="app"></div>
+
+<script type="module">
+import {
+  DEPARTMENTS, BANKS, STATUS_LABEL, fmtVND, parseNum, fmtDate,
+  soTienBangChu, genReqCode, buildVietQRUrl, apiList, apiPost
+} from "./shared.js";
+
+const params = new URLSearchParams(location.search);
+const vpSlug = params.get("vp");
+const dept = DEPARTMENTS.find(d => d.slug === vpSlug);
+
+if (!dept) {
+  document.getElementById("app").innerHTML =
+    '<div class="wrong-link">' +
+      '<h2>⚠ Link chưa đúng văn phòng</h2>' +
+      '<p>Vui lòng dùng link riêng của văn phòng bạn (có dạng <code>?vp=...</code>). Danh sách:</p>' +
+      DEPARTMENTS.map(d => '<a href="?vp=' + d.slug + '">' + d.name + ' →</a>').join("") +
+    '</div>';
+  throw new Error("stop");
+}
+
+document.getElementById("app").innerHTML = `
+  <div class="toolbar no-print">
+    <div class="title"><span class="dot"></span> Gửi đề nghị hoàn tiền — ${dept.name}</div>
+    <button class="btn" id="btnAddRow">+ Thêm dòng</button>
+    <button class="btn" id="btnRemoveRow">– Xóa dòng cuối</button>
+    <button class="btn danger" id="btnReset">🗑 Làm mới form</button>
+    <button class="btn" id="btnPrint">🖨 In</button>
+    <button class="btn primary" id="btnSubmit">✅ Gửi duyệt</button>
+  </div>
+
+  <div class="page-wrap">
+    <div class="sheet" id="sheet">
+      <div class="doc-header">
+        <div class="logo-wrap"><img src="logo.png" alt="HK Buslines Limousine"></div>
+        <div class="req-code-box">MÃ ĐỀ NGHỊ<div class="code-line"><b id="reqCode"></b></div></div>
+      </div>
+      <div class="company-name">Công Ty TNHH Dịch Vụ Vận Tải Và Thương Mại HK</div>
+      <div class="kg"><div class="to-block">
+        <div class="to-line"><span class="to-label">Kính gửi:</span><b>Ban Giám Đốc</b></div>
+        <div class="to-line"><span class="to-label"></span>Phòng Tài Chính Kế Toán</div>
+      </div></div>
+      <div class="doc-title-block">
+        <div class="doc-title">Giấy Đề Nghị Thanh Toán / Hoàn Tiền</div>
+        <div class="doc-date"><span id="dateText"></span></div>
+      </div>
+
+      <table class="info-table">
+        <tr><td class="label">Họ và tên người đề nghị:</td><td><input type="text" id="requesterName" placeholder="Nguyễn Văn A"></td></tr>
+        <tr><td class="label">Bộ phận / Văn phòng:</td><td><span class="locked-dept">${dept.name}</span></td></tr>
+        <tr><td class="label">Khung thời gian phát sinh:</td><td>
+          <div class="range-row">Từ <input type="date" id="fromDate"> đến <input type="date" id="toDate"></div>
+        </td></tr>
+        <tr><td class="label">Đề nghị / Nội dung:</td><td><textarea id="reasonText" placeholder="Hoàn tiền chênh lệch vé ..."></textarea></td></tr>
+      </table>
+
+      <table class="invoice">
+        <colgroup>
+          <col style="width:6%"><col style="width:10%"><col style="width:16%">
+          <col style="width:13%"><col style="width:13%"><col style="width:14%">
+          <col style="width:28%">
+        </colgroup>
+        <thead>
+          <tr><th rowspan="2">STT</th><th rowspan="2">Ngày</th><th rowspan="2">Mã vé</th>
+            <th colspan="3">Số tiền</th><th rowspan="2">Lý do / Ghi chú</th></tr>
+          <tr><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th></tr>
+        </thead>
+        <tbody id="invoiceBody"></tbody>
+      </table>
+
+      <div class="add-row-bar no-print"><button class="btn" id="btnAddRow2">+ Thêm dòng hoàn tiền</button></div>
+
+      <div class="totals-bar">
+        <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value" id="totalRequest">đ0</span></div>
+      </div>
+
+      <div class="amount-words">Số tiền bằng chữ: <b id="amountWords">Không đồng</b></div>
+
+      <div class="bank-section">
+        <table class="bank-table">
+          <tr><td class="label">Đề nghị chuyển tiền vào STK:</td><td><input type="text" id="bankAccount" value="937869080"></td></tr>
+          <tr><td class="label">Tại ngân hàng:</td><td><select id="bankSelect"></select></td></tr>
+          <tr><td class="label">Người thụ hưởng:</td><td><input type="text" id="beneficiary" placeholder="Trùng tên người đề nghị"></td></tr>
+        </table>
+        <div class="qr-box"><img id="qrImage" alt="Mã QR chuyển khoản" src="" style="visibility:hidden"><div class="qr-caption">Quét mã để chuyển khoản</div></div>
+      </div>
+
+      <footer class="hint no-print">Điền đầy đủ thông tin rồi bấm "Gửi duyệt" — Ban Giám Đốc sẽ thấy đơn ngay trong danh sách của ${dept.name}.</footer>
+    </div>
+  </div>
+
+  <div class="submitted-banner no-print" id="submittedBanner">
+    <span>✅ Đã gửi đơn <b id="submittedCode"></b> — đang chờ Ban Giám Đốc duyệt.</span>
+    <button class="btn primary" id="btnNewRequest">+ Tạo đơn mới</button>
+  </div>
+  <div style="height:16px;"></div>
+  <div class="my-requests no-print">
+    <h3>Đơn của ${dept.name} đã gửi gần đây</h3>
+    <div id="myRequestsList">Đang tải...</div>
+  </div>
+`;
+
+const invoiceBody = document.getElementById("invoiceBody");
+let currentGrandTotal = 0;
+
+const bankSelect = document.getElementById("bankSelect");
+BANKS.forEach(b => { const o = document.createElement("option"); o.value = b.name; o.textContent = b.name; bankSelect.appendChild(o); });
+bankSelect.value = "MB Bank";
+
+function updateDateText() {
+  const d = new Date();
+  document.getElementById("dateText").textContent = "Ngày " + d.getDate() + " Tháng " + (d.getMonth() + 1) + " Năm " + d.getFullYear();
+}
+function newReqCode() { document.getElementById("reqCode").textContent = genReqCode(); }
+
+function renumber() { invoiceBody.querySelectorAll("tr").forEach((tr, i) => tr.querySelector(".idx").textContent = i + 1); }
+function recalcRow(tr) {
+  const goods = parseNum(tr.querySelector(".inv-goods").value);
+  const vat = parseNum(tr.querySelector(".inv-vat").value);
+  tr.querySelector(".total-cell").textContent = fmtVND(goods + vat);
+  recalcGrandTotal();
+}
+function recalcGrandTotal() {
+  let sum = 0;
+  invoiceBody.querySelectorAll("tr").forEach(tr => { sum += parseNum(tr.querySelector(".inv-goods").value) + parseNum(tr.querySelector(".inv-vat").value); });
+  currentGrandTotal = sum;
+  document.getElementById("totalRequest").textContent = fmtVND(sum);
+  document.getElementById("amountWords").textContent = soTienBangChu(sum);
+  updateQR();
+}
+function addRow() {
+  const tr = document.createElement("tr");
+  tr.innerHTML =
+    '<td class="idx">1</td>' +
+    '<td><input type="date" class="inv-date"></td>' +
+    '<td><input type="text" class="inv-code" placeholder="Mã vé"></td>' +
+    '<td><input type="number" class="inv-goods" placeholder="0" min="0" step="1000"></td>' +
+    '<td><input type="number" class="inv-vat" placeholder="0" min="0" step="1000"></td>' +
+    '<td class="total-cell">đ0</td>' +
+    '<td class="reason-cell"><input type="text" class="inv-reason" placeholder="-"><button type="button" class="del-row no-print" title="Xóa dòng">✕</button></td>';
+  invoiceBody.appendChild(tr);
+  tr.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => recalcRow(tr)));
+  tr.querySelector(".del-row").addEventListener("click", () => {
+    if (invoiceBody.querySelectorAll("tr").length <= 1) return;
+    tr.remove(); renumber(); recalcGrandTotal();
+  });
+  renumber(); recalcRow(tr);
+}
+document.getElementById("btnAddRow").addEventListener("click", addRow);
+document.getElementById("btnAddRow2").addEventListener("click", addRow);
+document.getElementById("btnRemoveRow").addEventListener("click", () => {
+  const rows = invoiceBody.querySelectorAll("tr");
+  if (rows.length <= 1) return;
+  rows[rows.length - 1].remove(); renumber(); recalcGrandTotal();
+});
+
+function updateQR() {
+  const acc = document.getElementById("bankAccount").value.trim();
+  const name = document.getElementById("beneficiary").value || document.getElementById("requesterName").value;
+  const url = buildVietQRUrl(bankSelect.value, acc, currentGrandTotal, document.getElementById("reqCode").textContent, name);
+  const img = document.getElementById("qrImage");
+  if (!url) { img.style.visibility = "hidden"; return; }
+  img.style.visibility = "visible"; img.src = url;
+}
+bankSelect.addEventListener("change", updateQR);
+document.getElementById("bankAccount").addEventListener("input", updateQR);
+document.getElementById("beneficiary").addEventListener("input", updateQR);
+document.getElementById("requesterName").addEventListener("input", () => { if (!document.getElementById("beneficiary").value) updateQR(); });
+
+document.getElementById("btnPrint").addEventListener("click", () => window.print());
+
+function resetForm() {
+  document.getElementById("requesterName").value = "";
+  document.getElementById("fromDate").value = "";
+  document.getElementById("toDate").value = "";
+  document.getElementById("reasonText").value = "";
+  document.getElementById("bankAccount").value = "937869080";
+  bankSelect.value = "MB Bank";
+  document.getElementById("beneficiary").value = "";
+  invoiceBody.innerHTML = "";
+  addRow(); recalcGrandTotal(); newReqCode();
+  document.getElementById("btnSubmit").disabled = false;
+  document.getElementById("submittedBanner").classList.remove("show");
+}
+document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Xóa toàn bộ dữ liệu đang nhập và làm mới form?")) resetForm(); });
+document.getElementById("btnNewRequest").addEventListener("click", resetForm);
+
+async function submitRequest() {
+  const requesterName = document.getElementById("requesterName").value.trim();
+  const reason = document.getElementById("reasonText").value.trim();
+  const rows = Array.from(invoiceBody.querySelectorAll("tr")).map(tr => ({
+    date: tr.querySelector(".inv-date").value,
+    code: tr.querySelector(".inv-code").value,
+    goods: parseNum(tr.querySelector(".inv-goods").value),
+    vat: parseNum(tr.querySelector(".inv-vat").value),
+    reason: tr.querySelector(".inv-reason").value
+  }));
+  const hasValidRow = rows.some(r => r.code.trim() && (r.goods + r.vat) > 0);
+
+  if (!requesterName) return alert("Vui lòng nhập họ tên người đề nghị.");
+  if (!reason) return alert("Vui lòng nhập nội dung đề nghị.");
+  if (!hasValidRow) return alert("Vui lòng nhập ít nhất 1 dòng mã vé kèm số tiền.");
+
+  const reqCode = document.getElementById("reqCode").textContent;
+  const beneficiary = document.getElementById("beneficiary").value.trim() || requesterName;
+
+  const payload = {
+    action: "create",
+    reqCode, requesterName, department: dept.name,
+    fromDate: document.getElementById("fromDate").value,
+    toDate: document.getElementById("toDate").value,
+    reason, rows,
+    totalRequest: currentGrandTotal,
+    bankAccount: document.getElementById("bankAccount").value.trim(),
+    bankName: bankSelect.value,
+    beneficiary
+  };
+
+  document.getElementById("btnSubmit").disabled = true;
+  try {
+    await apiPost(payload);
+    saveToMyRequests(reqCode);
+    document.getElementById("submittedCode").textContent = reqCode;
+    document.getElementById("submittedBanner").classList.add("show");
+    document.getElementById("submittedBanner").scrollIntoView({ behavior: "smooth" });
+    loadMyRequests();
+  } catch (e) {
+    alert("Gửi thất bại: " + e.message + "\n\nKiểm tra lại API_URL trong shared.js và cấu hình Apps Script.");
+    document.getElementById("btnSubmit").disabled = false;
+  }
+}
+document.getElementById("btnSubmit").addEventListener("click", submitRequest);
+
+const MY_KEY = "hk_my_requests_" + dept.slug;
+function saveToMyRequests(reqCode) {
+  const list = JSON.parse(localStorage.getItem(MY_KEY) || "[]");
+  list.unshift(reqCode);
+  localStorage.setItem(MY_KEY, JSON.stringify(list.slice(0, 20)));
+}
+async function loadMyRequests() {
+  const container = document.getElementById("myRequestsList");
+  try {
+    const all = await apiList();
+    const mine = all.filter(r => r.department === dept.name)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .slice(0, 15);
+    if (!mine.length) { container.innerHTML = '<div class="empty-note">Chưa có đơn nào.</div>'; return; }
+    container.innerHTML = mine.map(r => `
+      <div class="my-row">
+        <span class="code">${r.reqCode}</span>
+        <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
+        <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
+        <span class="reason">${r.reason || ""}${r.status === "tu_choi" && r.rejectReason ? " — Lý do từ chối: " + r.rejectReason : ""}</span>
+      </div>
+    `).join("");
+  } catch (e) {
+    container.innerHTML = '<div class="empty-note">Không tải được danh sách (kiểm tra API_URL trong shared.js).</div>';
+  }
+}
+
+updateDateText();
+newReqCode();
+addRow();
+recalcGrandTotal();
+loadMyRequests();
+</script>
+</body>
+</html>
