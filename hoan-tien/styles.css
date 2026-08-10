@@ -124,6 +124,10 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
 .my-row .badge{width:88px; text-align:center; flex-shrink:0;}
 .my-row .amt{width:110px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
+/* Gom cờ + lý do + "Xem chi tiết" thành 1 cụm riêng — để trên mobile cụm
+   này luôn xuống dòng trọn vẹn của nó, không làm số tiền bị đẩy lệch theo
+   số lượng icon (mỗi đơn có nhiều/ít cờ khác nhau). */
+.my-row .my-row-meta{display:flex; align-items:center; gap:12px; flex:1; min-width:0;}
 .my-row .row-flags{width:70px; flex-shrink:0;}
 .my-row .reason{flex:1; min-width:0; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0; width:80px; text-align:right;}
@@ -367,13 +371,18 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   .detail-modal{ max-width:none; min-height:100%; }
   .detail-modal .detail-toolbar{ border-radius:0; }
   .detail-modal .sheet{ border-radius:0; }
-  .my-row{ flex-wrap:wrap; row-gap:4px; gap:8px; }
+  /* Đổ thành 3 dòng rõ ràng: (1) mã đơn riêng 1 dòng, (2) badge + số tiền
+     (số tiền neo phải cố định), (3) cụm cờ/lý do/xem chi tiết riêng — cụm
+     (3) luôn xuống dòng trọn vẹn của nó nên số tiền ở dòng (2) không bao
+     giờ bị xê dịch theo số lượng icon của từng đơn. */
+  .my-row{ flex-wrap:wrap; row-gap:6px; gap:8px; }
   .my-row .code{ width:100%; order:-1; font-size:12.5px; }
   .my-row .badge{ width:auto; }
   .my-row .amt{ width:auto; margin-left:auto; }
+  .my-row .my-row-meta{ flex:1 1 100%; order:1; flex-wrap:wrap; row-gap:4px; }
   .my-row .row-flags{ width:auto; }
-  .my-row .view-hint{ width:auto; }
-  .my-row .reason{ white-space:normal; width:100%; order:5; }
+  .my-row .view-hint{ width:auto; margin-left:auto; }
+  .my-row .reason{ white-space:normal; width:100%; order:2; }
 
   .edit-banner{ flex-direction:column; align-items:stretch; margin:0 10px 14px; }
   .edit-banner .btn{ width:100%; }

@@ -531,9 +531,11 @@ async function loadMyRequests() {
         <span class="code">${r.reqCode}</span>
         <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
         <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
-        <span class="row-flags">${flags}</span>
-        <span class="reason">${reasonText}</span>
-        <span class="view-hint no-print">Xem chi tiết →</span>
+        <div class="my-row-meta">
+          <span class="row-flags">${flags}</span>
+          <span class="reason">${reasonText}</span>
+          <span class="view-hint no-print">Xem chi tiết →</span>
+        </div>
       </div>`;
     }).join("");
     container.querySelectorAll(".my-row").forEach(row => {
