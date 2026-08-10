@@ -142,12 +142,27 @@ export function hasUnresolvedRejectedLine(r) {
 
 // Mã đơn GỐC mà văn phòng đã có hành động sau khi bị từ chối — gồm cả 2
 // cách: (1) sửa & gửi lại chính đơn đó (có historyJson), hoặc (2) tạo đơn
-// bổ sung riêng trỏ về qua supplementOf. Dùng để đếm "đơn từ chối đã được
-// xử lý/gửi lại" ở trang tổng quan — không phân biệt 2 cơ chế với người
-// dùng vì với họ cả hai đều là "tôi đã gửi lại".
-export function reqCodesWithFollowUp(requests) {
+// bổ sung riêng trỏ về qua supplementOf. Chỉ tính đơn ĐANG CÒN Ở TRẠNG THÁI
+// LIÊN QUAN (chờ duyệt lại, hoặc bị từ chối lần nữa) — đơn đã duyệt/đã chi
+// xong thì thôi, không cần nhắc lại nữa.
+//
+// Tách 2 loại để phân biệt rõ với Ban Giám Đốc:
+// - "pending": đang chờ duyệt lại (còn việc phải làm)
+// - "rejectedAgain": gửi lại/bổ sung nhưng bị từ chối tiếp (không tự gửi
+//   lại nữa được qua đơn bổ sung — VP phải tự quyết định bước tiếp theo)
+export function reqCodesPendingFollowUp(requests) {
   const set = new Set();
   (requests || []).forEach(r => {
+    if (r.status !== "cho_duyet") return;
+    if (r.supplementOf) set.add(r.supplementOf);
+    if (r.history && r.history.length) set.add(r.reqCode);
+  });
+  return set;
+}
+export function reqCodesRejectedAgain(requests) {
+  const set = new Set();
+  (requests || []).forEach(r => {
+    if (r.status !== "tu_choi") return;
     if (r.supplementOf) set.add(r.supplementOf);
     if (r.history && r.history.length) set.add(r.reqCode);
   });

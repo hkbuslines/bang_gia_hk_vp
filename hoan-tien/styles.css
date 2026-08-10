@@ -239,6 +239,9 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
 .dept-card .supplement-count{
   background:#e3ecfb; color:#254a9c; font-weight:700; font-size:12.5px; padding:4px 12px; border-radius:20px;
 }
+.dept-card .rejected-again-count{
+  background:#fdecea; color:var(--danger); font-weight:700; font-size:12.5px; padding:4px 12px; border-radius:20px;
+}
 .back-link{display:inline-flex; align-items:center; gap:6px; color:var(--green-dark); font-weight:600; cursor:pointer; font-size:13.5px; font-family:"Segoe UI",Arial,sans-serif; margin-bottom:14px;}
 .back-link:hover{text-decoration:underline;}
 

@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, reqCodesWithFollowUp, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, reqCodesPendingFollowUp, reqCodesRejectedAgain, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -81,17 +81,12 @@ function renderOverview() {
   const totalNewPending = allRequests.filter(r => r.status === "cho_duyet" && !r.supplementOf && !(r.history && r.history.length)).length;
   const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
   const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
-  // Đơn gốc bị từ chối (1 phần hoặc toàn bộ) mà VP đã có hành động — sửa
-  // & gửi lại chính đơn đó, HOẶC tạo đơn bổ sung riêng — đếm theo mã đơn
-  // GỐC (không đếm trùng nếu gửi lại/bổ sung nhiều lần).
-  const totalSupplemented = reqCodesWithFollowUp(allRequests).size;
   const summaryHtml = `
     <div class="overview-summary">
       <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
       <div class="sum-item new ${totalNewPending === 0 ? "zero" : ""}"><b>${totalNewPending}</b> đơn nộp mới đang chờ duyệt</div>
       <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
       <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn có mục bị từ chối, VP chưa xử lý</div>
-      <div class="sum-item supplement ${totalSupplemented === 0 ? "zero" : ""}"><b>${totalSupplemented}</b> đơn từ chối đã được VP gửi lại/bổ sung</div>
     </div>`;
 
   const html = DEPARTMENTS.map(d => {
@@ -99,7 +94,12 @@ function renderOverview() {
     const pending = items.filter(r => r.status === "cho_duyet").length;
     const awaitingPay = items.filter(r => r.status === "da_duyet").length;
     const needsAction = items.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
-    const supplemented = reqCodesWithFollowUp(items).size;
+    // Đơn gốc bị từ chối mà VP đã gửi lại/bổ sung — CHỈ tính khi còn đang
+    // liên quan (chờ duyệt lại, hoặc bị từ chối tiếp); đã duyệt/đã chi
+    // xong thì thôi, không nhắc lại nữa. Tách riêng 2 trạng thái để GĐ
+    // phân biệt "còn việc phải làm" với "đã từ chối luôn, VP tự quyết".
+    const pendingFollowUp = reqCodesPendingFollowUp(items).size;
+    const rejectedAgain = reqCodesRejectedAgain(items).size;
     return `
       <div class="dept-card" data-name="${d.name}">
         <div class="name">${d.name} <span class="arrow">→</span></div>
@@ -107,7 +107,8 @@ function renderOverview() {
           <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
           <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
           ${needsAction ? `<span class="needs-action-count">⚠ ${needsAction} chưa xử lý</span>` : ""}
-          ${supplemented ? `<span class="supplement-count">${supplemented} đã gửi lại/bổ sung</span>` : ""}
+          ${pendingFollowUp ? `<span class="supplement-count">${pendingFollowUp} gửi lại — chờ duyệt</span>` : ""}
+          ${rejectedAgain ? `<span class="rejected-again-count">${rejectedAgain} gửi lại nhưng bị từ chối</span>` : ""}
           <span style="color:var(--muted); font-size:12.5px;">${items.length} đơn tổng</span>
         </div>
       </div>`;
