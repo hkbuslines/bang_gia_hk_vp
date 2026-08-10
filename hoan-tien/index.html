@@ -92,19 +92,21 @@ document.getElementById("app").innerHTML = `
         <tr><td class="label">Đề nghị / Nội dung:</td><td><textarea id="reasonText" placeholder="Hoàn tiền chênh lệch vé ..."></textarea></td></tr>
       </table>
 
-      <table class="invoice">
-        <colgroup>
-          <col style="width:6%"><col style="width:10%"><col style="width:16%">
-          <col style="width:13%"><col style="width:13%"><col style="width:14%">
-          <col style="width:28%">
-        </colgroup>
-        <thead>
-          <tr><th rowspan="2">STT</th><th rowspan="2">Ngày</th><th rowspan="2">Nội dung</th>
-            <th colspan="3">Số tiền</th><th rowspan="2">Lý do / Ghi chú</th></tr>
-          <tr><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th></tr>
-        </thead>
-        <tbody id="invoiceBody"></tbody>
-      </table>
+      <div class="invoice-scroll">
+        <table class="invoice">
+          <colgroup>
+            <col style="width:6%"><col style="width:10%"><col style="width:16%">
+            <col style="width:13%"><col style="width:13%"><col style="width:14%">
+            <col style="width:28%">
+          </colgroup>
+          <thead>
+            <tr><th rowspan="2">STT</th><th rowspan="2">Ngày</th><th rowspan="2">Nội dung</th>
+              <th colspan="3">Số tiền</th><th rowspan="2">Lý do / Ghi chú</th></tr>
+            <tr><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th></tr>
+          </thead>
+          <tbody id="invoiceBody"></tbody>
+        </table>
+      </div>
 
       <div class="add-row-bar no-print">
         <button class="btn" id="btnAddRow2">+ Thêm dòng hoàn tiền</button>

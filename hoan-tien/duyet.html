@@ -197,11 +197,13 @@ function renderDetail() {
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
         </table>
-        <table class="invoice">
-          <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
-          <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
-          <tbody>${rowsHtml}</tbody>
-        </table>
+        <div class="invoice-scroll">
+          <table class="invoice">
+            <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
+            <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
         <div class="totals-bar">
           <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value">${fmtVND(d.totalRequest)}</span></div>
           <div class="totals-cell approved"><span class="totals-label">Tổng số được duyệt</span><span class="totals-value">${d.status === "tu_choi" ? '<span style="color:var(--danger); font-size:14px;">KHÔNG DUYỆT</span>' : fmtVND(d.totalApproved)}</span></div>
