@@ -563,7 +563,7 @@ function openDetail(reqCode) {
   const historyHtml = (d.history && d.history.length) ? `
     <div class="resend-history no-print">
       <div class="hist-title">🔁 Đơn này đã được gửi lại ${d.history.length} lần trước đó</div>
-      ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""}</div>`).join("")}
+      ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""} · gửi lại lúc ${fmtDateTime(h.resubmittedAt)}</div>`).join("")}
     </div>` : "";
 
   const attachHtml = (d.attachments && d.attachments.length) ? `

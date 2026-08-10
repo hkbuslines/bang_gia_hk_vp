@@ -110,11 +110,22 @@ function renderOverview() {
   app.querySelectorAll(".dept-card").forEach(card => {
     card.addEventListener("click", () => {
       currentDept = card.dataset.name;
-      currentTab = "cho_duyet";
+      currentTab = pickDefaultTab_(allRequests.filter(r => r.department === card.dataset.name));
       selectedCode = null;
       render();
     });
   });
+}
+
+// Vào 1 văn phòng: ưu tiên mở đúng tab đang có đơn thay vì luôn mặc định
+// "Chờ duyệt" — tránh cảm giác "trống trơn" khi đơn đã được xử lý xong và
+// nằm ở tab khác (vd vừa duyệt xong thì đơn nằm ở "Đã duyệt - chờ chi").
+function pickDefaultTab_(deptItems) {
+  var priority = ["cho_duyet", "da_duyet", "da_chi", "tu_choi"];
+  for (var i = 0; i < priority.length; i++) {
+    if (deptItems.some(function (r) { return r.status === priority[i]; })) return priority[i];
+  }
+  return "cho_duyet";
 }
 
 const TABS = [

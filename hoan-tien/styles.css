@@ -88,8 +88,8 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 .edit-banner-text{flex:1;}
 .edit-reject-reason{margin:4px 0; font-weight:600; color:var(--danger);}
 .resend-history{
-  margin:10px 0; padding:10px 12px; background:#fff8e6; border:1px dashed #e0b84a; border-radius:6px;
-  font-size:12px; color:#6b4f00; font-family:"Segoe UI",Arial,sans-serif;
+  max-width:900px; margin:10px auto; padding:10px 12px; background:#fff8e6; border:1px dashed #e0b84a; border-radius:6px;
+  font-size:12px; color:#6b4f00; font-family:"Segoe UI",Arial,sans-serif; box-sizing:border-box;
 }
 .resend-history .hist-title{font-weight:700; margin-bottom:4px;}
 .resend-history .hist-item{margin:2px 0;}
@@ -98,8 +98,8 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 /* File đính kèm — hiện nổi bật ngay đầu trang chi tiết đơn, không bị chôn
    trong bảng thông tin phía dưới (là căn cứ quan trọng để quyết định duyệt). */
 .attach-callout{
-  margin:10px 0; padding:10px 12px; background:#e3ecfb; border:1px dashed #9db8e8; border-radius:6px;
-  font-size:12px; color:#254a9c; font-family:"Segoe UI",Arial,sans-serif;
+  max-width:900px; margin:10px auto; padding:10px 12px; background:#e3ecfb; border:1px dashed #9db8e8; border-radius:6px;
+  font-size:12px; color:#254a9c; font-family:"Segoe UI",Arial,sans-serif; box-sizing:border-box;
 }
 .attach-callout .hist-title{font-weight:700; margin-bottom:6px;}
 .attach-callout .attach-links{display:flex; flex-direction:column; gap:4px;}
