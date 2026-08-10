@@ -18,18 +18,6 @@
   .submitted-banner.show{display:flex;}
   .my-requests{max-width:900px; margin:0 auto 60px; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.12); border-radius:12px; padding:20px 24px; font-family:"Segoe UI",Arial,sans-serif;}
   .my-requests h3{margin:0 0 10px; font-size:15px; color:var(--green-dark);}
-  .my-row{display:flex; align-items:center; gap:12px; padding:10px 6px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; border-radius:6px; transition:.15s;}
-  .my-row:hover{background:var(--green-light);}
-  .my-row:last-child{border-bottom:none;}
-  .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
-  .my-row .badge{width:88px; text-align:center; flex-shrink:0;}
-  .my-row .amt{width:110px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
-  .my-row .row-flags{width:70px; flex-shrink:0;}
-  .my-row .reason{flex:1; min-width:0; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0; width:80px; text-align:right;}
-  .partial-flag{color:var(--warn); font-weight:700;}
-  .row-flags{display:flex; gap:4px; flex-shrink:0;}
-  .flag-icon{font-size:13px; cursor:help; flex-shrink:0;}
   .raw-paste-panel{margin:-8px 0 16px; padding:12px; background:var(--green-light); border:1px solid var(--green); border-radius:8px;}
   .raw-paste-panel textarea{
     width:100%; font-family:"Courier New",monospace; font-size:13px; padding:8px 10px;
@@ -578,6 +566,12 @@ function openDetail(reqCode) {
       ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""}</div>`).join("")}
     </div>` : "";
 
+  const attachHtml = (d.attachments && d.attachments.length) ? `
+    <div class="attach-callout no-print">
+      <div class="hist-title">📎 ${d.attachments.length} file đính kèm</div>
+      <div class="attach-links">${attachmentLinksHtml(d.attachments)}</div>
+    </div>` : "";
+
   // Đơn đã duyệt/đã chi nhưng còn dòng bị từ chối chưa xử lý — cho văn phòng
   // chọn: gửi đơn bổ sung riêng cho các dòng đó, hoặc chấp nhận bỏ qua.
   const rejectedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && !r.lineResolved);
@@ -610,6 +604,7 @@ function openDetail(reqCode) {
       <button class="btn" id="btnDetailPrint">🖨 In</button>
       <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
     </div>
+    ${attachHtml}
     ${historyHtml}
     ${needsActionHtml}
     ${resolvedHtml}
@@ -633,7 +628,6 @@ function openDetail(reqCode) {
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
           ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:var(--green-dark); font-weight:600;">${d.supplementOf}</td></tr>` : ""}
-          ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
         </table>
         <div class="invoice-scroll view-only">
           <table class="invoice stack-mobile">

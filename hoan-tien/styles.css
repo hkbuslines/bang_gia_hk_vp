@@ -94,8 +94,42 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 .resend-history .hist-title{font-weight:700; margin-bottom:4px;}
 .resend-history .hist-item{margin:2px 0;}
 .resubmit-hint{color:#6b4f00; font-weight:700; font-size:11.5px;}
+
+/* File đính kèm — hiện nổi bật ngay đầu trang chi tiết đơn, không bị chôn
+   trong bảng thông tin phía dưới (là căn cứ quan trọng để quyết định duyệt). */
+.attach-callout{
+  margin:10px 0; padding:10px 12px; background:#e3ecfb; border:1px dashed #9db8e8; border-radius:6px;
+  font-size:12px; color:#254a9c; font-family:"Segoe UI",Arial,sans-serif;
+}
+.attach-callout .hist-title{font-weight:700; margin-bottom:6px;}
+.attach-callout .attach-links{display:flex; flex-direction:column; gap:4px;}
 .attach-chip.existing{background:var(--green-light); border-color:var(--green);}
 .attach-chip.existing .attach-name{color:var(--green-dark);}
+
+/* ---------- index.html: danh sách "Đơn đã gửi gần đây" ----------
+   Đặt ở đây (thay vì <style> riêng trong index.html) để luật responsive
+   bên dưới (@media) chắc chắn override được — cùng 1 file thì luật khai
+   báo sau mới thắng luật khai báo trước có cùng độ ưu tiên. */
+.my-requests{max-width:900px; margin:0 auto 60px; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.12); border-radius:12px; padding:20px 24px; font-family:"Segoe UI",Arial,sans-serif;}
+.my-requests h3{margin:0 0 10px; font-size:15px; color:var(--green-dark);}
+.submitted-banner{
+  max-width:900px; margin:0 auto 16px; background:var(--green-light); border:1.5px solid var(--green);
+  border-radius:8px; padding:14px 18px; font-family:"Segoe UI",Arial,sans-serif; font-size:13.5px;
+  color:var(--green-dark); display:none; align-items:center; justify-content:space-between; gap:12px;
+}
+.submitted-banner.show{display:flex;}
+.my-row{display:flex; align-items:center; gap:12px; padding:10px 6px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; border-radius:6px; transition:.15s;}
+.my-row:hover{background:var(--green-light);}
+.my-row:last-child{border-bottom:none;}
+.my-row .code{font-weight:700; width:180px; flex-shrink:0;}
+.my-row .badge{width:88px; text-align:center; flex-shrink:0;}
+.my-row .amt{width:110px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
+.my-row .row-flags{width:70px; flex-shrink:0;}
+.my-row .reason{flex:1; min-width:0; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0; width:80px; text-align:right;}
+.partial-flag{color:var(--warn); font-weight:700;}
+.row-flags{display:flex; gap:4px; flex-shrink:0;}
+.flag-icon{font-size:13px; cursor:help; flex-shrink:0;}
 
 /* ---------- File đính kèm ---------- */
 .attach-section{
@@ -333,8 +367,12 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   .detail-modal{ max-width:none; min-height:100%; }
   .detail-modal .detail-toolbar{ border-radius:0; }
   .detail-modal .sheet{ border-radius:0; }
-  .my-row{ flex-wrap:wrap; row-gap:4px; }
-  .my-row .code{ width:auto; }
+  .my-row{ flex-wrap:wrap; row-gap:4px; gap:8px; }
+  .my-row .code{ width:100%; order:-1; font-size:12.5px; }
+  .my-row .badge{ width:auto; }
+  .my-row .amt{ width:auto; margin-left:auto; }
+  .my-row .row-flags{ width:auto; }
+  .my-row .view-hint{ width:auto; }
   .my-row .reason{ white-space:normal; width:100%; order:5; }
 
   .edit-banner{ flex-direction:column; align-items:stretch; margin:0 10px 14px; }

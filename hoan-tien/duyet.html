@@ -208,12 +208,21 @@ function renderDetail() {
       ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""} · gửi lại lúc ${fmtDateTime(h.resubmittedAt)}</div>`).join("")}
     </div>` : "";
 
+  // Hiện nổi bật ngay đầu trang, không để văn phòng phải cuộn xuống mới thấy —
+  // file chứng từ thường là căn cứ để quyết định duyệt hay không.
+  const attachHtml = (d.attachments && d.attachments.length) ? `
+    <div class="attach-callout no-print">
+      <div class="hist-title">📎 ${d.attachments.length} file đính kèm từ văn phòng</div>
+      <div class="attach-links">${attachmentLinksHtml(d.attachments)}</div>
+    </div>` : "";
+
   container.innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${STATUS_LABEL[d.status]}</span>
       <div class="spacer"></div>${actionsHtml}
       <button class="btn" id="btnPrintDetail">🖨 In</button>
     </div>
+    ${attachHtml}
     ${historyHtml}
     <div class="page-wrap">
       <div class="sheet">
@@ -235,7 +244,6 @@ function renderDetail() {
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
           ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:#254a9c; font-weight:600;">${d.supplementOf} (đơn từng bị từ chối 1 phần)</td></tr>` : ""}
-          ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
         </table>
         <div class="invoice-scroll view-only">
           <table class="invoice stack-mobile">
