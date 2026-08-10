@@ -42,9 +42,8 @@ export const STATUS_LABEL = {
 // phần đã bị từ chối. Trạng thái "Từ chối" (từ chối toàn bộ) không đổi.
 export function statusLabelFor(r) {
   const hasRejectedLine = (r.rows || []).some(row => row.lineStatus === "tu_choi");
-  if (hasRejectedLine) {
-    if (r.status === "da_duyet") return "Duyệt 1 phần";
-    if (r.status === "da_chi") return "Chi 1 phần";
+  if (hasRejectedLine && (r.status === "da_duyet" || r.status === "da_chi")) {
+    return "Duyệt 1 phần";
   }
   return STATUS_LABEL[r.status] || r.status;
 }

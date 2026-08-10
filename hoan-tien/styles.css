@@ -30,6 +30,8 @@ body{margin:0; font-family:"Times New Roman",Times,serif; background:var(--bg); 
 .btn.primary:hover{background:var(--green-dark); border-color:var(--green-dark); color:#fff;}
 .btn.danger{color:var(--danger); border-color:#f0c4bd;}
 .btn.danger:hover{background:#fdecea; border-color:var(--danger);}
+.btn.warn{color:#8a6300; border-color:#f0d888;}
+.btn.warn:hover{background:#fff7e0; border-color:#8a6300;}
 .btn:disabled{opacity:.45; cursor:not-allowed;}
 
 .page-wrap{display:flex; justify-content:center; padding:28px 16px 60px;}

@@ -542,7 +542,8 @@ async function loadMyRequests() {
       // Các cờ trạng thái để RIÊNG, không nhét vào chung dòng lý do — tránh
       // bị cắt mất thành "..." khi lý do dài (dòng lý do vẫn tự cắt khi cần).
       let flags = "";
-      if (r.status === "tu_choi" && !isDismissedRejection(r.reqCode)) flags += `<span class="flag-icon flag-warn" title="Bấm để sửa & gửi lại">✏️</span>`;
+      if (r.status === "tu_choi" && r.rejectFinal) flags += `<span class="flag-icon flag-warn" title="Đã bị từ chối hẳn, không gửi lại được">⛔</span>`;
+      else if (r.status === "tu_choi" && !isDismissedRejection(r.reqCode)) flags += `<span class="flag-icon flag-warn" title="Bấm để sửa & gửi lại">✏️</span>`;
       if (needsAction) flags += `<span class="flag-icon flag-warn" title="Có mục bị từ chối, bấm xem chi tiết">⚠</span>`;
       if (r.history && r.history.length) flags += `<span class="flag-icon" title="Đã gửi lại ${r.history.length} lần">🔁</span>`;
       if (r.attachments && r.attachments.length) flags += `<span class="flag-icon" title="${r.attachments.length} file đính kèm">📎</span>`;
@@ -610,36 +611,39 @@ function openDetail(reqCode) {
       </div>
     </div>` : "";
 
-  // Đã xử lý xong (chấp nhận hoặc đã gửi bổ sung) — cho phép huỷ nếu bấm nhầm,
-  // để Ban Giám Đốc biết mà xem lại trước khi duyệt chi.
+  // Đã xử lý xong (chấp nhận hoặc đã gửi bổ sung) — là quyết định CUỐI, không
+  // cho huỷ/sửa lại nữa (tránh văn phòng đổi ý qua lại sau khi đã chốt).
   const resolvedLines = (d.rows || []).filter(r => r.lineStatus === "tu_choi" && r.lineResolved);
   const resolvedHtml = (d.status !== "tu_choi" && !rejectedLines.length && resolvedLines.length) ? `
     <div class="resend-history no-print" style="background:var(--green-light); border-color:var(--green);">
       <div class="hist-title" style="color:var(--green-dark);">✓ Bạn đã xử lý xong ${resolvedLines.length} mục bị từ chối trong đơn này (chấp nhận hoặc đã gửi bổ sung)</div>
-      <div style="margin-top:8px;">
-        <button class="btn" id="btnRevokeAccept">↩ Huỷ, xem lại</button>
-      </div>
     </div>` : "";
 
   // Đơn bị từ chối TOÀN BỘ: cho chọn sửa & gửi lại, HOẶC chấp nhận không
   // gửi lại nữa (chỉ lưu cục bộ trên máy này — đơn đã ở trạng thái cuối
   // "Từ chối" rồi, không cần đổi gì trên Sheet, chỉ để đỡ bị nhắc lại).
   const isDismissed = d.status === "tu_choi" && isDismissedRejection(d.reqCode);
+  const isFinalRejected = d.status === "tu_choi" && !!d.rejectFinal;
   const dismissedHtml = isDismissed ? `
     <div class="resend-history no-print" style="background:var(--green-light); border-color:var(--green);">
       <div class="hist-title" style="color:var(--green-dark);">✓ Bạn đã chọn không gửi lại đơn này</div>
       <div style="margin-top:8px;"><button class="btn" id="btnUndismissReject">↩ Huỷ, muốn sửa & gửi lại</button></div>
+    </div>` : "";
+  const finalRejectedHtml = isFinalRejected ? `
+    <div class="resend-history no-print" style="background:#fdecea; border-color:var(--danger);">
+      <div class="hist-title" style="color:var(--danger);">⛔ Ban Giám Đốc đã từ chối HẲN đơn này — không thể sửa & gửi lại được nữa.</div>
     </div>` : "";
 
   document.getElementById("detailModal").innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${statusLabelFor(d)}</span>
       <div class="spacer"></div>
-      ${d.status === "tu_choi" && !isDismissed ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button><button class="btn" id="btnDismissReject">Chấp nhận, không gửi lại</button>' : ""}
+      ${d.status === "tu_choi" && !isDismissed && !isFinalRejected ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button><button class="btn" id="btnDismissReject">Chấp nhận, không gửi lại</button>' : ""}
       <button class="btn" id="btnDetailPrint">🖨 In</button>
       <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
     </div>
     ${attachHtml}
+    ${finalRejectedHtml}
     ${historyHtml}
     ${dismissedHtml}
     ${needsActionHtml}
@@ -705,7 +709,6 @@ function openDetail(reqCode) {
   document.getElementById("btnDetailEdit")?.addEventListener("click", () => startEdit(d.reqCode));
   document.getElementById("btnSupplemental")?.addEventListener("click", () => startSupplementalRequest(d.reqCode));
   document.getElementById("btnAcceptRejected")?.addEventListener("click", () => acceptRejectedLines(d.reqCode));
-  document.getElementById("btnRevokeAccept")?.addEventListener("click", () => revokeAcceptRejectedLines(d.reqCode));
   document.getElementById("btnDismissReject")?.addEventListener("click", () => {
     if (!confirm("Xác nhận không gửi lại đơn này nữa?")) return;
     dismissRejection(d.reqCode);
@@ -853,20 +856,6 @@ async function acceptRejectedLines(reqCode) {
   if (!confirm("Xác nhận chấp nhận các mục bị từ chối này, không gửi lại nữa?")) return;
   try {
     await apiPost({ action: "acknowledgeRejectedLines", reqCode, resolved: true });
-    closeDetail();
-    await loadMyRequests();
-  } catch (e) {
-    alert("Lỗi: " + e.message);
-  }
-}
-
-// Huỷ quyết định "chấp nhận" trước đó (bấm nhầm, hoặc đổi ý muốn gửi bổ sung
-// sau cùng) — đưa các dòng về lại trạng thái "chưa xử lý" để Ban Giám Đốc
-// biết mà xem lại trước khi duyệt chi.
-async function revokeAcceptRejectedLines(reqCode) {
-  if (!confirm("Huỷ trạng thái đã xử lý cho các mục bị từ chối này? Ban Giám Đốc sẽ thấy lại là chưa xử lý.")) return;
-  try {
-    await apiPost({ action: "acknowledgeRejectedLines", reqCode, resolved: false });
     closeDetail();
     await loadMyRequests();
   } catch (e) {

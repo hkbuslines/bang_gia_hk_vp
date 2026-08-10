@@ -6,7 +6,7 @@
  * 2. Dán các cột sau vào hàng 1 (đúng thứ tự, đúng tên):
  *    reqCode | createdAt | department | requesterName | fromDate | toDate | reason | rowsJson |
  *    totalRequest | totalApproved | bankAccount | bankName | beneficiary | status | rejectReason |
- *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson | supplementOf
+ *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson | supplementOf | rejectFinal
  * 3. Trong Sheet: Extensions (Tiện ích mở rộng) → Apps Script.
  * 4. Xóa hết code mẫu, dán TOÀN BỘ file Code.gs này vào.
  * 5. Bấm Deploy → New deployment → chọn loại "Web app".
@@ -87,7 +87,10 @@ function doPost(e) {
       status: "tu_choi",
       rejectReason: body.rejectReason || "",
       approvedBy: body.approvedBy || "",
-      approvedAt: nowIso_()
+      approvedAt: nowIso_(),
+      // true = từ chối hẳn, văn phòng không được sửa & gửi lại đơn này nữa.
+      // false = từ chối nhưng vẫn cho nộp bổ sung/sửa lại như bình thường.
+      rejectFinal: !!body.rejectFinal
     });
   }
   if (action === "markPaid") {
@@ -184,7 +187,8 @@ function handleCreate_(sheet, body) {
     approvedBy: "", approvedAt: "",
     paidBy: "", paidAt: "",
     attachmentsJson: JSON.stringify(attachments),
-    supplementOf: body.supplementOf || ""
+    supplementOf: body.supplementOf || "",
+    rejectFinal: false
   };
   var rowArr = headers.map(function (h) { return record[h] !== undefined ? record[h] : ""; });
   sheet.appendRow(rowArr);
@@ -219,6 +223,9 @@ function handleResubmit_(sheet, body) {
   if (!current) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
   if (current.status !== "tu_choi") {
     return jsonOut_({ ok: false, error: "Chỉ có thể gửi lại đơn đang ở trạng thái Từ chối (đơn này hiện là \"" + current.status + "\")." });
+  }
+  if (current.rejectFinal === true || current.rejectFinal === "TRUE") {
+    return jsonOut_({ ok: false, error: "Đơn này đã bị từ chối hẳn, Ban Giám Đốc không cho phép nộp bổ sung/gửi lại nữa." });
   }
 
   var newAttachments = [];
