@@ -202,7 +202,7 @@ function renderDetail() {
       '<span style="font-size:12px; color:var(--muted);">Tổng sẽ duyệt: <b id="computedApprovedTotal" style="color:var(--green-dark);">' + fmtVND(d.totalRequest) + '</b></span>' +
       '<button class="btn primary" id="btnConfirmApprove">Xác nhận duyệt</button>' +
       '<button class="btn warn" id="btnRejectSupplement" title="Từ chối, nhưng vẫn cho văn phòng sửa & gửi lại">🔁 Từ chối - cho nộp bổ sung</button>' +
-      '<button class="btn danger" id="btnRejectFinal" title="Từ chối hẳn, không cho gửi lại đơn này nữa">🚫 Từ chối hẳn</button>';
+      '<button class="btn danger" id="btnRejectFinal" title="Từ chối hẳn, không cho gửi lại đơn này nữa">🚫 Từ chối</button>';
   } else if (d.status === "da_duyet") {
     // Còn mục bị từ chối mà VP chưa xử lý (chưa chấp nhận / chưa gửi bổ sung)
     // — vẫn cho chi nếu cần gấp, nhưng cảnh báo rõ trước khi bấm.
