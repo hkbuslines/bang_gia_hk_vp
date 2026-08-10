@@ -75,6 +75,10 @@ function renderOverview() {
   document.getElementById("pageTitle").textContent = "Duyệt đề nghị hoàn tiền — Tất cả văn phòng";
 
   const totalPending = allRequests.filter(r => r.status === "cho_duyet").length;
+  // Trong số đang chờ duyệt, đơn nào là nộp mới lần đầu (chưa từng bị từ
+  // chối/gửi lại/bổ sung) — để phân biệt với đơn chờ duyệt LẠI sau khi
+  // đã sửa gửi lại. Ô "chờ duyệt" ở trên vẫn là TỔNG thuần, không đổi.
+  const totalNewPending = allRequests.filter(r => r.status === "cho_duyet" && !r.supplementOf && !(r.history && r.history.length)).length;
   const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
   const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
   // Đơn gốc bị từ chối (1 phần hoặc toàn bộ) mà VP đã có hành động — sửa
@@ -84,6 +88,7 @@ function renderOverview() {
   const summaryHtml = `
     <div class="overview-summary">
       <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
+      <div class="sum-item new ${totalNewPending === 0 ? "zero" : ""}"><b>${totalNewPending}</b> đơn nộp mới đang chờ duyệt</div>
       <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
       <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn có mục bị từ chối, VP chưa xử lý</div>
       <div class="sum-item supplement ${totalSupplemented === 0 ? "zero" : ""}"><b>${totalSupplemented}</b> đơn từ chối đã được VP gửi lại/bổ sung</div>
@@ -102,7 +107,7 @@ function renderOverview() {
           <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
           <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
           ${needsAction ? `<span class="needs-action-count">⚠ ${needsAction} chưa xử lý</span>` : ""}
-          ${supplemented ? `<span class="supplement-count">➕ ${supplemented} đã gửi bổ sung</span>` : ""}
+          ${supplemented ? `<span class="supplement-count">${supplemented} đã gửi lại/bổ sung</span>` : ""}
           <span style="color:var(--muted); font-size:12.5px;">${items.length} đơn tổng</span>
         </div>
       </div>`;
