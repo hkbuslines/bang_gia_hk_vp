@@ -41,7 +41,10 @@ export function fmtVND(n) {
   return "đ" + n.toLocaleString("vi-VN");
 }
 export function parseNum(v) {
-  var n = parseFloat(String(v).replace(/[^\d.-]/g, ""));
+  // VNĐ không có số lẻ nên bỏ hết ký tự không phải chữ số (kể cả dấu chấm
+  // ngăn cách nghìn kiểu "đ280.000") thay vì dùng parseFloat — tránh lỗi
+  // hiểu nhầm dấu chấm ngăn cách nghìn thành dấu thập phân.
+  var n = parseInt(String(v).replace(/[^\d]/g, ""), 10);
   return isNaN(n) ? 0 : n;
 }
 export function pad(n) { return n < 10 ? "0" + n : "" + n; }

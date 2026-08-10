@@ -200,12 +200,14 @@ function addRow() {
     '<td class="idx">1</td>' +
     '<td><input type="date" class="inv-date no-print"><span class="range-text inv-date-text">……………</span></td>' +
     '<td><input type="text" class="inv-code" placeholder="Nội dung"></td>' +
-    '<td><input type="number" class="inv-goods" placeholder="0" min="0" step="1000"></td>' +
-    '<td><input type="number" class="inv-vat" placeholder="0" min="0" step="1000"></td>' +
+    '<td><input type="text" inputmode="numeric" class="inv-goods" placeholder="0"></td>' +
+    '<td><input type="text" inputmode="numeric" class="inv-vat" placeholder="0"></td>' +
     '<td class="total-cell">đ0</td>' +
     '<td class="reason-cell"><input type="text" class="inv-reason" placeholder="-"><button type="button" class="del-row no-print" title="Xóa dòng">✕</button></td>';
   invoiceBody.appendChild(tr);
   tr.querySelectorAll("input").forEach(inp => inp.addEventListener("input", () => recalcRow(tr)));
+  tr.querySelector(".inv-goods").addEventListener("input", e => formatCurrencyInput(e.target));
+  tr.querySelector(".inv-vat").addEventListener("input", e => formatCurrencyInput(e.target));
   tr.querySelector(".inv-date").addEventListener("change", () => updateRowDateText(tr));
   tr.querySelector(".del-row").addEventListener("click", () => {
     if (invoiceBody.querySelectorAll("tr").length <= 1) return;
@@ -220,6 +222,11 @@ document.getElementById("btnRemoveRow").addEventListener("click", () => {
   if (rows.length <= 1) return;
   rows[rows.length - 1].remove(); renumber(); recalcGrandTotal();
 });
+
+function formatCurrencyInput(input) {
+  const digits = input.value.replace(/[^\d]/g, "");
+  input.value = digits ? fmtVND(parseInt(digits, 10)) : "";
+}
 
 function parseAmountShorthand(str) {
   str = str.toLowerCase().replace(/,/g, ".").trim();
@@ -265,11 +272,16 @@ document.getElementById("btnParseRaw").addEventListener("click", () => {
   if (badLines.length) msg += "\n\n" + badLines.length + " dòng không đọc được, sẽ bị bỏ qua:\n" + badLines.join("\n");
   if (!confirm(msg + "\n\nTiếp tục?")) return;
 
+  const today = new Date();
+  const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+
   invoiceBody.innerHTML = "";
   parsed.forEach(p => {
     addRow();
     const rows = invoiceBody.querySelectorAll("tr");
     const tr = rows[rows.length - 1];
+    tr.querySelector(".inv-date").value = todayStr;
+    updateRowDateText(tr);
     tr.querySelector(".inv-code").value = p.code;
     tr.querySelector(".inv-goods").value = p.amount;
     tr.querySelector(".inv-goods").dispatchEvent(new Event("input", { bubbles: true }));

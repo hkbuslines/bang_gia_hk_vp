@@ -171,8 +171,13 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   table.invoice input, .info-table input, .info-table select, .info-table textarea,
   .bank-table input, .bank-table select{
     border:none !important; background:transparent !important;
+    -webkit-appearance:none; appearance:none;
   }
   .info-table select, .bank-table select{ -webkit-appearance:none; appearance:none; }
+  table.invoice td.reason-cell{
+    display:table-cell !important; text-align:center;
+  }
+  table.invoice td.reason-cell .inv-reason{ width:100%; }
   .info-table textarea{resize:none !important; overflow:hidden !important;}
   .range-text{display:inline !important; color:var(--ink);}
   table.invoice input[type=number]{ -moz-appearance:textfield; }
