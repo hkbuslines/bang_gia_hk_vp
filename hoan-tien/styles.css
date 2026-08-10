@@ -78,6 +78,50 @@ table.invoice td.reason-cell .inv-reason{flex:1;}
 .add-row-bar{margin:8px 0 16px;}
 .add-row-bar .btn{font-size:12.5px; padding:6px 12px;}
 
+/* ---------- Sửa & gửi lại đơn bị từ chối ---------- */
+.edit-banner{
+  display:none; max-width:900px; margin:0 auto 16px; background:#fff3d6; border:1.5px solid #e0b84a;
+  border-radius:8px; padding:14px 18px; font-family:"Segoe UI",Arial,sans-serif; font-size:13.5px;
+  color:#6b4f00; align-items:center; justify-content:space-between; gap:14px;
+}
+.edit-banner.show{display:flex;}
+.edit-banner-text{flex:1;}
+.edit-reject-reason{margin:4px 0; font-weight:600; color:var(--danger);}
+.resend-history{
+  margin:10px 0; padding:10px 12px; background:#fff8e6; border:1px dashed #e0b84a; border-radius:6px;
+  font-size:12px; color:#6b4f00; font-family:"Segoe UI",Arial,sans-serif;
+}
+.resend-history .hist-title{font-weight:700; margin-bottom:4px;}
+.resend-history .hist-item{margin:2px 0;}
+.resubmit-hint{color:#6b4f00; font-weight:700; font-size:11.5px;}
+.attach-chip.existing{background:var(--green-light); border-color:var(--green);}
+.attach-chip.existing .attach-name{color:var(--green-dark);}
+
+/* ---------- File đính kèm ---------- */
+.attach-section{
+  margin:14px 0 4px; padding:12px 14px; background:var(--green-light); border:1px dashed var(--green);
+  border-radius:8px; font-family:"Segoe UI",Arial,sans-serif;
+}
+.attach-label{display:block; font-size:12.5px; font-weight:600; color:var(--green-dark); margin-bottom:8px;}
+#attachInput{font-size:12.5px; max-width:100%;}
+.attach-list{margin-top:10px; display:flex; flex-direction:column; gap:6px;}
+.attach-chip{
+  display:flex; align-items:center; gap:8px; background:#fff; border:1px solid var(--border);
+  border-radius:6px; padding:6px 10px; font-size:12.5px;
+}
+.attach-chip .attach-name{flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.attach-chip .attach-size{color:var(--muted); flex-shrink:0; font-size:11.5px;}
+.attach-remove{
+  flex-shrink:0; border:none; background:#fdecea; color:var(--danger); border-radius:5px;
+  width:20px; height:20px; line-height:20px; cursor:pointer; font-size:11px; padding:0;
+}
+.attach-remove:hover{background:var(--danger); color:#fff;}
+.attach-total{font-size:11.5px; color:var(--muted); text-align:right;}
+.attach-links{display:flex; flex-direction:column; gap:4px;}
+.attach-link{color:var(--green-dark); font-weight:600; text-decoration:none; font-size:13px;}
+.attach-link:hover{text-decoration:underline;}
+.attach-hint{color:var(--green-dark); font-weight:700; font-size:11.5px;}
+
 .totals-bar{display:flex; border:1.5px solid var(--green); border-radius:8px; overflow:hidden; margin:10px 0 0;}
 .totals-cell{flex:1; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 16px; background:var(--green-light);}
 .totals-cell.approved{background:#fff;}
@@ -113,6 +157,20 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
 .badge.tu_choi{background:#fde3e0; color:var(--danger);}
 .badge.da_chi{background:#e3ecfb; color:#254a9c;}
 
+/* ---------- duyet.html: tổng quan toàn công ty ---------- */
+.overview-summary{
+  display:flex; gap:12px; flex-wrap:wrap; max-width:900px; margin:20px auto 0; padding:0 16px;
+  font-family:"Segoe UI",Arial,sans-serif;
+}
+.sum-item{
+  flex:1; min-width:180px; background:#fff3d6; color:#8a6300; font-weight:700; font-size:13.5px;
+  padding:12px 16px; border-radius:10px; border:1px solid #f0dfa8;
+}
+.sum-item b{font-size:17px; margin-right:5px;}
+.sum-item.zero{background:var(--bg); color:var(--muted); border-color:var(--border); font-weight:600;}
+.sum-item.payout{background:var(--green-light); color:var(--green-dark); border-color:#bfe3d2;}
+.sum-item.payout.zero{background:var(--bg); color:var(--muted); border-color:var(--border);}
+
 /* ---------- duyet.html: khối văn phòng dạng thẻ ---------- */
 .dept-grid{display:flex; flex-direction:column; gap:14px; max-width:900px; margin:24px auto; padding:0 16px; font-family:"Segoe UI",Arial,sans-serif;}
 .dept-card{
@@ -127,6 +185,10 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   background:#fff3d6; color:#8a6300; font-weight:700; font-size:12.5px; padding:4px 12px; border-radius:20px;
 }
 .dept-card .pending-count.zero{background:var(--bg); color:var(--muted);}
+.dept-card .payout-count{
+  background:var(--green-light); color:var(--green-dark); font-weight:700; font-size:12.5px; padding:4px 12px; border-radius:20px;
+}
+.dept-card .payout-count.zero{background:var(--bg); color:var(--muted);}
 .back-link{display:inline-flex; align-items:center; gap:6px; color:var(--green-dark); font-weight:600; cursor:pointer; font-size:13.5px; font-family:"Segoe UI",Arial,sans-serif; margin-bottom:14px;}
 .back-link:hover{text-decoration:underline;}
 
@@ -151,6 +213,18 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
 .approve-box{display:flex; align-items:center; gap:8px;}
 .approve-box label{font-size:12.5px; color:var(--muted);}
 .approve-box input{width:130px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-family:inherit; text-align:right;}
+
+/* ---------- index.html: modal xem lại đơn đã gửi ---------- */
+.detail-overlay{
+  position:fixed; inset:0; background:rgba(15,30,22,.55); z-index:200;
+  display:none; justify-content:center; padding:24px 12px; overflow-y:auto;
+}
+.detail-overlay.show{display:flex;}
+.detail-modal{width:100%; max-width:900px; height:fit-content;}
+.detail-modal .detail-toolbar{background:#fff; margin:0; max-width:none; border-radius:10px 10px 0 0;}
+.detail-modal .page-wrap{padding:0;}
+.detail-modal .sheet{border-radius:0 0 10px 10px;}
+.line-reject-note{color:var(--danger); font-size:11px; margin-top:2px;}
 
 .gate{position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:100; font-family:"Segoe UI",Arial,sans-serif;}
 .gate-box{background:#fff; border-radius:12px; padding:32px; width:min(320px, calc(100vw - 40px)); box-shadow:0 8px 32px rgba(0,0,0,.15); text-align:center;}
@@ -193,9 +267,12 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   .detail-toolbar > span{ width:100%; order:-1; margin-bottom:2px; }
 
   /* Danh sách văn phòng: đổ dọc cho dễ đọc */
+  .overview-summary{ margin:14px auto 0; }
+  .sum-item{ min-width:0; flex-basis:100%; }
+
   .dept-grid{ margin:14px auto; }
   .dept-card{ flex-direction:column; align-items:flex-start; gap:10px; padding:14px 16px; }
-  .dept-card .stats{ width:100%; justify-content:space-between; }
+  .dept-card .stats{ width:100%; justify-content:flex-start; flex-wrap:wrap; gap:8px; }
   .dept-card .name{ font-size:15.5px; }
 
   .req-list{ padding:0 10px; }
@@ -207,17 +284,53 @@ footer.hint{text-align:center; font-size:11.5px; color:var(--muted); margin-top:
   table.invoice td.reason-cell label{ font-size:12.5px !important; }
   table.invoice td.reason-cell input[type=text]{ font-size:13px !important; padding:6px 8px !important; }
 
+  /* Bảng chi tiết chỉ để XEM (trang duyệt, trang xem lại của văn phòng):
+     đổ thành từng thẻ dọc thay vì bảng cuộn ngang chi chít khó đọc. */
+  table.invoice.stack-mobile{ min-width:0; width:100%; border:none; }
+  table.invoice.stack-mobile thead{ display:none; }
+  table.invoice.stack-mobile, table.invoice.stack-mobile tbody{ display:block; }
+  table.invoice.stack-mobile tr{
+    display:block; border:1px solid var(--border); border-radius:10px;
+    margin-bottom:10px; padding:4px 12px; background:#fff !important;
+  }
+  table.invoice.stack-mobile td{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:10px;
+    border:none; border-bottom:1px dashed var(--border); padding:8px 0; text-align:right;
+  }
+  table.invoice.stack-mobile td:last-child{ border-bottom:none; flex-direction:column; align-items:stretch; text-align:left; }
+  table.invoice.stack-mobile td.idx{ display:none; }
+  table.invoice.stack-mobile td::before{
+    content:attr(data-label); font-weight:700; color:var(--green-dark); font-size:11px;
+    text-transform:uppercase; letter-spacing:.2px; text-align:left; flex-shrink:0;
+  }
+  table.invoice.stack-mobile td.total-cell{ font-size:14.5px; }
+  .invoice-scroll.view-only{ overflow-x:visible; }
+
   /* Thanh tổng tiền: xếp dọc để nhãn dài không bị vỡ chữ */
   .totals-bar{ flex-direction:column; }
   .totals-cell{ padding:10px 14px; }
   .totals-cell + .totals-cell{ border-left:none; border-top:1.5px solid var(--green); }
   .totals-label{ font-size:12px; }
   .totals-value{ font-size:16px; }
+
+  /* Modal xem lại đơn: chiếm toàn màn hình cho dễ đọc */
+  .detail-overlay{ padding:0; }
+  .detail-modal{ max-width:none; }
+  .detail-modal .detail-toolbar{ border-radius:0; }
+  .detail-modal .sheet{ border-radius:0; }
+  .my-row{ flex-wrap:wrap; row-gap:4px; }
+  .my-row .code{ width:auto; }
+  .my-row .reason{ white-space:normal; width:100%; order:5; }
+
+  .edit-banner{ flex-direction:column; align-items:stretch; margin:0 10px 14px; }
+  .edit-banner .btn{ width:100%; }
 }
 
 @media print{
   body{background:#fff;}
   .toolbar, .no-print{display:none !important;}
+  .detail-overlay{position:static !important; background:none !important; padding:0 !important; display:block !important;}
+  .detail-modal{max-width:none !important;}
   .page-wrap{padding:0;}
   .sheet{box-shadow:none; width:auto; min-height:0; padding:0; margin:0;}
   @page{ size:A4; margin:15mm 14mm; }

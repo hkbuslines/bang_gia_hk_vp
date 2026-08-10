@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Duyệt đề nghị hoàn tiền</title>
+<link rel="icon" type="image/png" href="logo.png">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -27,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, fmtVND, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -72,19 +73,30 @@ function render() {
 
 function renderOverview() {
   document.getElementById("pageTitle").textContent = "Duyệt đề nghị hoàn tiền — Tất cả văn phòng";
+
+  const totalPending = allRequests.filter(r => r.status === "cho_duyet").length;
+  const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
+  const summaryHtml = `
+    <div class="overview-summary">
+      <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
+      <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
+    </div>`;
+
   const html = DEPARTMENTS.map(d => {
     const items = allRequests.filter(r => r.department === d.name);
     const pending = items.filter(r => r.status === "cho_duyet").length;
+    const awaitingPay = items.filter(r => r.status === "da_duyet").length;
     return `
       <div class="dept-card" data-name="${d.name}">
         <div class="name">${d.name} <span class="arrow">→</span></div>
         <div class="stats">
           <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
+          <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
           <span style="color:var(--muted); font-size:12.5px;">${items.length} đơn tổng</span>
         </div>
       </div>`;
   }).join("");
-  app.innerHTML = '<div class="dept-grid">' + html + '</div>';
+  app.innerHTML = summaryHtml + '<div class="dept-grid">' + html + '</div>';
   app.querySelectorAll(".dept-card").forEach(card => {
     card.addEventListener("click", () => {
       currentDept = card.dataset.name;
@@ -115,7 +127,7 @@ function renderDeptView() {
   const listHtml = list.length ? list.map(r => `
     <div class="req-card" data-code="${r.reqCode}">
       <div class="row1"><span class="code">${r.reqCode}</span><span class="amt">${fmtVND(r.totalRequest)}</span></div>
-      <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}</div>
+      <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}</div>
       <div class="reason">${r.reason || ""}</div>
     </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
 
@@ -154,9 +166,9 @@ function renderDetail() {
         <input type="text" class="line-reason-input" data-idx="${i}" placeholder="Lý do từ chối dòng này" style="display:none; width:100%; margin-top:4px; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px;">
       </div>`;
     }
-    return `<tr><td class="idx">${i + 1}</td><td>${fmtDate(r.date)}</td><td>${r.code || ""}</td>
-     <td>${fmtVND(r.goods)}</td><td>${fmtVND(r.vat)}</td><td class="total-cell">${fmtVND(r.goods + r.vat)}</td>
-     <td style="text-align:left;">${reasonCell}${decisionHtml}</td></tr>`;
+    return `<tr><td class="idx" data-label="STT">${i + 1}</td><td data-label="Ngày">${fmtDate(r.date)}</td><td data-label="Nội dung">${r.code || ""}</td>
+     <td data-label="Tiền hàng">${fmtVND(r.goods)}</td><td data-label="Thuế GTGT">${fmtVND(r.vat)}</td><td class="total-cell" data-label="Tổng tiền">${fmtVND(r.goods + r.vat)}</td>
+     <td data-label="Lý do / Ghi chú" style="text-align:left;">${reasonCell}${decisionHtml}</td></tr>`;
   }).join("");
 
   const qrUrl = buildVietQRUrl(d.bankName, d.bankAccount, d.totalApproved != null ? d.totalApproved : d.totalRequest, d.reqCode, d.beneficiary);
@@ -171,12 +183,19 @@ function renderDetail() {
     actionsHtml = '<button class="btn primary" id="btnPaid">💰 Đánh dấu đã chi</button>';
   }
 
+  const historyHtml = (d.history && d.history.length) ? `
+    <div class="resend-history no-print">
+      <div class="hist-title">🔁 Đơn này đã được văn phòng gửi lại ${d.history.length} lần sau khi bị từ chối</div>
+      ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""} · gửi lại lúc ${fmtDateTime(h.resubmittedAt)}</div>`).join("")}
+    </div>` : "";
+
   container.innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${STATUS_LABEL[d.status]}</span>
       <div class="spacer"></div>${actionsHtml}
       <button class="btn" id="btnPrintDetail">🖨 In</button>
     </div>
+    ${historyHtml}
     <div class="page-wrap">
       <div class="sheet">
         <div class="doc-header">
@@ -196,9 +215,10 @@ function renderDetail() {
           <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
+          ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
         </table>
-        <div class="invoice-scroll">
-          <table class="invoice">
+        <div class="invoice-scroll view-only">
+          <table class="invoice stack-mobile">
             <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
             <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
             <tbody>${rowsHtml}</tbody>
@@ -217,10 +237,11 @@ function renderDetail() {
           ${qrUrl ? `<div class="qr-box"><img src="${qrUrl}"><div class="qr-caption">Quét mã để chuyển khoản</div></div>` : ""}
         </div>
         <table class="approval">
-          <thead><tr><th>Người Duyệt</th><th>Người Đề Nghị</th></tr></thead>
+          <thead><tr><th>Người Đề Nghị</th><th>Người Duyệt</th><th>Người Chi</th></tr></thead>
           <tbody><tr>
-            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
             <td><div class="signer-name">${d.requesterName}</div><div class="stamp-time">${fmtDateTime(d.createdAt)}</div></td>
+            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
+            <td>${d.paidBy ? `<div class="signer-name">${d.paidBy}</div><div class="stamp-time">${fmtDateTime(d.paidAt)}</div>` : '<span class="sign-hint">Chưa chi</span>'}</td>
           </tr></tbody>
         </table>
       </div>

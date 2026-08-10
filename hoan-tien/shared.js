@@ -50,7 +50,12 @@ export function parseNum(v) {
 export function pad(n) { return n < 10 ? "0" + n : "" + n; }
 export function fmtDate(v) {
   if (!v) return "";
-  var d = new Date(v + "T00:00:00");
+  // Sheet có thể trả về "YYYY-MM-DD" (từ input) hoặc chuỗi ISO đầy đủ có sẵn giờ
+  // (khi Google Sheets tự nhận cột là kiểu Date) — chỉ nối "T00:00:00" cho
+  // trường hợp đầu, nếu không sẽ tạo ra chuỗi ngày không hợp lệ (NaN/NaN/NaN).
+  var s = String(v);
+  var d = s.indexOf("T") >= 0 ? new Date(s) : new Date(s + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
   return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear();
 }
 export function fmtDateTime(iso) {
@@ -92,6 +97,13 @@ export function soTienBangChu(number) {
 }
 
 export function genReqCode() { return "REQ-" + Date.now(); }
+
+export function attachmentLinksHtml(attachments) {
+  if (!attachments || !attachments.length) return "";
+  return attachments.map(a =>
+    `<a href="${a.url}" target="_blank" rel="noopener noreferrer" class="attach-link">📎 ${a.name}</a>`
+  ).join("");
+}
 
 export function buildVietQRUrl(bankName, account, amount, addInfo, accountName) {
   var bank = BANKS.find(function (b) { return b.name === bankName; });

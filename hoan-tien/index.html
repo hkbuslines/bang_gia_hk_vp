@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gửi đề nghị hoàn tiền</title>
+<link rel="icon" type="image/png" href="logo.png">
 <link rel="stylesheet" href="styles.css">
 <style>
   .wrong-link{max-width:600px; margin:60px auto; background:#fff; border-radius:12px; padding:32px; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,.1); font-family:"Segoe UI",Arial,sans-serif;}
@@ -17,11 +18,14 @@
   .submitted-banner.show{display:flex;}
   .my-requests{max-width:900px; margin:0 auto 60px; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,.12); border-radius:12px; padding:20px 24px; font-family:"Segoe UI",Arial,sans-serif;}
   .my-requests h3{margin:0 0 10px; font-size:15px; color:var(--green-dark);}
-  .my-row{display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--border); font-size:13px;}
+  .my-row{display:flex; align-items:center; gap:12px; padding:10px 6px; border-bottom:1px solid var(--border); font-size:13px; cursor:pointer; border-radius:6px; transition:.15s;}
+  .my-row:hover{background:var(--green-light);}
   .my-row:last-child{border-bottom:none;}
   .my-row .code{font-weight:700; width:180px; flex-shrink:0;}
   .my-row .amt{width:100px; text-align:right; color:var(--green-dark); font-weight:700; flex-shrink:0;}
   .my-row .reason{flex:1; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .my-row .view-hint{color:var(--green-dark); font-size:11.5px; flex-shrink:0;}
+  .partial-flag{color:var(--warn); font-weight:700;}
   .raw-paste-panel{margin:-8px 0 16px; padding:12px; background:var(--green-light); border:1px solid var(--green); border-radius:8px;}
   .raw-paste-panel textarea{
     width:100%; font-family:"Courier New",monospace; font-size:13px; padding:8px 10px;
@@ -36,8 +40,8 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, BANKS, STATUS_LABEL, fmtVND, parseNum, fmtDate,
-  soTienBangChu, genReqCode, buildVietQRUrl, apiList, apiPost
+  DEPARTMENTS, BANKS, STATUS_LABEL, fmtVND, parseNum, fmtDate, fmtDateTime,
+  soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, pad, apiList, apiPost
 } from "./shared.js";
 
 const params = new URLSearchParams(location.search);
@@ -62,6 +66,15 @@ document.getElementById("app").innerHTML = `
     <button class="btn danger" id="btnReset">🗑 Làm mới form</button>
     <button class="btn" id="btnPrint">🖨 In</button>
     <button class="btn primary" id="btnSubmit">✅ Gửi duyệt</button>
+  </div>
+
+  <div class="edit-banner no-print" id="editBanner">
+    <div class="edit-banner-text">
+      🔁 Đang sửa lại đơn <b id="editReqCodeLabel"></b> — đã bị <b>từ chối</b> trước đó.
+      <div class="edit-reject-reason">Lý do bị từ chối: <span id="editRejectReason"></span></div>
+      Sửa nội dung / bổ sung file đính kèm bên dưới rồi bấm "🔁 Gửi lại đơn này".
+    </div>
+    <button class="btn" id="btnCancelEdit">✕ Huỷ, tạo đơn mới</button>
   </div>
 
   <div class="page-wrap">
@@ -124,6 +137,12 @@ document.getElementById("app").innerHTML = `
         </div>
       </div>
 
+      <div class="attach-section no-print">
+        <label class="attach-label" for="attachInput">📎 File đính kèm (ảnh hoá đơn, chứng từ... không bắt buộc — tối đa 5 file, tổng ≤ 8MB)</label>
+        <input type="file" id="attachInput" multiple accept="image/*,.pdf,.heic">
+        <div class="attach-list" id="attachList"></div>
+      </div>
+
       <div class="totals-bar">
         <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value" id="totalRequest">đ0</span></div>
       </div>
@@ -150,12 +169,80 @@ document.getElementById("app").innerHTML = `
   <div style="height:16px;"></div>
   <div class="my-requests no-print">
     <h3>Đơn của ${dept.name} đã gửi gần đây</h3>
+    <p style="margin:-4px 0 12px; font-size:12px; color:var(--muted);">Bấm vào một đơn để xem lại chi tiết (lý do duyệt/từ chối, dòng nào bị từ chối...).</p>
     <div id="myRequestsList">Đang tải...</div>
+  </div>
+
+  <div class="detail-overlay no-print" id="detailOverlay">
+    <div class="detail-modal" id="detailModal"></div>
   </div>
 `;
 
 const invoiceBody = document.getElementById("invoiceBody");
 let currentGrandTotal = 0;
+
+// ---- File đính kèm ----
+const MAX_ATTACH_FILES = 5;
+const MAX_ATTACH_TOTAL_BYTES = 8 * 1024 * 1024; // 8MB
+let selectedFiles = [];
+let existingAttachments = []; // file đã gửi từ trước (khi đang sửa đơn bị từ chối), chỉ xem, không xoá ở đây
+
+// ---- Sửa & gửi lại đơn bị từ chối ----
+let editingReqCode = null;
+
+function fmtBytes(n) {
+  if (n < 1024) return n + " B";
+  if (n < 1024 * 1024) return (n / 1024).toFixed(0) + " KB";
+  return (n / 1024 / 1024).toFixed(1) + " MB";
+}
+function renderAttachList() {
+  const box = document.getElementById("attachList");
+  const existingHtml = existingAttachments.map(a => `
+    <div class="attach-chip existing">
+      <span class="attach-name" title="${a.name}">📎 ${a.name} <span class="resubmit-hint">(đã gửi trước đó)</span></span>
+      <a href="${a.url}" target="_blank" rel="noopener noreferrer" class="attach-link">Xem</a>
+    </div>
+  `).join("");
+  const newHtml = selectedFiles.map((f, i) => `
+    <div class="attach-chip">
+      <span class="attach-name" title="${f.name}">📄 ${f.name}</span>
+      <span class="attach-size">${fmtBytes(f.size)}</span>
+      <button type="button" class="attach-remove" data-idx="${i}" title="Bỏ file này">✕</button>
+    </div>
+  `).join("");
+  if (!existingHtml && !newHtml) { box.innerHTML = ""; return; }
+  box.innerHTML = existingHtml + newHtml +
+    (selectedFiles.length ? `<div class="attach-total">File mới: ${fmtBytes(selectedFiles.reduce((s, f) => s + f.size, 0))} / ${fmtBytes(MAX_ATTACH_TOTAL_BYTES)}</div>` : "");
+  box.querySelectorAll(".attach-remove").forEach(btn => {
+    btn.addEventListener("click", () => { selectedFiles.splice(Number(btn.dataset.idx), 1); renderAttachList(); });
+  });
+}
+document.getElementById("attachInput").addEventListener("change", e => {
+  const incoming = Array.from(e.target.files || []);
+  e.target.value = ""; // cho phép chọn lại cùng 1 file sau khi xoá
+  for (const f of incoming) {
+    if (selectedFiles.length >= MAX_ATTACH_FILES) { alert("Chỉ được đính kèm tối đa " + MAX_ATTACH_FILES + " file."); break; }
+    const total = selectedFiles.reduce((s, x) => s + x.size, 0) + f.size;
+    if (total > MAX_ATTACH_TOTAL_BYTES) { alert("Tổng dung lượng file đính kèm vượt quá " + fmtBytes(MAX_ATTACH_TOTAL_BYTES) + "."); break; }
+    selectedFiles.push(f);
+  }
+  renderAttachList();
+});
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",").pop());
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+async function buildAttachmentsPayload() {
+  return Promise.all(selectedFiles.map(async f => ({
+    name: f.name,
+    mimeType: f.type || "application/octet-stream",
+    data: await fileToBase64(f)
+  })));
+}
 
 const bankSelect = document.getElementById("bankSelect");
 BANKS.forEach(b => { const o = document.createElement("option"); o.value = b.name; o.textContent = b.name; bankSelect.appendChild(o); });
@@ -339,11 +426,16 @@ function resetForm() {
   document.getElementById("beneficiary").value = "";
   invoiceBody.innerHTML = "";
   addRow(); recalcGrandTotal(); newReqCode(); updateRangeText();
+  selectedFiles = []; existingAttachments = []; renderAttachList();
+  editingReqCode = null;
+  document.getElementById("editBanner").classList.remove("show");
+  document.getElementById("btnSubmit").textContent = "✅ Gửi duyệt";
   document.getElementById("btnSubmit").disabled = false;
   document.getElementById("submittedBanner").classList.remove("show");
 }
 document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Xóa toàn bộ dữ liệu đang nhập và làm mới form?")) resetForm(); });
 document.getElementById("btnNewRequest").addEventListener("click", resetForm);
+document.getElementById("btnCancelEdit").addEventListener("click", () => { if (confirm("Huỷ sửa đơn này và làm mới form để tạo đơn khác?")) resetForm(); });
 
 async function submitRequest() {
   const requesterName = document.getElementById("requesterName").value.trim();
@@ -363,24 +455,33 @@ async function submitRequest() {
 
   const reqCode = document.getElementById("reqCode").textContent;
   const beneficiary = document.getElementById("beneficiary").value.trim() || requesterName;
-
-  const payload = {
-    action: "create",
-    reqCode, requesterName, department: dept.name,
-    fromDate: document.getElementById("fromDate").value,
-    toDate: document.getElementById("toDate").value,
-    reason, rows,
-    totalRequest: currentGrandTotal,
-    bankAccount: document.getElementById("bankAccount").value.trim(),
-    bankName: bankSelect.value,
-    beneficiary
-  };
+  const isResubmit = !!editingReqCode;
 
   document.getElementById("btnSubmit").disabled = true;
   try {
+    const attachments = await buildAttachmentsPayload();
+    const payload = {
+      action: isResubmit ? "resubmit" : "create",
+      reqCode, requesterName, department: dept.name,
+      fromDate: document.getElementById("fromDate").value,
+      toDate: document.getElementById("toDate").value,
+      reason, rows,
+      totalRequest: currentGrandTotal,
+      bankAccount: document.getElementById("bankAccount").value.trim(),
+      bankName: bankSelect.value,
+      beneficiary,
+      attachments
+    };
     await apiPost(payload);
-    saveToMyRequests(reqCode);
-    document.getElementById("submittedCode").textContent = reqCode;
+    if (isResubmit) {
+      editingReqCode = null;
+      document.getElementById("editBanner").classList.remove("show");
+    } else {
+      saveToMyRequests(reqCode);
+    }
+    document.querySelector("#submittedBanner span").innerHTML = isResubmit
+      ? `✅ Đã gửi lại đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt lại.`
+      : `✅ Đã gửi đơn <b>${reqCode}</b> — đang chờ Ban Giám Đốc duyệt.`;
     document.getElementById("submittedBanner").classList.add("show");
     document.getElementById("submittedBanner").scrollIntoView({ behavior: "smooth" });
     loadMyRequests();
@@ -397,6 +498,13 @@ function saveToMyRequests(reqCode) {
   list.unshift(reqCode);
   localStorage.setItem(MY_KEY, JSON.stringify(list.slice(0, 20)));
 }
+
+let myRequestsCache = [];
+
+function hasRejectedLine(r) {
+  return (r.rows || []).some(row => row.lineStatus === "tu_choi");
+}
+
 async function loadMyRequests() {
   const container = document.getElementById("myRequestsList");
   try {
@@ -404,19 +512,187 @@ async function loadMyRequests() {
     const mine = all.filter(r => r.department === dept.name)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .slice(0, 15);
+    myRequestsCache = mine;
     if (!mine.length) { container.innerHTML = '<div class="empty-note">Chưa có đơn nào.</div>'; return; }
-    container.innerHTML = mine.map(r => `
-      <div class="my-row">
+    container.innerHTML = mine.map(r => {
+      const partial = r.status === "da_duyet" && hasRejectedLine(r);
+      let reasonText = r.reason || "";
+      if (r.status === "tu_choi") {
+        reasonText += (r.rejectReason ? " — Lý do từ chối: " + r.rejectReason : "") +
+          ' — <span class="resubmit-hint">bấm để sửa &amp; gửi lại</span>';
+      } else if (partial) {
+        reasonText += ' — <span class="partial-flag">⚠ có dòng bị từ chối, bấm xem chi tiết</span>';
+      }
+      if (r.history && r.history.length) reasonText += ` <span class="resubmit-hint">🔁 đã gửi lại ${r.history.length} lần</span>`;
+      if (r.attachments && r.attachments.length) reasonText += ` <span class="attach-hint">📎 ${r.attachments.length}</span>`;
+      return `
+      <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
         <span class="badge ${r.status}">${STATUS_LABEL[r.status] || r.status}</span>
         <span class="amt">${fmtVND(r.totalApproved != null ? r.totalApproved : r.totalRequest)}</span>
-        <span class="reason">${r.reason || ""}${r.status === "tu_choi" && r.rejectReason ? " — Lý do từ chối: " + r.rejectReason : ""}</span>
-      </div>
-    `).join("");
+        <span class="reason">${reasonText}</span>
+        <span class="view-hint no-print">Xem chi tiết →</span>
+      </div>`;
+    }).join("");
+    container.querySelectorAll(".my-row").forEach(row => {
+      row.addEventListener("click", () => openDetail(row.dataset.code));
+    });
   } catch (e) {
     container.innerHTML = '<div class="empty-note">Không tải được danh sách (kiểm tra API_URL trong shared.js).</div>';
   }
 }
+
+function openDetail(reqCode) {
+  const d = myRequestsCache.find(r => r.reqCode === reqCode);
+  if (!d) return;
+
+  const rowsHtml = (d.rows || []).map((r, i) => {
+    let noteCell = r.reason || "";
+    if (r.lineStatus === "tu_choi") {
+      noteCell += `<div class="line-reject-note">✕ Dòng này bị từ chối${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
+    }
+    return `<tr><td class="idx" data-label="STT">${i + 1}</td><td data-label="Ngày">${fmtDate(r.date)}</td><td data-label="Nội dung">${r.code || ""}</td>
+      <td data-label="Tiền hàng">${fmtVND(r.goods)}</td><td data-label="Thuế GTGT">${fmtVND(r.vat)}</td><td class="total-cell" data-label="Tổng tiền">${fmtVND(r.goods + r.vat)}</td>
+      <td data-label="Lý do / Ghi chú" style="text-align:left;">${noteCell}</td></tr>`;
+  }).join("");
+
+  const qrUrl = buildVietQRUrl(d.bankName, d.bankAccount, d.totalApproved != null ? d.totalApproved : d.totalRequest, d.reqCode, d.beneficiary);
+
+  const historyHtml = (d.history && d.history.length) ? `
+    <div class="resend-history no-print">
+      <div class="hist-title">🔁 Đơn này đã được gửi lại ${d.history.length} lần trước đó</div>
+      ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""}</div>`).join("")}
+    </div>` : "";
+
+  document.getElementById("detailModal").innerHTML = `
+    <div class="detail-toolbar no-print">
+      <span class="badge ${d.status}">${STATUS_LABEL[d.status] || d.status}</span>
+      <div class="spacer"></div>
+      ${d.status === "tu_choi" ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button>' : ""}
+      <button class="btn" id="btnDetailPrint">🖨 In</button>
+      <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
+    </div>
+    ${historyHtml}
+    <div class="page-wrap">
+      <div class="sheet">
+        <div class="doc-header">
+          <div class="logo-wrap"><img src="logo.png" style="height:46px;"></div>
+          <div class="req-code-box">MÃ ĐỀ NGHỊ<div class="code-line"><b>${d.reqCode}</b></div></div>
+        </div>
+        <div class="company-name">Công Ty TNHH Dịch Vụ Vận Tải Và Thương Mại HK</div>
+        <div class="kg"><div class="to-block">
+          <div class="to-line"><span class="to-label">Kính gửi:</span><b>Ban Giám Đốc</b></div>
+          <div class="to-line"><span class="to-label"></span>Phòng Tài Chính Kế Toán</div>
+        </div></div>
+        <div class="doc-title-block"><div class="doc-title">Giấy Đề Nghị Thanh Toán / Hoàn Tiền</div>
+          <div class="doc-date">${fmtDateTime(d.createdAt)}</div></div>
+        <table class="info-table">
+          <tr><td class="label">Họ và tên người đề nghị:</td><td class="value-text">${d.requesterName}</td></tr>
+          <tr><td class="label">Bộ phận / Văn phòng:</td><td class="value-text">${d.department}</td></tr>
+          <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
+          <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
+          ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
+          ${d.attachments && d.attachments.length ? `<tr class="no-print"><td class="label">File đính kèm:</td><td class="value-text"><div class="attach-links">${attachmentLinksHtml(d.attachments)}</div></td></tr>` : ""}
+        </table>
+        <div class="invoice-scroll view-only">
+          <table class="invoice stack-mobile">
+            <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
+            <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+        <div class="totals-bar">
+          <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value">${fmtVND(d.totalRequest)}</span></div>
+          <div class="totals-cell approved"><span class="totals-label">Tổng số được duyệt</span><span class="totals-value">${d.status === "tu_choi" ? '<span style="color:var(--danger); font-size:14px;">KHÔNG DUYỆT</span>' : fmtVND(d.totalApproved)}</span></div>
+        </div>
+        <div class="bank-section">
+          <table class="bank-table">
+            <tr><td class="label">Chuyển tiền vào STK:</td><td class="value-text">${d.bankAccount}</td></tr>
+            <tr><td class="label">Tại ngân hàng:</td><td class="value-text">${d.bankName}</td></tr>
+            <tr><td class="label">Người thụ hưởng:</td><td class="value-text">${d.beneficiary}</td></tr>
+          </table>
+          ${qrUrl ? `<div class="qr-box"><img src="${qrUrl}"><div class="qr-caption">Quét mã để chuyển khoản</div></div>` : ""}
+        </div>
+        <table class="approval">
+          <thead><tr><th>Người Đề Nghị</th><th>Người Duyệt</th><th>Người Chi</th></tr></thead>
+          <tbody><tr>
+            <td><div class="signer-name">${d.requesterName}</div><div class="stamp-time">${fmtDateTime(d.createdAt)}</div></td>
+            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
+            <td>${d.paidBy ? `<div class="signer-name">${d.paidBy}</div><div class="stamp-time">${fmtDateTime(d.paidAt)}</div>` : '<span class="sign-hint">Chưa chi</span>'}</td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  document.getElementById("btnDetailClose").addEventListener("click", closeDetail);
+  document.getElementById("btnDetailPrint").addEventListener("click", () => window.print());
+  document.getElementById("btnDetailEdit")?.addEventListener("click", () => startEdit(d.reqCode));
+  document.getElementById("detailOverlay").classList.add("show");
+}
+function closeDetail() {
+  document.getElementById("detailOverlay").classList.remove("show");
+}
+
+function toDateInputValue(v) {
+  if (!v) return "";
+  const s = String(v);
+  const d = s.indexOf("T") >= 0 ? new Date(s) : new Date(s + "T00:00:00");
+  if (isNaN(d.getTime())) return "";
+  return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+}
+
+function startEdit(reqCode) {
+  const d = myRequestsCache.find(r => r.reqCode === reqCode);
+  if (!d) return;
+  if (d.status !== "tu_choi") { alert("Chỉ sửa & gửi lại được đơn đang ở trạng thái Từ chối."); return; }
+
+  closeDetail();
+  editingReqCode = reqCode;
+
+  document.getElementById("requesterName").value = d.requesterName || "";
+  document.getElementById("fromDate").value = toDateInputValue(d.fromDate);
+  document.getElementById("toDate").value = toDateInputValue(d.toDate);
+  document.getElementById("reasonText").value = d.reason || "";
+  document.getElementById("bankAccount").value = d.bankAccount || "937869080";
+  bankSelect.value = d.bankName || "MB Bank";
+  document.getElementById("beneficiary").value = d.beneficiary || "";
+  document.getElementById("reqCode").textContent = reqCode; // giữ nguyên mã cũ, không tạo mã mới
+  updateRangeText();
+
+  invoiceBody.innerHTML = "";
+  const rows = d.rows && d.rows.length ? d.rows : [{}];
+  rows.forEach(r => {
+    addRow();
+    const trs = invoiceBody.querySelectorAll("tr");
+    const tr = trs[trs.length - 1];
+    tr.querySelector(".inv-date").value = r.date || "";
+    updateRowDateText(tr);
+    tr.querySelector(".inv-code").value = r.code || "";
+    tr.querySelector(".inv-goods").value = r.goods || "";
+    tr.querySelector(".inv-goods").dispatchEvent(new Event("input", { bubbles: true }));
+    if (r.vat) {
+      tr.querySelector(".inv-vat").value = r.vat;
+      tr.querySelector(".inv-vat").dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    tr.querySelector(".inv-reason").value = r.reason || "";
+  });
+  recalcGrandTotal();
+
+  selectedFiles = [];
+  existingAttachments = d.attachments || [];
+  renderAttachList();
+
+  document.getElementById("editReqCodeLabel").textContent = reqCode;
+  document.getElementById("editRejectReason").textContent = d.rejectReason || "(không ghi lý do)";
+  document.getElementById("editBanner").classList.add("show");
+  document.getElementById("btnSubmit").textContent = "🔁 Gửi lại đơn này";
+  document.getElementById("btnSubmit").disabled = false;
+  document.getElementById("submittedBanner").classList.remove("show");
+  document.getElementById("editBanner").scrollIntoView({ behavior: "smooth" });
+}
+document.getElementById("detailOverlay").addEventListener("click", e => {
+  if (e.target.id === "detailOverlay") closeDetail();
+});
 
 updateDateText();
 newReqCode();
