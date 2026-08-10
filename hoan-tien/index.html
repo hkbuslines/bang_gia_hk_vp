@@ -111,14 +111,14 @@ document.getElementById("app").innerHTML = `
         <button class="btn" id="btnPasteRaw">📋 Dán dữ liệu thô</button>
       </div>
       <div class="raw-paste-panel no-print" id="rawPastePanel" style="display:none;">
-        <textarea id="rawPasteInput" rows="6" placeholder="Dán mỗi dòng 1 mã, dạng: ABC123 - 150k"></textarea>
+        <textarea id="rawPasteInput" rows="6" placeholder="Dán mỗi dòng 1 mã, dạng: ABC123 - 150k&#10;Có thuế thì thêm: ABC123 - 150k - 15k"></textarea>
         <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <button class="btn primary" id="btnParseRaw">✅ Phân tích &amp; điền vào bảng</button>
           <button class="btn" id="btnCancelPaste">Hủy</button>
           <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
             <input type="checkbox" id="chkUppercaseCode" checked> Viết hoa mã
           </label>
-          <span style="font-size:11.5px; color:var(--muted);">Mỗi dòng: <code>Mã - Số tiền</code> (vd: ABC123 - 150k). Sẽ thay toàn bộ bảng hiện tại.</span>
+          <span style="font-size:11.5px; color:var(--muted);">Mỗi dòng: <code>Nội dung - Tiền hàng - Thuế GTGT</code> (thuế không bắt buộc). Sẽ thay toàn bộ bảng hiện tại.</span>
         </div>
       </div>
 
@@ -254,18 +254,31 @@ document.getElementById("btnParseRaw").addEventListener("click", () => {
   const lines = raw.split("\n").map(l => l.trim()).filter(l => l);
   const parsed = [];
   const badLines = [];
+  const upper = document.getElementById("chkUppercaseCode").checked;
   lines.forEach(line => {
-    const m = line.match(/^(.+?)\s*-\s*(.+)$/);
-    if (!m) { badLines.push(line); return; }
-    const upper = document.getElementById("chkUppercaseCode").checked;
-    let code = m[1].trim();
+    // Tách theo " - " (có khoảng trắng bao quanh) để không vỡ khi nội dung
+    // hoặc mã có dấu gạch ngang dính liền (vd "ABC-123").
+    const parts = line.split(/\s+-\s+/).map(p => p.trim()).filter(p => p !== "");
+    if (parts.length < 2) { badLines.push(line); return; }
+
+    let code, amount, vat = 0;
+    if (parts.length >= 3) {
+      // Nội dung - Tiền hàng - Thuế GTGT
+      code = parts.slice(0, -2).join(" - ");
+      amount = parseAmountShorthand(parts[parts.length - 2]);
+      vat = parseAmountShorthand(parts[parts.length - 1]);
+    } else {
+      // Nội dung - Tiền hàng
+      code = parts[0];
+      amount = parseAmountShorthand(parts[1]);
+    }
     if (upper) code = code.toUpperCase();
-    const amount = parseAmountShorthand(m[2].trim());
-    if (code && amount > 0) parsed.push({ code, amount });
+    else if (code) code = code.charAt(0).toUpperCase() + code.slice(1);
+    if (code && (amount > 0 || vat > 0)) parsed.push({ code, amount, vat });
     else badLines.push(line);
   });
   if (!parsed.length) {
-    alert("Không đọc được dòng nào hợp lệ. Định dạng cần là: Mã - Số tiền (vd: ABC123 - 150k)");
+    alert("Không đọc được dòng nào hợp lệ. Định dạng cần là: Nội dung - Tiền hàng (- Thuế GTGT nếu có), vd: ABC123 - 150k - 15k");
     return;
   }
   let msg = "Sẽ thay toàn bộ bảng hiện tại bằng " + parsed.length + " dòng vừa dán.";
@@ -285,6 +298,10 @@ document.getElementById("btnParseRaw").addEventListener("click", () => {
     tr.querySelector(".inv-code").value = p.code;
     tr.querySelector(".inv-goods").value = p.amount;
     tr.querySelector(".inv-goods").dispatchEvent(new Event("input", { bubbles: true }));
+    if (p.vat) {
+      tr.querySelector(".inv-vat").value = p.vat;
+      tr.querySelector(".inv-vat").dispatchEvent(new Event("input", { bubbles: true }));
+    }
   });
   document.getElementById("rawPasteInput").value = "";
   document.getElementById("rawPastePanel").style.display = "none";
