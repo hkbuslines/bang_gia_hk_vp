@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, reqCodesWithFollowUp, parseNum, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -77,15 +77,16 @@ function renderOverview() {
   const totalPending = allRequests.filter(r => r.status === "cho_duyet").length;
   const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
   const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
-  // Đơn gốc bị từ chối (1 phần hoặc toàn bộ) mà VP đã gửi đơn bổ sung —
-  // đếm theo mã đơn GỐC (không đếm trùng nếu gửi bổ sung nhiều lần).
-  const totalSupplemented = new Set(allRequests.filter(r => r.supplementOf).map(r => r.supplementOf)).size;
+  // Đơn gốc bị từ chối (1 phần hoặc toàn bộ) mà VP đã có hành động — sửa
+  // & gửi lại chính đơn đó, HOẶC tạo đơn bổ sung riêng — đếm theo mã đơn
+  // GỐC (không đếm trùng nếu gửi lại/bổ sung nhiều lần).
+  const totalSupplemented = reqCodesWithFollowUp(allRequests).size;
   const summaryHtml = `
     <div class="overview-summary">
       <div class="sum-item ${totalPending === 0 ? "zero" : ""}"><b>${totalPending}</b> đơn chờ duyệt</div>
       <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn đã duyệt — chờ chi</div>
       <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn có mục bị từ chối, VP chưa xử lý</div>
-      <div class="sum-item supplement ${totalSupplemented === 0 ? "zero" : ""}"><b>${totalSupplemented}</b> đơn từ chối đã được gửi bổ sung</div>
+      <div class="sum-item supplement ${totalSupplemented === 0 ? "zero" : ""}"><b>${totalSupplemented}</b> đơn từ chối đã được VP gửi lại/bổ sung</div>
     </div>`;
 
   const html = DEPARTMENTS.map(d => {
@@ -93,7 +94,7 @@ function renderOverview() {
     const pending = items.filter(r => r.status === "cho_duyet").length;
     const awaitingPay = items.filter(r => r.status === "da_duyet").length;
     const needsAction = items.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
-    const supplemented = new Set(items.filter(r => r.supplementOf).map(r => r.supplementOf)).size;
+    const supplemented = reqCodesWithFollowUp(items).size;
     return `
       <div class="dept-card" data-name="${d.name}">
         <div class="name">${d.name} <span class="arrow">→</span></div>

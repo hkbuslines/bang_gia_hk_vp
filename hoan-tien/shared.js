@@ -140,6 +140,20 @@ export function hasUnresolvedRejectedLine(r) {
   return (r.rows || []).some(row => row.lineStatus === "tu_choi" && !row.lineResolved);
 }
 
+// Mã đơn GỐC mà văn phòng đã có hành động sau khi bị từ chối — gồm cả 2
+// cách: (1) sửa & gửi lại chính đơn đó (có historyJson), hoặc (2) tạo đơn
+// bổ sung riêng trỏ về qua supplementOf. Dùng để đếm "đơn từ chối đã được
+// xử lý/gửi lại" ở trang tổng quan — không phân biệt 2 cơ chế với người
+// dùng vì với họ cả hai đều là "tôi đã gửi lại".
+export function reqCodesWithFollowUp(requests) {
+  const set = new Set();
+  (requests || []).forEach(r => {
+    if (r.supplementOf) set.add(r.supplementOf);
+    if (r.history && r.history.length) set.add(r.reqCode);
+  });
+  return set;
+}
+
 export function buildVietQRUrl(bankName, account, amount, addInfo, accountName) {
   var bank = BANKS.find(function (b) { return b.name === bankName; });
   if (!bank || !account) return "";

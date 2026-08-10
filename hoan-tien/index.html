@@ -116,12 +116,12 @@ document.getElementById("app").innerHTML = `
       <div class="raw-paste-panel no-print" id="rawPastePanel" style="display:none;">
         <textarea id="rawPasteInput" rows="6" placeholder="Dán mỗi dòng 1 mã, dạng: ABC123 - 150k&#10;Có thuế thì thêm: ABC123 - 150k - 15k"></textarea>
         <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <button class="btn primary" id="btnParseRaw">✅ Phân tích &amp; điền vào bảng</button>
+          <button class="btn primary" id="btnParseRaw">Phân tích &amp; điền vào bảng</button>
           <button class="btn" id="btnCancelPaste">Hủy</button>
           <label style="font-size:12px; display:flex; align-items:center; gap:4px; cursor:pointer;">
             <input type="checkbox" id="chkUppercaseCode" checked> Viết hoa mã
           </label>
-          <span style="font-size:11.5px; color:var(--muted);">Mỗi dòng: <code>Nội dung - Tiền hàng - Thuế GTGT</code> (thuế không bắt buộc). Sẽ thay toàn bộ bảng hiện tại.</span>
+          <span style="font-size:11.5px; color:var(--muted);">Mỗi dòng: <code>Nội dung - Tiền hàng - Thuế GTGT</code> (thuế không bắt buộc). Nếu bảng đã có dữ liệu, các dòng mới sẽ được thêm vào cuối, không xoá dòng cũ.</span>
         </div>
       </div>
 
@@ -360,14 +360,21 @@ document.getElementById("btnParseRaw").addEventListener("click", () => {
     alert("Không đọc được dòng nào hợp lệ. Định dạng cần là: Nội dung - Tiền hàng (- Thuế GTGT nếu có), vd: ABC123 - 150k - 15k");
     return;
   }
-  let msg = "Sẽ thay toàn bộ bảng hiện tại bằng " + parsed.length + " dòng vừa dán.";
+  // Chỉ coi là "đã có dữ liệu" nếu có dòng nào thực sự điền gì đó — dòng
+  // trống mặc định lúc mới mở form thì không tính, xoá đi cho gọn.
+  const existingRows = Array.from(invoiceBody.querySelectorAll("tr"));
+  const hasRealData = existingRows.some(tr => tr.querySelector(".inv-code").value.trim() || parseNum(tr.querySelector(".inv-goods").value) > 0);
+
+  let msg = hasRealData
+    ? "Sẽ THÊM " + parsed.length + " dòng vừa dán vào cuối bảng hiện tại (giữ nguyên các dòng đã điền)."
+    : "Sẽ điền " + parsed.length + " dòng vừa dán vào bảng.";
   if (badLines.length) msg += "\n\n" + badLines.length + " dòng không đọc được, sẽ bị bỏ qua:\n" + badLines.join("\n");
   if (!confirm(msg + "\n\nTiếp tục?")) return;
 
   const today = new Date();
   const todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
 
-  invoiceBody.innerHTML = "";
+  if (!hasRealData) invoiceBody.innerHTML = "";
   parsed.forEach(p => {
     addRow();
     const rows = invoiceBody.querySelectorAll("tr");
@@ -502,6 +509,20 @@ function saveToMyRequests(reqCode) {
   localStorage.setItem(MY_KEY, JSON.stringify(list.slice(0, 20)));
 }
 
+// Đơn bị từ chối toàn bộ mà văn phòng chọn "không gửi lại nữa" — chỉ lưu
+// trên trình duyệt này (không cần cột Sheet mới), để đỡ bị nhắc lại trong
+// danh sách. Không ảnh hưởng gì tới dữ liệu/duyệt của Ban Giám Đốc.
+const DISMISSED_KEY = "hk_dismissed_rejections_" + dept.slug;
+function getDismissedRejections() { return JSON.parse(localStorage.getItem(DISMISSED_KEY) || "[]"); }
+function isDismissedRejection(reqCode) { return getDismissedRejections().includes(reqCode); }
+function dismissRejection(reqCode) {
+  const list = getDismissedRejections();
+  if (!list.includes(reqCode)) { list.push(reqCode); localStorage.setItem(DISMISSED_KEY, JSON.stringify(list)); }
+}
+function undismissRejection(reqCode) {
+  localStorage.setItem(DISMISSED_KEY, JSON.stringify(getDismissedRejections().filter(c => c !== reqCode)));
+}
+
 let myRequestsCache = [];
 
 async function loadMyRequests() {
@@ -521,7 +542,7 @@ async function loadMyRequests() {
       // Các cờ trạng thái để RIÊNG, không nhét vào chung dòng lý do — tránh
       // bị cắt mất thành "..." khi lý do dài (dòng lý do vẫn tự cắt khi cần).
       let flags = "";
-      if (r.status === "tu_choi") flags += `<span class="flag-icon flag-warn" title="Bấm để sửa & gửi lại">✏️</span>`;
+      if (r.status === "tu_choi" && !isDismissedRejection(r.reqCode)) flags += `<span class="flag-icon flag-warn" title="Bấm để sửa & gửi lại">✏️</span>`;
       if (needsAction) flags += `<span class="flag-icon flag-warn" title="Có mục bị từ chối, bấm xem chi tiết">⚠</span>`;
       if (r.history && r.history.length) flags += `<span class="flag-icon" title="Đã gửi lại ${r.history.length} lần">🔁</span>`;
       if (r.attachments && r.attachments.length) flags += `<span class="flag-icon" title="${r.attachments.length} file đính kèm">📎</span>`;
@@ -600,16 +621,27 @@ function openDetail(reqCode) {
       </div>
     </div>` : "";
 
+  // Đơn bị từ chối TOÀN BỘ: cho chọn sửa & gửi lại, HOẶC chấp nhận không
+  // gửi lại nữa (chỉ lưu cục bộ trên máy này — đơn đã ở trạng thái cuối
+  // "Từ chối" rồi, không cần đổi gì trên Sheet, chỉ để đỡ bị nhắc lại).
+  const isDismissed = d.status === "tu_choi" && isDismissedRejection(d.reqCode);
+  const dismissedHtml = isDismissed ? `
+    <div class="resend-history no-print" style="background:var(--green-light); border-color:var(--green);">
+      <div class="hist-title" style="color:var(--green-dark);">✓ Bạn đã chọn không gửi lại đơn này</div>
+      <div style="margin-top:8px;"><button class="btn" id="btnUndismissReject">↩ Huỷ, muốn sửa & gửi lại</button></div>
+    </div>` : "";
+
   document.getElementById("detailModal").innerHTML = `
     <div class="detail-toolbar no-print">
       <span class="badge ${d.status}">${statusLabelFor(d)}</span>
       <div class="spacer"></div>
-      ${d.status === "tu_choi" ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button>' : ""}
+      ${d.status === "tu_choi" && !isDismissed ? '<button class="btn primary" id="btnDetailEdit">✏️ Sửa & Gửi lại</button><button class="btn" id="btnDismissReject">✅ Chấp nhận, không gửi lại</button>' : ""}
       <button class="btn" id="btnDetailPrint">🖨 In</button>
       <button class="btn danger" id="btnDetailClose">✕ Đóng</button>
     </div>
     ${attachHtml}
     ${historyHtml}
+    ${dismissedHtml}
     ${needsActionHtml}
     ${resolvedHtml}
     <div class="page-wrap">
@@ -674,6 +706,15 @@ function openDetail(reqCode) {
   document.getElementById("btnSupplemental")?.addEventListener("click", () => startSupplementalRequest(d.reqCode));
   document.getElementById("btnAcceptRejected")?.addEventListener("click", () => acceptRejectedLines(d.reqCode));
   document.getElementById("btnRevokeAccept")?.addEventListener("click", () => revokeAcceptRejectedLines(d.reqCode));
+  document.getElementById("btnDismissReject")?.addEventListener("click", () => {
+    if (!confirm("Xác nhận không gửi lại đơn này nữa?")) return;
+    dismissRejection(d.reqCode);
+    openDetail(d.reqCode);
+  });
+  document.getElementById("btnUndismissReject")?.addEventListener("click", () => {
+    undismissRejection(d.reqCode);
+    openDetail(d.reqCode);
+  });
   document.getElementById("detailOverlay").classList.add("show");
 }
 function closeDetail() {
