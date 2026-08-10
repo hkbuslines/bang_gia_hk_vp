@@ -60,12 +60,16 @@ function doPost(e) {
   var action = body.action;
   if (action === "create") return handleCreate_(sheet, body);
   if (action === "approve") {
-    return handleUpdate_(sheet, body.reqCode, {
-      status: "da_duyet",
+    // totalApproved > 0: ít nhất 1 dòng được duyệt -> "da_duyet".
+    // totalApproved == 0: tất cả các dòng bị từ chối (duyệt theo dòng) -> coi như "tu_choi".
+    var approveFields = {
+      status: (Number(body.totalApproved) > 0) ? "da_duyet" : "tu_choi",
       approvedBy: body.approvedBy || "",
       approvedAt: nowIso_(),
       totalApproved: body.totalApproved
-    });
+    };
+    if (body.rows) approveFields.rowsJson = JSON.stringify(body.rows);
+    return handleUpdate_(sheet, body.reqCode, approveFields);
   }
   if (action === "reject") {
     return handleUpdate_(sheet, body.reqCode, {

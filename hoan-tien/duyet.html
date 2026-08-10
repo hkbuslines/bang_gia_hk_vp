@@ -120,7 +120,7 @@ function renderDeptView() {
     </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
 
   app.innerHTML = `
-    <div class="req-list">
+    <div class="req-list no-print">
       <div class="back-link" id="backLink">← Tất cả văn phòng</div>
       <div class="tabs">${tabsHtml}</div>
       <div id="listContainer">${listHtml}</div>
@@ -140,20 +140,33 @@ function renderDetail() {
   const container = document.getElementById("detailContainer");
   if (!d) { container.innerHTML = ""; return; }
 
-  const rowsHtml = (d.rows || []).map((r, i) =>
-    `<tr><td class="idx">${i + 1}</td><td>${fmtDate(r.date)}</td><td>${r.code || ""}</td>
+  const editable = d.status === "cho_duyet";
+  const rowsHtml = (d.rows || []).map((r, i) => {
+    let reasonCell = r.reason || "";
+    if (!editable && r.lineStatus === "tu_choi") {
+      reasonCell += `<div style="color:var(--danger); font-size:11px; margin-top:2px;">✕ Từ chối dòng${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`;
+    }
+    let decisionHtml = "";
+    if (editable) {
+      decisionHtml = `<div class="no-print" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border); text-align:left;">
+        <label style="font-size:11px; margin-right:8px;"><input type="radio" name="line-${i}" value="duyet" class="line-radio" data-idx="${i}" checked> Duyệt</label>
+        <label style="font-size:11px;"><input type="radio" name="line-${i}" value="tu_choi" class="line-radio" data-idx="${i}"> Từ chối</label>
+        <input type="text" class="line-reason-input" data-idx="${i}" placeholder="Lý do từ chối dòng này" style="display:none; width:100%; margin-top:4px; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px;">
+      </div>`;
+    }
+    return `<tr><td class="idx">${i + 1}</td><td>${fmtDate(r.date)}</td><td>${r.code || ""}</td>
      <td>${fmtVND(r.goods)}</td><td>${fmtVND(r.vat)}</td><td class="total-cell">${fmtVND(r.goods + r.vat)}</td>
-     <td>${r.reason || ""}</td></tr>`
-  ).join("");
+     <td style="text-align:left;">${reasonCell}${decisionHtml}</td></tr>`;
+  }).join("");
 
   const qrUrl = buildVietQRUrl(d.bankName, d.bankAccount, d.totalApproved != null ? d.totalApproved : d.totalRequest, d.reqCode, d.beneficiary);
 
   let actionsHtml = "";
-  if (d.status === "cho_duyet") {
+  if (editable) {
     actionsHtml =
-      '<div class="approve-box"><label>Tổng số duyệt:</label><input type="text" id="approvedAmount" value="' + d.totalRequest + '"></div>' +
-      '<button class="btn primary" id="btnApprove">✅ Duyệt</button>' +
-      '<button class="btn danger" id="btnReject">❌ Từ chối</button>';
+      '<span style="font-size:12px; color:var(--muted);">Tổng sẽ duyệt: <b id="computedApprovedTotal" style="color:var(--green-dark);">' + fmtVND(d.totalRequest) + '</b></span>' +
+      '<button class="btn primary" id="btnConfirmApprove">✅ Xác nhận duyệt</button>' +
+      '<button class="btn danger" id="btnReject">❌ Từ chối tất cả</button>';
   } else if (d.status === "da_duyet") {
     actionsHtml = '<button class="btn primary" id="btnPaid">💰 Đánh dấu đã chi</button>';
   }
@@ -186,12 +199,12 @@ function renderDetail() {
         </table>
         <table class="invoice">
           <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
-          <thead><tr><th>STT</th><th>Ngày</th><th>Mã vé</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
+          <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
           <tbody>${rowsHtml}</tbody>
         </table>
         <div class="totals-bar">
           <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value">${fmtVND(d.totalRequest)}</span></div>
-          <div class="totals-cell approved"><span class="totals-label">Tổng số được duyệt</span><span class="totals-value">${fmtVND(d.totalApproved)}</span></div>
+          <div class="totals-cell approved"><span class="totals-label">Tổng số được duyệt</span><span class="totals-value">${d.status === "tu_choi" ? '<span style="color:var(--danger); font-size:14px;">KHÔNG DUYỆT</span>' : fmtVND(d.totalApproved)}</span></div>
         </div>
         <div class="bank-section">
           <table class="bank-table">
@@ -213,20 +226,65 @@ function renderDetail() {
   `;
 
   document.getElementById("btnPrintDetail")?.addEventListener("click", () => window.print());
-  document.getElementById("btnApprove")?.addEventListener("click", () => approveRequest(d));
+  document.getElementById("btnConfirmApprove")?.addEventListener("click", () => confirmApprove(d));
   document.getElementById("btnReject")?.addEventListener("click", () => rejectRequest(d));
   document.getElementById("btnPaid")?.addEventListener("click", () => markPaid(d));
+
+  if (editable) {
+    container.querySelectorAll(".line-radio").forEach(radio => {
+      radio.addEventListener("change", () => updateLineDecisionUI(d));
+    });
+  }
 }
 
-async function approveRequest(d) {
+function updateLineDecisionUI(d) {
+  const rows = d.rows || [];
+  let sum = 0;
+  rows.forEach((r, i) => {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+    const isReject = checked && checked.value === "tu_choi";
+    if (reasonInput) reasonInput.style.display = isReject ? "block" : "none";
+    if (!isReject) sum += (r.goods + r.vat);
+  });
+  const el = document.getElementById("computedApprovedTotal");
+  if (el) el.textContent = fmtVND(sum);
+}
+
+async function confirmApprove(d) {
+  const rows = d.rows || [];
+  for (let i = 0; i < rows.length; i++) {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const isReject = checked && checked.value === "tu_choi";
+    if (isReject) {
+      const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+      if (!reasonInput || !reasonInput.value.trim()) {
+        alert("Vui lòng nhập lý do từ chối cho dòng " + (i + 1) + ".");
+        return;
+      }
+    }
+  }
   const name = prompt("Tên người duyệt:", "");
   if (name === null) return;
   if (!name.trim()) return alert("Vui lòng nhập tên người duyệt.");
-  const approvedAmount = parseNum(document.getElementById("approvedAmount").value);
+
+  let totalApproved = 0;
+  const updatedRows = rows.map((r, i) => {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const isReject = checked && checked.value === "tu_choi";
+    const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+    if (!isReject) totalApproved += (r.goods + r.vat);
+    return Object.assign({}, r, {
+      lineStatus: isReject ? "tu_choi" : "duyet",
+      lineRejectReason: isReject ? (reasonInput ? reasonInput.value.trim() : "") : ""
+    });
+  });
+
   try {
-    await apiPost({ action: "approve", reqCode: d.reqCode, approvedBy: name.trim(), totalApproved: approvedAmount });
+    await apiPost({ action: "approve", reqCode: d.reqCode, approvedBy: name.trim(), totalApproved, rows: updatedRows });
     await loadData();
-    currentDept = d.department; currentTab = "da_duyet"; selectedCode = d.reqCode; render();
+    const newStatus = totalApproved > 0 ? "da_duyet" : "tu_choi";
+    currentDept = d.department; currentTab = newStatus; selectedCode = d.reqCode; render();
   } catch (e) { alert("Lỗi: " + e.message); }
 }
 async function rejectRequest(d) {
