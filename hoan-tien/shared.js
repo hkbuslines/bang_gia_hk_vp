@@ -8,7 +8,11 @@ export const DEPARTMENTS = [
   { slug: "danang", name: "VP Đà Nẵng" },
   { slug: "hoian", name: "VP Hội An" },
   { slug: "hue", name: "VP Huế" },
-  { slug: "vp96", name: "VP 96 Võ Chí Công" }
+  { slug: "vp96", name: "VP 96 Võ Chí Công" },
+  { slug: "gara", name: "Bộ phận Gara" },
+  { slug: "kiemsoat", name: "Bộ phận Kiểm Soát" },
+  { slug: "dieuhanh", name: "Bộ phận Điều Hành" },
+  { slug: "nhansu", name: "Bộ phận Nhân Sự" }
 ];
 
 export const BANKS = [
