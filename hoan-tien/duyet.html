@@ -28,7 +28,7 @@
 
 <script type="module">
 import {
-  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, signatureImgHtml, apiList, apiPost
 } from "./shared.js";
 
 // ==== Mã truy cập nội bộ ====
@@ -278,7 +278,7 @@ function renderDetail() {
           <thead><tr><th>Người Đề Nghị</th><th>Người Duyệt</th><th>Người Chi</th></tr></thead>
           <tbody><tr>
             <td><div class="signer-name">${d.requesterName}</div><div class="stamp-time">${fmtDateTime(d.createdAt)}</div></td>
-            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
+            <td>${d.approvedBy ? `${signatureImgHtml(d.approvedBy)}<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
             <td>${d.paidBy ? `<div class="signer-name">${d.paidBy}</div><div class="stamp-time">${fmtDateTime(d.paidAt)}</div>` : '<span class="sign-hint">Chưa chi</span>'}</td>
           </tr></tbody>
         </table>
@@ -326,7 +326,7 @@ async function confirmApprove(d) {
       }
     }
   }
-  const name = prompt("Tên người duyệt:", "");
+  const name = prompt("Tên người duyệt:", "Ngô Văn Công");
   if (name === null) return;
   if (!name.trim()) return alert("Vui lòng nhập tên người duyệt.");
 
@@ -354,7 +354,7 @@ async function rejectRequest(d, isFinal) {
   const reason = prompt("Lý do từ chối:", "");
   if (reason === null) return;
   if (!reason.trim()) return alert("Vui lòng nhập lý do từ chối.");
-  const name = prompt("Tên người từ chối:", "");
+  const name = prompt("Tên người từ chối:", "Ngô Văn Công");
   if (name === null) return;
   try {
     await apiPost({ action: "reject", reqCode: d.reqCode, rejectReason: reason.trim(), approvedBy: name.trim() || "", rejectFinal: !!isFinal });

@@ -95,6 +95,15 @@ export function fmtDateTime(iso) {
   return pad(d.getDate()) + "/" + pad(d.getMonth() + 1) + "/" + d.getFullYear() + " " + h12 + ":" + pad(d.getMinutes()) + " " + ampm;
 }
 
+// Tên Giám Đốc có chữ ký scan sẵn (signature-giamdoc.png, lấy từ file PDF mẫu) —
+// khớp đúng tên thì chèn ảnh chữ ký phía trên, không khớp (vd Kế Toán tự duyệt
+// đơn cabin) thì chỉ hiện tên chữ như bình thường, không có ảnh.
+var SIGNATURE_NAME = "Ngô Văn Công";
+export function signatureImgHtml(approvedBy) {
+  if ((approvedBy || "").trim() !== SIGNATURE_NAME) return "";
+  return '<img src="signature-giamdoc.png" alt="Chữ ký" style="height:34px; display:block; margin:0 auto;">';
+}
+
 export function soTienBangChu(number) {
   number = Math.round(Math.abs(number || 0));
   if (number === 0) return "Không đồng";

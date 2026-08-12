@@ -33,7 +33,7 @@
 <script type="module">
 import {
   DEPARTMENTS, BANKS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, parseNum, fmtDate, fmtDateTime,
-  soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, pad, apiList, apiPost
+  soTienBangChu, genReqCode, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, pad, signatureImgHtml, apiList, apiPost
 } from "./shared.js";
 
 const params = new URLSearchParams(location.search);
@@ -702,7 +702,7 @@ function openDetail(reqCode) {
           <thead><tr><th>Người Đề Nghị</th><th>Người Duyệt</th><th>Người Chi</th></tr></thead>
           <tbody><tr>
             <td><div class="signer-name">${d.requesterName}</div><div class="stamp-time">${fmtDateTime(d.createdAt)}</div></td>
-            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
+            <td>${d.approvedBy ? `${signatureImgHtml(d.approvedBy)}<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
             <td>${d.paidBy ? `<div class="signer-name">${d.paidBy}</div><div class="stamp-time">${fmtDateTime(d.paidAt)}</div>` : '<span class="sign-hint">Chưa chi</span>'}</td>
           </tr></tbody>
         </table>

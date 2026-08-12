@@ -71,15 +71,22 @@ function doPost(e) {
   if (action === "create") return handleCreate_(sheet, body);
   if (action === "resubmit") return handleResubmit_(sheet, body);
 
-  // Kế Toán (ketoan.html gửi kèm actorRole:"ketoan") chỉ được duyệt/từ chối/
-  // chi các đơn có tick "Hoàn tiền chênh lệch cabin" — kiểm tra lại ở đây
-  // để không chỉ dựa vào việc ẩn nút trên giao diện (ai đó có thể gọi thẳng
-  // API bỏ qua giao diện).
+  // Kế Toán (ketoan.html gửi kèm actorRole:"ketoan") chỉ được TỰ DUYỆT/TỪ CHỐI
+  // các đơn có tick "Hoàn tiền chênh lệch cabin" — kiểm tra lại ở đây để
+  // không chỉ dựa vào việc ẩn nút trên giao diện (ai đó có thể gọi thẳng API
+  // bỏ qua giao diện). Nhưng "markPaid" (đánh dấu đã chi) thì cho phép với
+  // MỌI đơn miễn là Giám Đốc đã duyệt rồi (status "da_duyet") — việc chi tiền
+  // là nghiệp vụ kế toán thường ngày, không riêng gì đơn cabin.
   if (body.actorRole === "ketoan" && (action === "approve" || action === "reject" || action === "markPaid")) {
     var recordCheck = getRecordByReqCode_(sheet, body.reqCode);
     if (!recordCheck) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
-    if (!(recordCheck.isCabinRefund === true || recordCheck.isCabinRefund === "TRUE")) {
-      return jsonOut_({ ok: false, error: "Kế Toán chỉ được duyệt/chi các đơn Hoàn tiền chênh lệch cabin." });
+    var isCabin = (recordCheck.isCabinRefund === true || recordCheck.isCabinRefund === "TRUE");
+    if (action === "markPaid") {
+      if (!isCabin && recordCheck.status !== "da_duyet") {
+        return jsonOut_({ ok: false, error: "Đơn này chưa được Giám Đốc duyệt, Kế Toán chưa thể chi." });
+      }
+    } else if (!isCabin) {
+      return jsonOut_({ ok: false, error: "Kế Toán chỉ được tự duyệt/từ chối các đơn Hoàn tiền chênh lệch cabin." });
     }
   }
 
