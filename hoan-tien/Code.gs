@@ -6,7 +6,7 @@
  * 2. Dán các cột sau vào hàng 1 (đúng thứ tự, đúng tên):
  *    reqCode | createdAt | department | requesterName | fromDate | toDate | reason | rowsJson |
  *    totalRequest | totalApproved | bankAccount | bankName | beneficiary | status | rejectReason |
- *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson | supplementOf | rejectFinal
+ *    approvedBy | approvedAt | paidBy | paidAt | attachmentsJson | historyJson | supplementOf | rejectFinal | isCabinRefund
  * 3. Trong Sheet: Extensions (Tiện ích mở rộng) → Apps Script.
  * 4. Xóa hết code mẫu, dán TOÀN BỘ file Code.gs này vào.
  * 5. Bấm Deploy → New deployment → chọn loại "Web app".
@@ -70,6 +70,19 @@ function doPost(e) {
   var action = body.action;
   if (action === "create") return handleCreate_(sheet, body);
   if (action === "resubmit") return handleResubmit_(sheet, body);
+
+  // Kế Toán (ketoan.html gửi kèm actorRole:"ketoan") chỉ được duyệt/từ chối/
+  // chi các đơn có tick "Hoàn tiền chênh lệch cabin" — kiểm tra lại ở đây
+  // để không chỉ dựa vào việc ẩn nút trên giao diện (ai đó có thể gọi thẳng
+  // API bỏ qua giao diện).
+  if (body.actorRole === "ketoan" && (action === "approve" || action === "reject" || action === "markPaid")) {
+    var recordCheck = getRecordByReqCode_(sheet, body.reqCode);
+    if (!recordCheck) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });
+    if (!(recordCheck.isCabinRefund === true || recordCheck.isCabinRefund === "TRUE")) {
+      return jsonOut_({ ok: false, error: "Kế Toán chỉ được duyệt/chi các đơn Hoàn tiền chênh lệch cabin." });
+    }
+  }
+
   if (action === "approve") {
     // totalApproved > 0: ít nhất 1 dòng được duyệt -> "da_duyet".
     // totalApproved == 0: tất cả các dòng bị từ chối (duyệt theo dòng) -> coi như "tu_choi".
@@ -188,7 +201,8 @@ function handleCreate_(sheet, body) {
     paidBy: "", paidAt: "",
     attachmentsJson: JSON.stringify(attachments),
     supplementOf: body.supplementOf || "",
-    rejectFinal: false
+    rejectFinal: false,
+    isCabinRefund: !!body.isCabinRefund
   };
   var rowArr = headers.map(function (h) { return record[h] !== undefined ? record[h] : ""; });
   sheet.appendRow(rowArr);
@@ -266,7 +280,8 @@ function handleResubmit_(sheet, body) {
     approvedBy: "",
     approvedAt: "",
     attachmentsJson: JSON.stringify(finalAttachments),
-    historyJson: JSON.stringify(history)
+    historyJson: JSON.stringify(history),
+    isCabinRefund: !!body.isCabinRefund
   };
   var success = applyUpdate_(sheet, body.reqCode, fields);
   if (!success) return jsonOut_({ ok: false, error: "Không tìm thấy reqCode: " + body.reqCode });

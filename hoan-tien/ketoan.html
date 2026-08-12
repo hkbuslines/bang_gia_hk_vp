@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kế Toán — Duyệt chi hoàn tiền cabin</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="gate no-print" id="gate">
+  <div class="gate-box">
+    <h2>🔒 Trang Kế Toán</h2>
+    <p>Nhập mã truy cập để tiếp tục</p>
+    <input type="password" id="gateInput" placeholder="Mã truy cập" autocomplete="off">
+    <button class="btn primary" id="gateBtn">Vào trang</button>
+    <div class="gate-err" id="gateErr">Sai mã truy cập, thử lại.</div>
+  </div>
+</div>
+
+<div class="toolbar no-print">
+  <div class="title"><span class="dot"></span> <span id="pageTitle">🚕 Kế Toán — Hoàn tiền chênh lệch cabin — Tất cả văn phòng</span></div>
+  <button class="btn" id="btnRefresh">↻ Làm mới</button>
+</div>
+
+<div id="app"></div>
+
+<script type="module">
+import {
+  DEPARTMENTS, STATUS_LABEL, statusLabelFor, fmtVND, amountSummaryHtml, fmtDate, fmtDateTime, buildVietQRUrl, attachmentLinksHtml, hasUnresolvedRejectedLine, parseNum, apiList, apiPost
+} from "./shared.js";
+
+// ==== Mã truy cập nội bộ ====
+// LƯU Ý BẢO MẬT: chỉ là rào chắn giao diện, không phải bảo mật thật (không có đăng nhập tài khoản).
+// Đổi mã tại đây:
+const ACCESS_CODE = "ketoan2026";
+const GATE_KEY = "hk_ketoan_access_ok";
+const gate = document.getElementById("gate");
+if (localStorage.getItem(GATE_KEY) === "1") gate.style.display = "none";
+document.getElementById("gateBtn").addEventListener("click", checkGate);
+document.getElementById("gateInput").addEventListener("keydown", e => { if (e.key === "Enter") checkGate(); });
+function checkGate() {
+  if (document.getElementById("gateInput").value === ACCESS_CODE) {
+    localStorage.setItem(GATE_KEY, "1"); gate.style.display = "none";
+  } else {
+    document.getElementById("gateErr").style.display = "block";
+  }
+}
+
+const app = document.getElementById("app");
+let allRequests = [];
+let currentDept = null; // null = màn hình tổng quan
+let currentTab = "cho_duyet";
+let selectedCode = null;
+
+async function loadData() {
+  app.innerHTML = '<div class="loading-note">Đang tải dữ liệu...</div>';
+  try {
+    allRequests = await apiList();
+  } catch (e) {
+    app.innerHTML = '<div class="empty-note">Lỗi tải dữ liệu: ' + e.message + '<br>Kiểm tra API_URL trong shared.js.</div>';
+    return;
+  }
+  render();
+}
+document.getElementById("btnRefresh").addEventListener("click", loadData);
+
+function render() {
+  if (!currentDept) { renderOverview(); return; }
+  renderDeptView();
+}
+
+function renderOverview() {
+  document.getElementById("pageTitle").textContent = "🚕 Kế Toán — Hoàn tiền chênh lệch cabin — Tất cả văn phòng";
+
+  // Trong số đang chờ duyệt, đơn nào là nộp mới lần đầu (chưa từng bị từ
+  // chối/gửi lại/bổ sung) so với đơn nộp bổ sung (đã từng bị trả lại để
+  // sửa, giờ VP gửi lại đang chờ duyệt lại).
+  const totalNewPending = allRequests.filter(r => r.status === "cho_duyet" && !r.supplementOf && !(r.history && r.history.length)).length;
+  const totalSupplementPending = allRequests.filter(r => r.status === "cho_duyet" && (r.supplementOf || (r.history && r.history.length))).length;
+  const totalAwaitingPay = allRequests.filter(r => r.status === "da_duyet").length;
+  const totalNeedsAction = allRequests.filter(r => r.status !== "tu_choi" && hasUnresolvedRejectedLine(r)).length;
+  const summaryHtml = `
+    <div class="overview-summary">
+      <div class="sum-item new ${totalNewPending === 0 ? "zero" : ""}"><b>${totalNewPending}</b> đơn nộp mới</div>
+      <div class="sum-item supplement ${totalSupplementPending === 0 ? "zero" : ""}"><b>${totalSupplementPending}</b> đơn nộp bổ sung</div>
+      <div class="sum-item payout ${totalAwaitingPay === 0 ? "zero" : ""}"><b>${totalAwaitingPay}</b> đơn duyệt chờ chi</div>
+      <div class="sum-item warn ${totalNeedsAction === 0 ? "zero" : ""}"><b>${totalNeedsAction}</b> đơn chờ bổ sung sửa chữa</div>
+    </div>`;
+
+  const html = DEPARTMENTS.map(d => {
+    const items = allRequests.filter(r => r.department === d.name);
+    const pending = items.filter(r => r.status === "cho_duyet").length;
+    const awaitingPay = items.filter(r => r.status === "da_duyet").length;
+    return `
+      <div class="dept-card" data-name="${d.name}">
+        <div class="name">${d.name} <span class="arrow">→</span></div>
+        <div class="stats">
+          <span class="pending-count ${pending === 0 ? "zero" : ""}">${pending} chờ duyệt</span>
+          <span class="payout-count ${awaitingPay === 0 ? "zero" : ""}">${awaitingPay} chờ chi</span>
+        </div>
+      </div>`;
+  }).join("");
+  app.innerHTML = summaryHtml + '<div class="dept-grid">' + html + '</div>';
+  app.querySelectorAll(".dept-card").forEach(card => {
+    card.addEventListener("click", () => {
+      currentDept = card.dataset.name;
+      currentTab = pickDefaultTab_(allRequests.filter(r => r.department === card.dataset.name));
+      selectedCode = null;
+      render();
+    });
+  });
+}
+
+// Vào 1 văn phòng: ưu tiên mở đúng tab đang có đơn thay vì luôn mặc định
+// "Chờ duyệt" — tránh cảm giác "trống trơn" khi đơn đã được xử lý xong và
+// nằm ở tab khác (vd vừa duyệt xong thì đơn nằm ở "Đã duyệt - chờ chi").
+function pickDefaultTab_(deptItems) {
+  var priority = ["cho_duyet", "da_duyet", "da_chi", "tu_choi"];
+  for (var i = 0; i < priority.length; i++) {
+    if (deptItems.some(function (r) { return r.status === priority[i]; })) return priority[i];
+  }
+  return "cho_duyet";
+}
+
+const TABS = [
+  { key: "cho_duyet", label: "Chờ duyệt" },
+  { key: "da_duyet", label: "Đã duyệt - chờ chi" },
+  { key: "da_chi", label: "Đã chi" },
+  { key: "tu_choi", label: "Từ chối" }
+];
+
+function renderDeptView() {
+  document.getElementById("pageTitle").textContent = "🚕 Kế Toán — " + currentDept;
+  const deptItems = allRequests.filter(r => r.department === currentDept);
+
+  const tabsHtml = TABS.map(t => {
+    const count = deptItems.filter(r => r.status === t.key).length;
+    return `<div class="tab ${t.key === currentTab ? "active" : ""}" data-key="${t.key}">${t.label} <span class="count">${count}</span></div>`;
+  }).join("");
+
+  const list = deptItems.filter(r => r.status === currentTab).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const listHtml = list.length ? list.map(r => `
+    <div class="req-card" data-code="${r.reqCode}">
+      <div class="row1"><span class="code">${r.reqCode}${r.isCabinRefund ? ' <span title="Hoàn tiền chênh lệch cabin — bạn duyệt/chi được">🚕</span>' : ' <span style="color:var(--muted); font-weight:400; font-size:11px;" title="Không phải hoàn tiền cabin — chỉ xem, Giám Đốc duyệt">🔒 chỉ xem</span>'}</span><span class="amt">${amountSummaryHtml(r)}</span></div>
+      ${r.supplementOf ? `<div class="supplement-tag">➕ Đơn bổ sung cho <b>${r.supplementOf}</b> (đơn từng bị từ chối 1 phần)</div>` : ""}
+      <div class="meta">${r.requesterName} · ${fmtDateTime(r.createdAt)}${r.attachments && r.attachments.length ? ` · <span class="attach-hint">📎 ${r.attachments.length}</span>` : ""}${r.history && r.history.length ? ` · <span class="resubmit-hint">🔁 gửi lại ${r.history.length} lần</span>` : ""}${r.status !== "tu_choi" && hasUnresolvedRejectedLine(r) ? ` · <span class="partial-flag">⚠ có mục bị từ chối, VP chưa xử lý</span>` : ""}</div>
+      <div class="reason">${r.reason || ""}</div>
+    </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
+
+  app.innerHTML = `
+    <div class="req-list no-print">
+      <div class="back-link" id="backLink">← Tất cả văn phòng</div>
+      <div class="tabs">${tabsHtml}</div>
+      <div id="listContainer">${listHtml}</div>
+    </div>
+    <div id="detailContainer"></div>
+  `;
+
+  document.getElementById("backLink").addEventListener("click", () => { currentDept = null; render(); });
+  app.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => { currentTab = t.dataset.key; selectedCode = null; render(); }));
+  app.querySelectorAll(".req-card").forEach(c => c.addEventListener("click", () => { selectedCode = c.dataset.code; renderDetail(); }));
+
+  if (selectedCode) renderDetail();
+}
+
+function renderDetail() {
+  const d = allRequests.find(r => r.reqCode === selectedCode);
+  const container = document.getElementById("detailContainer");
+  if (!d) { container.innerHTML = ""; return; }
+
+  const editable = d.status === "cho_duyet";
+  const rowsHtml = (d.rows || []).map((r, i) => {
+    let reasonCell = r.reason || "";
+    if (!editable && r.lineStatus === "tu_choi") {
+      // Đã xử lý xong: gộp lại 1 dòng gọn, không lặp lại "Từ chối" 2 lần.
+      // Chưa xử lý: cần cảnh báo rõ nên vẫn giữ 2 dòng để dễ thấy.
+      reasonCell += r.lineResolved
+        ? `<div style="color:var(--green-dark); font-size:11px;">✓ Từ chối (VP đã xử lý)${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>`
+        : `<div style="color:var(--danger); font-size:11px; margin-top:2px;">✕ Từ chối dòng${r.lineRejectReason ? ": " + r.lineRejectReason : ""}</div>` +
+          `<div style="color:var(--warn); font-size:11px; font-weight:700;">⚠ VP chưa xử lý dòng này</div>`;
+    }
+    let decisionHtml = "";
+    if (editable) {
+      decisionHtml = `<div class="no-print" style="margin-top:5px; padding-top:5px; border-top:1px dashed var(--border); text-align:left;">
+        <label style="font-size:11px; margin-right:8px;"><input type="radio" name="line-${i}" value="duyet" class="line-radio" data-idx="${i}" checked> Duyệt</label>
+        <label style="font-size:11px;"><input type="radio" name="line-${i}" value="tu_choi" class="line-radio" data-idx="${i}"> Từ chối</label>
+        <input type="text" class="line-reason-input" data-idx="${i}" placeholder="Lý do từ chối dòng này" style="display:none; width:100%; margin-top:4px; font-size:11px; padding:3px 6px; border:1px solid var(--border); border-radius:4px;">
+      </div>`;
+    }
+    return `<tr><td class="idx" data-label="STT">${i + 1}</td><td data-label="Ngày">${fmtDate(r.date)}</td><td data-label="Nội dung">${r.code || ""}</td>
+     <td data-label="Tiền hàng">${fmtVND(r.goods)}</td><td data-label="Thuế GTGT">${fmtVND(r.vat)}</td><td class="total-cell" data-label="Tổng tiền">${fmtVND(r.goods + r.vat)}</td>
+     <td data-label="Lý do / Ghi chú" style="text-align:left;">${reasonCell}${decisionHtml}</td></tr>`;
+  }).join("");
+
+  const qrUrl = buildVietQRUrl(d.bankName, d.bankAccount, d.totalApproved != null ? d.totalApproved : d.totalRequest, d.reqCode, d.beneficiary);
+
+  // Kế Toán chỉ được duyệt/chi trực tiếp với đơn tick "Hoàn tiền chênh lệch
+  // cabin" — mọi đơn khác chỉ xem được, không có nút hành động nào cả (vẫn
+  // phải chờ Giám Đốc duyệt bên trang duyet.html).
+  let actionsHtml = "";
+  if (!d.isCabinRefund) {
+    if (editable || d.status === "da_duyet") {
+      actionsHtml = '<span style="font-size:12.5px; color:var(--muted);">🔒 Không phải hoàn tiền chênh lệch cabin — chỉ Giám Đốc mới duyệt được đơn này.</span>';
+    }
+  } else if (editable) {
+    actionsHtml =
+      '<span style="font-size:12px; color:var(--muted);">Tổng sẽ duyệt: <b id="computedApprovedTotal" style="color:var(--green-dark);">' + fmtVND(d.totalRequest) + '</b></span>' +
+      '<button class="btn primary" id="btnConfirmApprove">Xác nhận duyệt</button>' +
+      '<button class="btn warn" id="btnRejectSupplement" title="Từ chối, nhưng vẫn cho văn phòng sửa & gửi lại">🔁 Từ chối - cho nộp bổ sung</button>' +
+      '<button class="btn danger" id="btnRejectFinal" title="Từ chối hẳn, không cho gửi lại đơn này nữa">🚫 Từ chối</button>';
+  } else if (d.status === "da_duyet") {
+    // Còn mục bị từ chối mà VP chưa xử lý (chưa chấp nhận / chưa gửi bổ sung)
+    // — vẫn cho chi nếu cần gấp, nhưng cảnh báo rõ trước khi bấm.
+    const unresolved = hasUnresolvedRejectedLine(d);
+    actionsHtml =
+      (unresolved ? '<span style="font-size:12px; color:var(--danger); font-weight:700;">⚠ VP chưa xử lý mục bị từ chối</span>' : '') +
+      '<button class="btn primary" id="btnPaid">💰 Đánh dấu đã chi</button>';
+  }
+
+  const historyHtml = (d.history && d.history.length) ? `
+    <div class="resend-history no-print">
+      <div class="hist-title">🔁 Đơn này đã được văn phòng gửi lại ${d.history.length} lần sau khi bị từ chối</div>
+      ${d.history.map((h, i) => `<div class="hist-item">Lần ${i + 1}: bị từ chối bởi <b>${h.rejectedBy || "?"}</b> lúc ${fmtDateTime(h.rejectedAt)}${h.rejectReason ? " — Lý do: " + h.rejectReason : ""} · gửi lại lúc ${fmtDateTime(h.resubmittedAt)}</div>`).join("")}
+    </div>` : "";
+
+  // Hiện nổi bật ngay đầu trang, không để văn phòng phải cuộn xuống mới thấy —
+  // file chứng từ thường là căn cứ để quyết định duyệt hay không.
+  const attachHtml = (d.attachments && d.attachments.length) ? `
+    <div class="attach-callout no-print">
+      <div class="hist-title">📎 ${d.attachments.length} file đính kèm từ văn phòng</div>
+      <div class="attach-links">${attachmentLinksHtml(d.attachments)}</div>
+    </div>` : "";
+
+  container.innerHTML = `
+    <div class="detail-toolbar no-print">
+      <span class="badge ${d.status}">${statusLabelFor(d)}</span>
+      <div class="spacer"></div>${actionsHtml}
+      <button class="btn" id="btnPrintDetail">🖨 In</button>
+    </div>
+    ${attachHtml}
+    ${historyHtml}
+    <div class="page-wrap">
+      <div class="sheet">
+        <div class="doc-header">
+          <div class="logo-wrap"><img src="logo.png" style="height:46px;"></div>
+          <div class="req-code-box">MÃ ĐỀ NGHỊ<div class="code-line"><b>${d.reqCode}</b></div></div>
+        </div>
+        <div class="company-name">Công Ty TNHH Dịch Vụ Vận Tải Và Thương Mại HK</div>
+        <div class="kg"><div class="to-block">
+          <div class="to-line"><span class="to-label">Kính gửi:</span><b>Ban Giám Đốc</b></div>
+          <div class="to-line"><span class="to-label"></span>Phòng Tài Chính Kế Toán</div>
+        </div></div>
+        <div class="doc-title-block"><div class="doc-title">Giấy Đề Nghị Thanh Toán / Hoàn Tiền</div>
+          <div class="doc-date">${fmtDateTime(d.createdAt)}</div></div>
+        <table class="info-table">
+          <tr><td class="label">Họ và tên người đề nghị:</td><td class="value-text">${d.requesterName}</td></tr>
+          <tr><td class="label">Bộ phận / Văn phòng:</td><td class="value-text">${d.department}</td></tr>
+          <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
+          <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
+          ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
+          ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:#254a9c; font-weight:600;">${d.supplementOf} (đơn từng bị từ chối 1 phần)</td></tr>` : ""}
+        </table>
+        <div class="invoice-scroll view-only">
+          <table class="invoice stack-mobile">
+            <colgroup><col style="width:6%"><col style="width:12%"><col style="width:16%"><col style="width:13%"><col style="width:13%"><col style="width:14%"><col style="width:26%"></colgroup>
+            <thead><tr><th>STT</th><th>Ngày</th><th>Nội dung</th><th>Tiền hàng</th><th>Thuế GTGT</th><th>Tổng tiền</th><th>Lý do / Ghi chú</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+        </div>
+        <div class="totals-bar">
+          <div class="totals-cell"><span class="totals-label">Tổng tiền đề nghị</span><span class="totals-value">${fmtVND(d.totalRequest)}</span></div>
+          <div class="totals-cell approved"><span class="totals-label">Tổng số được duyệt</span><span class="totals-value">${d.status === "tu_choi" ? '<span style="color:var(--danger); font-size:14px;">KHÔNG DUYỆT</span>' : fmtVND(d.totalApproved)}</span></div>
+        </div>
+        <div class="bank-section">
+          <table class="bank-table">
+            <tr><td class="label">Chuyển tiền vào STK:</td><td class="value-text">${d.bankAccount}</td></tr>
+            <tr><td class="label">Tại ngân hàng:</td><td class="value-text">${d.bankName}</td></tr>
+            <tr><td class="label">Người thụ hưởng:</td><td class="value-text">${d.beneficiary}</td></tr>
+          </table>
+          ${qrUrl ? `<div class="qr-box"><img src="${qrUrl}"><div class="qr-caption">Quét mã để chuyển khoản</div></div>` : ""}
+        </div>
+        <table class="approval">
+          <thead><tr><th>Người Đề Nghị</th><th>Người Duyệt</th><th>Người Chi</th></tr></thead>
+          <tbody><tr>
+            <td><div class="signer-name">${d.requesterName}</div><div class="stamp-time">${fmtDateTime(d.createdAt)}</div></td>
+            <td>${d.approvedBy ? `<div class="signer-name">${d.approvedBy}</div><div class="stamp-time">${fmtDateTime(d.approvedAt)}</div>` : '<span class="sign-hint">Chưa duyệt</span>'}</td>
+            <td>${d.paidBy ? `<div class="signer-name">${d.paidBy}</div><div class="stamp-time">${fmtDateTime(d.paidAt)}</div>` : '<span class="sign-hint">Chưa chi</span>'}</td>
+          </tr></tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  document.getElementById("btnPrintDetail")?.addEventListener("click", () => window.print());
+  document.getElementById("btnConfirmApprove")?.addEventListener("click", () => confirmApprove(d));
+  document.getElementById("btnRejectSupplement")?.addEventListener("click", () => rejectRequest(d, false));
+  document.getElementById("btnRejectFinal")?.addEventListener("click", () => rejectRequest(d, true));
+  document.getElementById("btnPaid")?.addEventListener("click", () => markPaid(d));
+
+  if (editable) {
+    container.querySelectorAll(".line-radio").forEach(radio => {
+      radio.addEventListener("change", () => updateLineDecisionUI(d));
+    });
+  }
+}
+
+function updateLineDecisionUI(d) {
+  const rows = d.rows || [];
+  let sum = 0;
+  rows.forEach((r, i) => {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+    const isReject = checked && checked.value === "tu_choi";
+    if (reasonInput) reasonInput.style.display = isReject ? "block" : "none";
+    if (!isReject) sum += (r.goods + r.vat);
+  });
+  const el = document.getElementById("computedApprovedTotal");
+  if (el) el.textContent = fmtVND(sum);
+}
+
+async function confirmApprove(d) {
+  const rows = d.rows || [];
+  for (let i = 0; i < rows.length; i++) {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const isReject = checked && checked.value === "tu_choi";
+    if (isReject) {
+      const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+      if (!reasonInput || !reasonInput.value.trim()) {
+        alert("Vui lòng nhập lý do từ chối cho dòng " + (i + 1) + ".");
+        return;
+      }
+    }
+  }
+  const name = prompt("Tên người duyệt:", "");
+  if (name === null) return;
+  if (!name.trim()) return alert("Vui lòng nhập tên người duyệt.");
+
+  let totalApproved = 0;
+  const updatedRows = rows.map((r, i) => {
+    const checked = document.querySelector('input[name="line-' + i + '"]:checked');
+    const isReject = checked && checked.value === "tu_choi";
+    const reasonInput = document.querySelector('.line-reason-input[data-idx="' + i + '"]');
+    if (!isReject) totalApproved += (r.goods + r.vat);
+    return Object.assign({}, r, {
+      lineStatus: isReject ? "tu_choi" : "duyet",
+      lineRejectReason: isReject ? (reasonInput ? reasonInput.value.trim() : "") : ""
+    });
+  });
+
+  try {
+    await apiPost({ action: "approve", reqCode: d.reqCode, approvedBy: name.trim(), totalApproved, rows: updatedRows, actorRole: "ketoan" });
+    await loadData();
+    const newStatus = totalApproved > 0 ? "da_duyet" : "tu_choi";
+    currentDept = d.department; currentTab = newStatus; selectedCode = d.reqCode; render();
+  } catch (e) { alert("Lỗi: " + e.message); }
+}
+async function rejectRequest(d, isFinal) {
+  if (isFinal && !confirm("Từ chối HẲN đơn này — văn phòng sẽ KHÔNG thể sửa & gửi lại được nữa. Chắc chắn chưa?")) return;
+  const reason = prompt("Lý do từ chối:", "");
+  if (reason === null) return;
+  if (!reason.trim()) return alert("Vui lòng nhập lý do từ chối.");
+  const name = prompt("Tên người từ chối:", "");
+  if (name === null) return;
+  try {
+    await apiPost({ action: "reject", reqCode: d.reqCode, rejectReason: reason.trim(), approvedBy: name.trim() || "", rejectFinal: !!isFinal, actorRole: "ketoan" });
+    await loadData();
+    currentDept = d.department; currentTab = "tu_choi"; selectedCode = d.reqCode; render();
+  } catch (e) { alert("Lỗi: " + e.message); }
+}
+async function markPaid(d) {
+  if (hasUnresolvedRejectedLine(d)) {
+    const proceed = confirm(
+      "Đơn này còn mục bị từ chối mà văn phòng CHƯA xử lý (chưa chấp nhận, chưa gửi bổ sung).\n\n" +
+      "Vẫn tiếp tục đánh dấu đã chi cho phần đã duyệt?"
+    );
+    if (!proceed) return;
+  }
+  const name = prompt("Tên kế toán xác nhận đã chi:", "");
+  if (name === null) return;
+  if (!name.trim()) return alert("Vui lòng nhập tên.");
+  try {
+    await apiPost({ action: "markPaid", reqCode: d.reqCode, paidBy: name.trim(), actorRole: "ketoan" });
+    await loadData();
+    currentDept = d.department; currentTab = "da_chi"; selectedCode = d.reqCode; render();
+  } catch (e) { alert("Lỗi: " + e.message); }
+}
+
+loadData();
+</script>
+</body>
+</html>

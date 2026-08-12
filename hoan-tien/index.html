@@ -91,6 +91,12 @@ document.getElementById("app").innerHTML = `
           </div>
         </td></tr>
         <tr><td class="label">Đề nghị / Nội dung:</td><td><textarea id="reasonText" placeholder="Hoàn tiền chênh lệch vé ..."></textarea></td></tr>
+        <tr class="no-print"><td class="label"></td><td>
+          <label style="display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; background:var(--green-light); border-radius:6px; padding:8px 10px;">
+            <input type="checkbox" id="chkCabinRefund" style="width:16px; height:16px;">
+            Hoàn tiền chênh lệch cabin <span style="color:var(--muted); font-weight:400;">(tick vào thì Kế Toán duyệt &amp; chi trực tiếp, không cần chờ Giám Đốc)</span>
+          </label>
+        </td></tr>
       </table>
 
       <div class="invoice-scroll">
@@ -421,6 +427,7 @@ function resetForm() {
   document.getElementById("bankAccount").value = "937869080";
   bankSelect.value = "MB Bank";
   document.getElementById("beneficiary").value = "";
+  document.getElementById("chkCabinRefund").checked = false;
   invoiceBody.innerHTML = "";
   addRow(); recalcGrandTotal(); newReqCode(); updateRangeText();
   selectedFiles = []; existingAttachments = []; renderAttachList();
@@ -469,7 +476,8 @@ async function submitRequest() {
       bankAccount: document.getElementById("bankAccount").value.trim(),
       bankName: bankSelect.value,
       beneficiary,
-      attachments
+      attachments,
+      isCabinRefund: document.getElementById("chkCabinRefund").checked
     };
     if (isSupplemental) payload.supplementOf = supplementalSourceReqCode;
     const result = await apiPost(payload);
@@ -548,6 +556,7 @@ async function loadMyRequests() {
       if (r.history && r.history.length) flags += `<span class="flag-icon" title="Đã gửi lại ${r.history.length} lần">🔁</span>`;
       if (r.attachments && r.attachments.length) flags += `<span class="flag-icon" title="${r.attachments.length} file đính kèm">📎</span>`;
       if (r.supplementOf) flags += `<span class="flag-icon" title="Đơn bổ sung cho ${r.supplementOf}">➕</span>`;
+      if (r.isCabinRefund) flags += `<span class="flag-icon" title="Hoàn tiền chênh lệch cabin — Kế Toán duyệt trực tiếp">🚕</span>`;
       return `
       <div class="my-row" data-code="${r.reqCode}">
         <span class="code">${r.reqCode}</span>
@@ -666,6 +675,7 @@ function openDetail(reqCode) {
           <tr><td class="label">Bộ phận / Văn phòng:</td><td class="value-text">${d.department}</td></tr>
           <tr><td class="label">Khung thời gian phát sinh:</td><td class="value-text">Từ ${fmtDate(d.fromDate)} đến ${fmtDate(d.toDate)}</td></tr>
           <tr><td class="label">Đề nghị / Nội dung:</td><td class="value-text">${d.reason}</td></tr>
+          ${d.isCabinRefund ? '<tr class="no-print"><td class="label"></td><td class="value-text"><span class="badge" style="background:#e3ecfb; color:#254a9c;">🚕 Hoàn tiền chênh lệch cabin — Kế Toán duyệt trực tiếp</span></td></tr>' : ""}
           ${d.status === "tu_choi" ? `<tr><td class="label">Lý do từ chối:</td><td class="value-text" style="color:var(--danger); font-weight:600;">${d.rejectReason || ""}</td></tr>` : ""}
           ${d.supplementOf ? `<tr><td class="label">Bổ sung cho đơn:</td><td class="value-text" style="color:var(--green-dark); font-weight:600;">${d.supplementOf}</td></tr>` : ""}
         </table>
@@ -747,6 +757,7 @@ function startEdit(reqCode) {
   document.getElementById("bankAccount").value = d.bankAccount || "937869080";
   bankSelect.value = d.bankName || "MB Bank";
   document.getElementById("beneficiary").value = d.beneficiary || "";
+  document.getElementById("chkCabinRefund").checked = !!d.isCabinRefund;
   document.getElementById("reqCode").textContent = reqCode; // giữ nguyên mã cũ, không tạo mã mới
   updateRangeText();
 
