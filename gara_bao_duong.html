@@ -1,0 +1,380 @@
+<title>Gara Báo Bảo Dưỡng</title>
+<style>
+:root{
+  --page:#EEF1EC; --surface:#FFFFFF; --surface-2:#F5F7F3;
+  --ink:#14201D; --ink-muted:#57645F; --ink-faint:#8B958F;
+  --line:#D7DCD3; --line-strong:#BFC7BB;
+  --accent:#2E5FA3; --accent-fill:rgba(46,95,163,0.16);
+  --warn:#B5701E; --warn-fill:rgba(181,112,30,0.16);
+  --danger:#B23B2E; --danger-fill:rgba(178,59,46,0.12);
+  --ok:#3F7D4A; --ok-fill:rgba(63,125,74,0.14);
+  --radius:8px;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+    --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+    --line:#2A312A; --line-strong:#3A433A;
+    --accent:#6FA0E0; --accent-fill:rgba(111,160,224,0.20);
+    --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+    --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+    --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+  --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+  --line:#2A312A; --line-strong:#3A433A;
+  --accent:#6FA0E0; --accent-fill:rgba(111,160,224,0.20);
+  --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+  --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+  --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-ui); font-size:14px;}
+.tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+.wrap{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
+h1{font-size:19px; font-weight:600; margin:0;}
+.sub{font-size:13px; color:var(--ink-muted); margin-top:2px; max-width:70ch; line-height:1.5;}
+
+.card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); padding:16px; margin-top:16px;}
+.card h2{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); margin:0 0 12px;}
+
+.formgrid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px;}
+.formgrid .full{grid-column:1 / -1;}
+.field{display:flex; flex-direction:column; gap:4px;}
+.field label{font-size:11.5px; color:var(--ink-muted); font-weight:600;}
+.field input, .field select, .field textarea{
+  font-family:var(--font-ui); font-size:13.5px; padding:7px 9px; border-radius:6px;
+  border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+.field textarea{resize:vertical; min-height:44px; font-family:var(--font-ui);}
+
+.toggle{display:flex; gap:8px;}
+.toggle label{
+  flex:1; display:flex; align-items:center; justify-content:center; gap:6px; padding:9px 10px;
+  border-radius:6px; border:1px solid var(--line-strong); cursor:pointer; font-size:13px; font-weight:600;
+  color:var(--ink-muted); background:var(--surface);
+}
+.toggle input{display:none;}
+.toggle input:checked + span{color:inherit;}
+.toggle label.warn-opt:has(input:checked){background:var(--warn-fill); border-color:var(--warn); color:var(--warn);}
+.toggle label.danger-opt:has(input:checked){background:var(--danger-fill); border-color:var(--danger); color:var(--danger);}
+
+.btnrow{display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
+button.primary{
+  padding:9px 18px; border-radius:6px; border:0; background:var(--ink); color:var(--page);
+  font-size:13px; font-weight:600; cursor:pointer;
+}
+button.primary:hover{opacity:0.9;}
+button.ghost{
+  padding:9px 16px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface);
+  color:var(--ink); font-size:13px; cursor:pointer;
+}
+button.ghost:hover{background:var(--surface-2);}
+
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 10px; border-bottom:1px solid var(--line-strong);}
+td{padding:9px 10px; border-bottom:0.5px solid var(--line); vertical-align:top;}
+tr:last-child td{border-bottom:0;}
+.tag{display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700;}
+.tag.warn{background:var(--warn-fill); color:var(--warn);}
+.tag.danger{background:var(--danger-fill); color:var(--danger);}
+.state{display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:11.5px; font-weight:600; font-family:var(--font-ui); border:0; cursor:pointer; appearance:none; -webkit-appearance:none;}
+.state:focus{outline:2px solid var(--accent); outline-offset:1px;}
+.state.wait{background:var(--surface-2); color:var(--ink-muted);}
+.state.doing{background:var(--warn-fill); color:var(--warn);}
+.state.done{background:var(--ok-fill); color:var(--ok);}
+.note{font-size:12px; color:var(--ink-faint); max-width:60ch;}
+.empty{color:var(--ink-faint); font-size:13px; padding:16px 4px;}
+.rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
+.rowbtn:hover{background:var(--surface-2); color:var(--ink);}
+
+.exportbox{margin-top:10px;}
+.exportbox textarea{width:100%; min-height:80px; font-family:var(--font-mono); font-size:11.5px; padding:8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface-2); color:var(--ink-muted);}
+::-webkit-scrollbar{height:10px; width:10px;}
+::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Gara — báo xe bảo dưỡng / hỏng trong tuần</h1>
+    <div class="sub">Điền từng xe cần xử lý bên dưới. "Bảo dưỡng" chỉ cần biết mất bao nhiêu tiếng (không cần chọn giờ cụ thể — xe vẫn chạy
+    được nốt khác trong ngày); "Hỏng — cắt hẳn" chọn từ ngày nào đến ngày nào, xe sẽ nghỉ hẳn những ngày đó. Trạng thái mặc định
+    là "Chờ xử lý" khi thêm mới, đổi trực tiếp trong danh sách khi bắt đầu làm hoặc xong. Bấm "Lưu lên GitHub" để bên xếp
+    xe tự thấy thay đổi (xe hỏng tự loại khỏi lịch, xe bảo dưỡng tự hiện khối bảo dưỡng) mỗi khi họ tải lại trang.</div>
+  </div>
+
+  <div class="card">
+    <h2>Thêm mục mới</h2>
+    <form id="entryForm">
+      <div class="formgrid">
+        <div class="field">
+          <label for="f-bks">Biển số xe</label>
+          <select id="f-bks" required></select>
+        </div>
+        <div class="field full" style="grid-column:span 3;">
+          <label>Loại xử lý</label>
+          <div class="toggle">
+            <label class="warn-opt"><input type="radio" name="loai" value="baoduong" checked><span>🔧 Bảo dưỡng (theo số giờ)</span></label>
+            <label class="danger-opt"><input type="radio" name="loai" value="hong"><span>🚫 Hỏng — cắt hẳn xe (nguyên ngày)</span></label>
+          </div>
+        </div>
+
+        <div class="field" id="f-ngaybd-wrap">
+          <label for="f-ngaybd" id="f-ngaybd-label">Ngày bảo dưỡng</label>
+          <input type="date" id="f-ngaybd" required>
+        </div>
+        <div class="field" id="f-sogio-wrap">
+          <label for="f-sogio">Mất bao nhiêu tiếng</label>
+          <input type="number" id="f-sogio" min="0.5" max="48" step="0.5" value="6">
+        </div>
+        <div class="field" id="f-ngaykt-wrap" style="display:none;">
+          <label for="f-ngaykt">Đến ngày</label>
+          <input type="date" id="f-ngaykt">
+        </div>
+
+        <div class="field full">
+          <label for="f-noidung">Nội dung sửa chữa (sửa gì, làm gì)</label>
+          <textarea id="f-noidung" placeholder="Ví dụ: Bảo dưỡng cấp 2 — thay dầu, kiểm tra phanh, đảo lốp"></textarea>
+        </div>
+        <div class="field full" style="grid-column:span 4;">
+          <label for="f-ghichu">Ghi chú</label>
+          <input type="text" id="f-ghichu" placeholder="Không bắt buộc">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button type="submit" class="primary">+ Thêm vào danh sách</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Danh sách đã báo (<span id="countLabel">0</span>)</h2>
+    <div id="listWrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>Đồng bộ với bảng xếp xe (qua GitHub)</h2>
+    <div class="note" id="ghStatus">Chưa lưu lên GitHub lần nào trong phiên này.</div>
+    <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
+      <button type="button" class="primary" id="ghSaveBtn">💾 Lưu lên GitHub (để bên xếp xe thấy)</button>
+      <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+    </div>
+    <div class="exportbox">
+      <div class="note" style="margin-bottom:6px;">Hoặc copy JSON dán tay nếu chưa muốn dùng GitHub:</div>
+      <textarea id="exportArea" readonly></textarea>
+    </div>
+    <div class="btnrow" style="justify-content:flex-start;">
+      <button type="button" class="ghost" id="copyBtn">Copy JSON</button>
+    </div>
+  </div>
+</div>
+
+<script id="bus-data" type="application/json">[{"bks": "29K-079.90", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Quốc Thắng + Nguyễn Văn Dương", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29K-067.82", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Văn Hải + Trần Văn Hiếu", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29H-953.23", "tuyen_chinh": "SAPA", "cap_lai_nha": "Dương Văn Sơn + Pham Doan Binh", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29E-337.13", "tuyen_chinh": "SAPA", "cap_lai_nha": "Trương Hoàng Định + Đào Ngọc Minh", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29K-026.00", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyen Van Hung + Tạ Văn Binh", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29H-953.83", "tuyen_chinh": "SAPA", "cap_lai_nha": "Pham Trong Khanh + Vũ Quang Tùng", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "61H-203.51", "tuyen_chinh": "SAPA", "cap_lai_nha": "Đặng Văn Hùng + Đỗ Văn Kim", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29H-878.44", "tuyen_chinh": "SAPA", "cap_lai_nha": "NINH VAN TUE + Đỗ Văn Vĩnh", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29E-133.14", "tuyen_chinh": "HỘI AN", "cap_lai_nha": "Nguyễn Đình Tú + Vũ Đình Đông", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29E-133.71", "tuyen_chinh": "HỘI AN", "cap_lai_nha": "Lê Thanh Hải + TRUONG CONG DUONG", "phan_loai": "CỐ ĐỊNH", "limo": false}, {"bks": "29E-342.14", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lê Văn Thu + Trần Xuân Thụ", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29H-952.86", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Thanh Tĩnh + Nguyễn Văn Hiệp", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29K-018.85", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lê Thanh Thanh + Nguyễn Quang Nghĩa", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29H-993.00", "tuyen_chinh": "SAPA", "cap_lai_nha": "Hoang Van The + Hoàng Anh Niên", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29K-019.50", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lưu Văn Thắng + Phạm Thành Trung", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29H-993.09", "tuyen_chinh": "SAPA", "cap_lai_nha": "Bùi Văn Tâm + Trần Xuân Nam", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29H-953.15", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Văn Thêm + Đặng Thế Huy", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29E-133.31", "tuyen_chinh": "HỘI AN", "cap_lai_nha": "Bùi Quang Tuyến + Nguyễn Duy Linh", "phan_loai": "BÁN ỔN ĐỊNH", "limo": false}, {"bks": "29K-074.57", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phan Văn Việt + Đinh Hà Ly", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-333.75", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Quang Huy + Nguyễn Văn Mạnh", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-334.80", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Quốc Cử + Đỗ Văn Vĩnh", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-361.84", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lê Ngọc Sơn + Phan Văn Việt", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-336.70", "tuyen_chinh": "SAPA", "cap_lai_nha": "NGUYEN BA SON + Đỗ Văn Vĩnh", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-328.67", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Minh Tuấn + Phạm Văn Thám", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29K-014.98", "tuyen_chinh": "SAPA", "cap_lai_nha": "Vương Văn Quân + Đỗ Văn Kim", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-387.18", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lương Đình Thể + Thi Văn Nam", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29K-012.26", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Văn Đại + Trần Tiến Trung", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-192.51", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lê Văn Huê + Đỗ Văn Phương", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-323.93", "tuyen_chinh": "SAPA", "cap_lai_nha": "Trần Khắc Thanh + Đặng Văn Thế", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-192.54", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Huy Hoàng + Thi Văn Nam", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-192.71", "tuyen_chinh": "SAPA", "cap_lai_nha": "Bùi Văn Hợp + Phạm Hồng Thái", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-106.07", "tuyen_chinh": "SAPA", "cap_lai_nha": "Thi Văn Nam + Vu Van Tung", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-326.06", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Ngọc Dương + Trịnh Đức Tuấn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-489.31", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Quốc Cử + Đinh Văn Giang", "phan_loai": "LUÂN CHUYỂN", "limo": true}, {"bks": "29E-109.65", "tuyen_chinh": "SAPA", "cap_lai_nha": "Giáp Thanh Nguyện + Phạm Thành Trung", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-360.82", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Tiến Dũng + Vi Anh Tuấn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-342.96", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Ngọc Dương + Phạm Quốc Hội", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-151.10", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Đình Văn + Đinh Văn Chuyên", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-361.26", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Văn Nam + Trần Văn Long", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-192.60", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phạm Văn Đạo + Trần Văn Sơn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-340.17", "tuyen_chinh": "SAPA", "cap_lai_nha": "Chu Văn Định + Đỗ Văn Cư", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-526.74", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phan Van Tuan + Vi Anh Tuấn", "phan_loai": "LUÂN CHUYỂN", "limo": true}, {"bks": "29E-360.50", "tuyen_chinh": "SAPA", "cap_lai_nha": "Chu Văn Định + Nguyễn Hữu Dũng", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-387.95", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lại Hồng Trường + Pham Dinh Hai", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-446.42", "tuyen_chinh": "SAPA", "cap_lai_nha": "Dương Văn Sơn + Vu Van Tung", "phan_loai": "LUÂN CHUYỂN", "limo": true}, {"bks": "29E-593.80", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Dương Tân + Nguyễn Văn Cường", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-582.70", "tuyen_chinh": "SAPA", "cap_lai_nha": "LUONG VAN TRUONG + Nguyễn Văn Sơn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-608.29", "tuyen_chinh": "SAPA", "cap_lai_nha": "DO VAN THACH + Trần Hải Nam", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "50E-702.24", "tuyen_chinh": "SAPA", "cap_lai_nha": "Trần Đình Chiến + Đỗ Đình Mừng", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-610.46", "tuyen_chinh": "SAPA", "cap_lai_nha": "Chu Văn Tạo + Nhâm Gia Đạt", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-597.40", "tuyen_chinh": "SAPA", "cap_lai_nha": "NGUYEN THANH TUAN + Phạm Văn Đạo", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-482.80", "tuyen_chinh": "SAPA", "cap_lai_nha": "Hoàng Mạnh Hùng + Lê Thanh Thanh", "phan_loai": "LUÂN CHUYỂN", "limo": true}, {"bks": "29E-528.94", "tuyen_chinh": "SAPA", "cap_lai_nha": "Lê Thanh Thanh + Nguyễn Ngọc Cửu", "phan_loai": "LUÂN CHUYỂN", "limo": true}, {"bks": "29E-133.26", "tuyen_chinh": "SAPA", "cap_lai_nha": "Bùi Văn Hợp + Nguyễn Văn Ban", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-809.11", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nguyễn Văn Cường + Trịnh Đức Tuấn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-133.21", "tuyen_chinh": "HỘI AN", "cap_lai_nha": "HOANG DINH NAM + Nguyễn Quang Huân", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-809.53", "tuyen_chinh": "SAPA", "cap_lai_nha": "Nhâm Gia Đạt + Phạm Đình Phơn", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-805.37", "tuyen_chinh": "NHA TRANG", "cap_lai_nha": "Nguyễn Văn Sơn + Phạm Văn Hưng", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-807.30", "tuyen_chinh": "NHA TRANG", "cap_lai_nha": "Mai Ngọc Biên + Phan Anh Hiệp", "phan_loai": "LUÂN CHUYỂN", "limo": false}, {"bks": "29E-483.14", "tuyen_chinh": "SAPA", "cap_lai_nha": "Phan Van Tuan + Phạm Văn Đông", "phan_loai": "LUÂN CHUYỂN", "limo": true}]</script>
+<script>
+(function(){
+  const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
+  const STATE_LABEL = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
+  const REPO = 'hkbuslines/bang_gia_hk_vp';
+  const DATA_PATH = 'bao_duong_data.json';
+  const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
+  const API_URL = `https://api.github.com/repos/${REPO}/contents/${DATA_PATH}`;
+  const TOKEN_KEY = 'hkbl_gh_token';
+  let entries = [];
+  let counter = 1;
+
+  function b64EncodeUtf8(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function getToken(forcePrompt){
+    let t = localStorage.getItem(TOKEN_KEY);
+    if (!t || forcePrompt){
+      t = prompt(
+        'Dán Personal Access Token GitHub (fine-grained, chỉ cần quyền "Contents: Read and write" cho repo ' + REPO + ').
+' +
+        'Token chỉ lưu trong trình duyệt máy này, không gửi đi đâu khác ngoài GitHub.',
+        ''
+      );
+      if (t) localStorage.setItem(TOKEN_KEY, t.trim());
+    }
+    return t ? t.trim() : null;
+  }
+  document.getElementById('ghTokenBtn').addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    getToken(true);
+  });
+
+  async function loadFromGithub(){
+    const statusEl = document.getElementById('ghStatus');
+    try {
+      const res = await fetch(RAW_URL, {cache: 'no-store'});
+      if (res.status === 404){
+        statusEl.textContent = 'Chưa có dữ liệu nào trên GitHub — đây sẽ là lần lưu đầu tiên.';
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      entries = data.entries || [];
+      counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
+      statusEl.textContent = `Đã tải ${entries.length} mục từ GitHub (cập nhật lần cuối: ${data.updated_at || '—'}).`;
+      render();
+    } catch(err){
+      statusEl.textContent = 'Không tải được dữ liệu cũ từ GitHub (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+    }
+  }
+
+  async function saveToGithub(){
+    const statusEl = document.getElementById('ghStatus');
+    const token = getToken(false);
+    if (!token){ statusEl.textContent = 'Chưa nhập mã kết nối GitHub, chưa lưu được.'; return; }
+    statusEl.textContent = 'Đang lưu lên GitHub...';
+    try {
+      let sha = null;
+      const cur = await fetch(API_URL, {headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json'}});
+      if (cur.ok){ const curJson = await cur.json(); sha = curJson.sha; }
+      else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
+
+      const payload = { entries, updated_at: new Date().toISOString() };
+      const body = {
+        message: 'Cập nhật bảo dưỡng/xe hỏng — ' + new Date().toLocaleString('vi-VN'),
+        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
+      };
+      if (sha) body.sha = sha;
+
+      const put = await fetch(API_URL, {
+        method: 'PUT',
+        headers: {Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+      if (!put.ok){
+        const errJson = await put.json().catch(()=>({}));
+        if (put.status === 401){
+          statusEl.textContent = 'Mã kết nối GitHub sai hoặc hết hạn — bấm "Đổi mã kết nối GitHub" để nhập lại.';
+        } else {
+          statusEl.textContent = 'Lưu lỗi: ' + (errJson.message || ('HTTP ' + put.status));
+        }
+        return;
+      }
+      statusEl.textContent = `Đã lưu ${entries.length} mục lên GitHub lúc ${new Date().toLocaleTimeString('vi-VN')}. Bên xếp xe sẽ thấy khi tải lại trang.`;
+    } catch(err){
+      statusEl.textContent = 'Lưu lỗi: ' + err.message;
+    }
+  }
+  document.getElementById('ghSaveBtn').addEventListener('click', saveToGithub);
+
+  const bksSel = document.getElementById('f-bks');
+  BUSES.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.bks;
+    opt.textContent = b.bks + (b.tuyen_chinh ? ' — ' + b.tuyen_chinh : '');
+    bksSel.appendChild(opt);
+  });
+
+  const today = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  document.getElementById('f-ngaybd').value = iso(today);
+
+  function updateFieldVisibility(){
+    const loai = document.querySelector('input[name="loai"]:checked').value;
+    const isBD = loai === 'baoduong';
+    document.getElementById('f-ngaybd-label').textContent = isBD ? 'Ngày bảo dưỡng' : 'Từ ngày';
+    document.getElementById('f-sogio-wrap').style.display = isBD ? '' : 'none';
+    document.getElementById('f-ngaykt-wrap').style.display = isBD ? 'none' : '';
+    if (!isBD && !document.getElementById('f-ngaykt').value){
+      document.getElementById('f-ngaykt').value = document.getElementById('f-ngaybd').value;
+    }
+  }
+  document.querySelectorAll('input[name="loai"]').forEach(r => r.addEventListener('change', updateFieldVisibility));
+  updateFieldVisibility();
+
+  function fmtRange(e){
+    if (e.loai === 'baoduong') return `${e.ngaybd} · ${e.sogio} tiếng`;
+    return e.ngaybd === e.ngaykt ? e.ngaybd : `${e.ngaybd} → ${e.ngaykt}`;
+  }
+
+  function render(){
+    const wrap = document.getElementById('listWrap');
+    document.getElementById('countLabel').textContent = entries.length;
+    if (!entries.length){
+      wrap.innerHTML = '<div class="empty">Chưa có mục nào — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
+    } else {
+      const stateOptions = id => Object.keys(STATE_LABEL).map(k =>
+        `<option value="${k}" ${entries.find(x=>x.id===id).trangthai===k?'selected':''}>${STATE_LABEL[k]}</option>`).join('');
+      const rows = entries.slice().sort((a,b) => a.ngaybd.localeCompare(b.ngaybd)).map(e => `
+        <tr>
+          <td class="tabular" style="font-weight:700;">${e.bks}</td>
+          <td>${e.loai === 'baoduong' ? '<span class="tag warn">🔧 Bảo dưỡng</span>' : '<span class="tag danger">🚫 Hỏng</span>'}</td>
+          <td class="tabular">${fmtRange(e)}</td>
+          <td>${e.noidung ? e.noidung.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
+          <td><select class="state ${e.trangthai}" data-state="${e.id}">${stateOptions(e.id)}</select></td>
+          <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : ''}</td>
+          <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
+        </tr>`).join('');
+      wrap.innerHTML = `<table>
+        <thead><tr><th>BKS</th><th>Loại</th><th>Thời gian</th><th>Nội dung</th><th>Trạng thái</th><th>Ghi chú</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+      wrap.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          entries = entries.filter(e => e.id !== Number(btn.dataset.del));
+          render();
+        });
+      });
+      wrap.querySelectorAll('[data-state]').forEach(sel => {
+        sel.addEventListener('change', () => {
+          const entry = entries.find(x => x.id === Number(sel.dataset.state));
+          entry.trangthai = sel.value;
+          sel.className = 'state ' + sel.value;
+          document.getElementById('exportArea').value = JSON.stringify(entries, null, 2);
+        });
+      });
+    }
+    document.getElementById('exportArea').value = JSON.stringify(entries, null, 2);
+  }
+
+  document.getElementById('entryForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const loai = document.querySelector('input[name="loai"]:checked').value;
+    const entry = {
+      id: counter++,
+      bks: document.getElementById('f-bks').value,
+      loai,
+      ngaybd: document.getElementById('f-ngaybd').value,
+      ngaykt: loai === 'baoduong' ? document.getElementById('f-ngaybd').value : document.getElementById('f-ngaykt').value,
+      sogio: loai === 'baoduong' ? Number(document.getElementById('f-sogio').value) : null,
+      noidung: document.getElementById('f-noidung').value.trim(),
+      trangthai: 'wait',
+      ghichu: document.getElementById('f-ghichu').value.trim(),
+    };
+    if (!entry.ngaybd){ alert('Chọn ngày.'); return; }
+    if (loai === 'baoduong' && (!entry.sogio || entry.sogio <= 0)){
+      alert('Nhập số giờ cần bảo dưỡng.'); return;
+    }
+    if (loai === 'hong' && (!entry.ngaykt || entry.ngaykt < entry.ngaybd)){
+      alert('Kiểm tra lại "Đến ngày" (phải từ ngày bắt đầu trở đi).'); return;
+    }
+    entries.push(entry);
+    document.getElementById('f-noidung').value = '';
+    document.getElementById('f-ghichu').value = '';
+    render();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const area = document.getElementById('exportArea');
+    area.select();
+    document.execCommand('copy');
+    const btn = document.getElementById('copyBtn');
+    const old = btn.textContent;
+    btn.textContent = 'Đã copy ✓';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  });
+
+  render();
+  loadFromGithub();
+})();
+</script>
