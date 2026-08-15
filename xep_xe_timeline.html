@@ -82,7 +82,6 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .rgroup .rlabel .n{font-weight:400; color:var(--ink-faint); margin-left:4px;}
 .rgroup .rchips{flex:1; display:flex; flex-wrap:wrap; gap:6px; min-height:26px;}
 .rgroup .rchips:empty::before{content:"— hết —"; color:var(--ink-faint); font-size:11px; padding-top:4px;}
-.rgroup.yesterday{padding-bottom:8px; border-bottom:1px dashed var(--line-strong); margin-bottom:2px;}
 
 .chip{display:inline-flex; align-items:center; gap:5px; padding:4px 6px 4px 9px; border-radius:6px; cursor:grab; user-select:none; font-size:11.5px; font-weight:600; color:#fff; box-shadow:0 1px 1px rgba(0,0,0,0.08);}
 .chip:active{cursor:grabbing;}
@@ -140,10 +139,6 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
-.block.carry{
-  background:repeating-linear-gradient(45deg, var(--ink-faint), var(--ink-faint) 6px, var(--surface-2) 6px, var(--surface-2) 12px);
-  color:var(--ink-muted); cursor:default; font-weight:600; opacity:0.85;
-}
 
 footer.note{margin-top:16px; font-size:12px; color:var(--ink-faint); max-width:78ch; line-height:1.6;}
 footer.note b{color:var(--ink-muted);}
@@ -190,12 +185,10 @@ footer.note b{color:var(--ink-muted);}
   </div>
 
   <footer class="note">
-    <b>Cách dùng:</b> mỗi hàng xe là 1 thanh 30 giờ (0h–24h của ngày, cộng thêm giờ sáng hôm sau cho chuyến đêm).
-    Nếu xe đang bận chuyến khác trùng giờ khi bạn thả nốt mới vào, hệ thống vẫn cho xếp nhưng viền đỏ + ⚠ báo
-    <b>trễ xe</b> để bạn cân nhắc đổi xe khác. Nốt nào xuất phát khuya và về sáng hôm sau, khi bạn bấm sang xem
-    ngày kế tiếp, nốt đó vẫn hiện ở đầu khay ("🌙 Đêm hôm qua — vẫn cần xếp") nếu CHƯA xếp xe — kéo thẳng vào hàng
-    xe của ngày hôm sau để xếp, khỏi phải quay lại ngày trước; nếu ĐÃ xếp rồi thì đúng xe đó sẽ hiện khối kẻ sọc
-    "tiếp ca đêm" ở đầu thanh giờ để bạn biết xe còn bận. Xe nào đang hỏng không chạy được thì kéo nhãn BKS
+    <b>Cách dùng:</b> mỗi hàng xe là 1 thanh 24 giờ trong ngày đang xem. Nốt xuất phát trong ngày nào thì xếp và
+    hiển thị nguyên trong ngày đó như bình thường (kể cả chuyến chạy qua đêm/về hôm sau) — không tách hay lặp
+    sang ngày kế tiếp. Nếu xe đang bận chuyến khác trùng giờ khi bạn thả nốt mới vào, hệ thống vẫn cho xếp nhưng
+    viền đỏ + ⚠ báo <b>trễ xe</b> để bạn cân nhắc đổi xe khác. Xe nào đang hỏng không chạy được thì kéo nhãn BKS
     (ở đầu mỗi hàng) thả vào ô đỏ "Xe hỏng" phía trên — xe đó biến mất khỏi bảng xếp hôm đó, các nốt đã xếp cho nó
     tự động trả về khay để xếp lại xe khác; kéo ngược lại vào bảng (hoặc bấm ✕) để khôi phục. Đánh dấu hỏng tính
     riêng theo từng ngày (kéo tay ở đây). Xe được <b>Gara báo hỏng</b> (từ trang Gara) tự động biến mất khỏi lịch
@@ -290,29 +283,12 @@ footer.note b{color:var(--ink-muted);}
 
   function overlaps(a, b){ return a.dep < b.arr && b.dep < a.arr; }
 
-  // if `bks` was assigned an overnight trip on the PREVIOUS rendered day that spills past
-  // midnight, returns the spillover end (minutes into today, 0-based) — else null.
-  function getCarryover(idx, bks){
-    if (idx <= 0) return null;
-    const prevDay = DAYS[idx - 1];
-    const prevSt = stateByDay[prevDay.date];
-    const prevTripById = tripByIdByDay[prevDay.date];
-    let end = null;
-    prevSt.assignments[bks].forEach(id => {
-      const t = prevTripById[id];
-      if (t.arr > 1440) end = Math.max(end || 0, t.arr - 1440);
-    });
-    return end;
-  }
-
   function conflictsFor(date, bks, tripId){
     const st = stateByDay[date];
     const tripById = tripByIdByDay[date];
     const list = st.assignments[bks].filter(id => id !== tripId).map(id => tripById[id]);
     const t = tripById[tripId];
     if (list.some(o => overlaps(o, t))) return true;
-    const carry = getCarryover(dayIdx, bks);
-    if (carry !== null && t.dep < carry) return true;
     const garaBD = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong');
     if (garaBD.some(e => overlaps({dep:0, arr:Math.round(e.sogio*60)}, t))) return true;
     return false;
@@ -353,8 +329,7 @@ footer.note b{color:var(--ink-muted);}
     });
   }
 
-  function chipEl(trip, originDate, forLane, opts){
-    opts = opts || {};
+  function chipEl(trip, originDate, forLane){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
     el.className = forLane ? 'block' : 'chip';
@@ -363,11 +338,10 @@ footer.note b{color:var(--ink-muted);}
     el.dataset.tripId = trip.id;
     el.dataset.origin = originDate;
     if (forLane && conflictsFor(originDate, forLane, trip.id)) el.classList.add('conflict');
-    const fromYesterday = opts.fromYesterday ? '🌙 ' : '';
 
     const label = document.createElement('span');
     label.className = 'chiptext';
-    label.textContent = forLane ? `${fromYesterday}${trip.depStr} · ${trip.route}` : `${fromYesterday}${trip.depStr}`;
+    label.textContent = forLane ? `${trip.depStr} · ${trip.route}` : trip.depStr;
     el.appendChild(label);
 
     const del = document.createElement('button');
@@ -384,7 +358,6 @@ footer.note b{color:var(--ink-muted);}
     });
     el.appendChild(del);
 
-    if (opts.fromYesterday) el.title = `Nốt đêm hôm qua (${originDate}), xếp ở đây sẽ tính vào lịch của xe cho đêm đó`;
     if (forLane){
       const left = trip.dep * PX_PER_MIN;
       const width = Math.max(8, Math.min(AXIS_END, trip.arr) - trip.dep) * PX_PER_MIN;
@@ -416,28 +389,6 @@ footer.note b{color:var(--ink-muted);}
     const tripById = tripByIdByDay[day.date];
     const tray = document.getElementById('tray');
     tray.innerHTML = '';
-
-    // ---- leftover overnight nốt from yesterday that still need a vehicle ----
-    if (dayIdx > 0){
-      const prevDay = DAYS[dayIdx - 1];
-      const prevSt = stateByDay[prevDay.date];
-      const prevTripById = tripByIdByDay[prevDay.date];
-      const leftoverIds = [...prevSt.unassigned].filter(id => prevTripById[id].arr > 1440)
-        .sort((a,b) => prevTripById[a].dep - prevTripById[b].dep);
-      if (leftoverIds.length){
-        const group = document.createElement('div');
-        group.className = 'rgroup yesterday';
-        const label = document.createElement('div');
-        label.className = 'rlabel';
-        label.style.color = 'var(--ink-muted)';
-        label.innerHTML = `🌙 Đêm hôm qua (${prevDay.dd}) — vẫn cần xếp<span class="n">${leftoverIds.length}</span>`;
-        const chips = document.createElement('div');
-        chips.className = 'rchips';
-        leftoverIds.forEach(id => chips.appendChild(chipEl(prevTripById[id], prevDay.date, null, {fromYesterday: true})));
-        group.appendChild(label); group.appendChild(chips);
-        tray.appendChild(group);
-      }
-    }
 
     if (!st.unassigned.size && !tray.children.length){
       const e = document.createElement('div');
@@ -538,16 +489,6 @@ footer.note b{color:var(--ink-muted);}
         const track = document.createElement('div');
         track.className = 'track';
         track.style.width = laneWidth + 'px';
-        const carry = getCarryover(dayIdx, b.bks);
-        if (carry !== null){
-          const ghost = document.createElement('div');
-          ghost.className = 'block carry';
-          ghost.style.left = '0px';
-          ghost.style.width = Math.max(8, carry) * PX_PER_MIN + 'px';
-          ghost.title = 'Xe còn đang chạy nốt chuyến đêm hôm qua, chưa quay lại';
-          ghost.textContent = `⏪ tiếp ca đêm — đến ${String(Math.floor(carry/60)).padStart(2,'0')}:${String(carry%60).padStart(2,'0')}`;
-          track.appendChild(ghost);
-        }
         garaBD.forEach(e => {
           const dep = 0, arr = Math.round(e.sogio * 60);
           const mb = document.createElement('div');
