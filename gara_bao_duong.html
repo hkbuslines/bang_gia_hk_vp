@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Gara Báo Bảo Dưỡng</title>
 <style>
 :root{
@@ -195,8 +196,7 @@ tr:last-child td{border-bottom:0;}
     let t = localStorage.getItem(TOKEN_KEY);
     if (!t || forcePrompt){
       t = prompt(
-        'Dán Personal Access Token GitHub (fine-grained, chỉ cần quyền "Contents: Read and write" cho repo ' + REPO + ').
-' +
+        'Dán Personal Access Token GitHub (fine-grained, chỉ cần quyền "Contents: Read and write" cho repo ' + REPO + ').\n' +
         'Token chỉ lưu trong trình duyệt máy này, không gửi đi đâu khác ngoài GitHub.',
         ''
       );

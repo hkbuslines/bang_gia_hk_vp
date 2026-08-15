@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>Bảng Xếp Xe</title>
 <style>
 :root{
@@ -529,8 +530,7 @@ footer.note b{color:var(--ink-muted);}
           const icon = document.createElement('span');
           icon.className = 'gicon';
           icon.textContent = STATE_ICON[worst];
-          icon.title = garaBD.map(e => `${STATE_ICON[e.trangthai]} ${STATE_LABEL_VN[e.trangthai]} — ${e.sogio} tiếng (${e.ngaybd})${e.noidung ? ': ' + e.noidung : ''}`).join('
-');
+          icon.title = garaBD.map(e => `${STATE_ICON[e.trangthai]} ${STATE_LABEL_VN[e.trangthai]} — ${e.sogio} tiếng (${e.ngaybd})${e.noidung ? ': ' + e.noidung : ''}`).join('\n');
           label.appendChild(icon);
         }
         lane.appendChild(label);
