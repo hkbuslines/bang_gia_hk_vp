@@ -295,10 +295,12 @@ footer.note b{color:var(--ink-muted);}
 
 <script id="bus-data" type="application/json">__BUSES_JSON__</script>
 <script id="day-data" type="application/json">__DAYS_JSON__</script>
+<script id="driver-data" type="application/json">__DRIVERS_JSON__</script>
 <script>
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
   const DAYS = JSON.parse(document.getElementById('day-data').textContent);
+  const DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
   const ROUTE_ORDER = __ROUTE_ORDER_JS__;
   const FALLBACK_IDX = __FALLBACK_IDX__;
   const AXIS_END = 1440;
@@ -679,7 +681,8 @@ footer.note b{color:var(--ink-muted);}
   function normName(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d'); }
   const bksNormOf = {}; BUSES.forEach(b => { bksNormOf[b.bks] = normBks(b.bks); });
   const allBksList = BUSES.map(b => b.bks);
-  const DRIVER_NAME_POOL = [...new Set(BUSES.flatMap(b => [b.lai1, b.lai2].filter(Boolean)))].sort();
+  // dùng đúng danh sách lái xe đầy đủ (không chỉ những lái đang gắn sẵn 1 xe) để chọn khi cần thay/đổi lái
+  const DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.map(d => d.ten))].sort();
   const driverNormOf = {}; DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
 
   function attachAutocomplete(input, list, normOf, normFn, onSelect){

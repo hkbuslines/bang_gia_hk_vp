@@ -1,0 +1,782 @@
+[
+  {
+    "ma_nv": "LXT086",
+    "ten": "Bùi Đình Linh",
+    "trang_thai": "Đã nghỉ",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT132",
+    "ten": "Bùi Ngọc Hưng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT080",
+    "ten": "Bùi Quang Tâm",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT122",
+    "ten": "Bùi Quang Tuyến",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT135",
+    "ten": "Bùi Thanh Sang",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT094",
+    "ten": "Bùi Văn Hợp",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Bùi Văn Hùng",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT052",
+    "ten": "Bùi Văn Tâm",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT027",
+    "ten": "Chu Văn Định",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT015",
+    "ten": "Chu Văn Tạo",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT089",
+    "ten": "Dương Văn Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT063",
+    "ten": "Đào Ngọc Minh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT084",
+    "ten": "Đặng Thế Huy",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT041",
+    "ten": "Đặng Văn Hùng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT047",
+    "ten": "Đặng Văn Thế",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT058",
+    "ten": "Đinh Hà Ly",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT139",
+    "ten": "Đinh Văn Chuyên",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT024",
+    "ten": "Đinh Văn Giang",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Đoàn Bình Định",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT140",
+    "ten": "Đỗ Đình Mừng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT005",
+    "ten": "Đỗ Văn Cư",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT036",
+    "ten": "Đỗ Văn Kim",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT025",
+    "ten": "Đỗ Văn Phương",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT085",
+    "ten": "Đỗ Văn Quỳnh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Đỗ Văn Tân",
+    "trang_thai": "Đang làm việc",
+    "note": "Phó giám đốc"
+  },
+  {
+    "ma_nv": "LXT069",
+    "ten": "Đỗ Văn Thạch",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT103",
+    "ten": "Đỗ Văn Vĩnh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT145",
+    "ten": "Giáp Thanh Nguyện",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Hà Đình Sỹ",
+    "trang_thai": "Thử việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT011",
+    "ten": "Hoàng Anh Niên",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT098",
+    "ten": "Hoàng Đình Năm",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT087",
+    "ten": "Hoàng Mạnh Hùng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT079",
+    "ten": "Hoàng Văn Thế",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT101",
+    "ten": "Lại Hồng Trường",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT033",
+    "ten": "Lê Ngọc Lân",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT053",
+    "ten": "Lê Ngọc Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT100",
+    "ten": "Lê Thanh Hải",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT118",
+    "ten": "Lê Thanh Thanh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT125",
+    "ten": "Lê Văn Huê",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Lê Văn Thành",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT035",
+    "ten": "Lê Văn Thu",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT030",
+    "ten": "Lương Đình Thể",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT057",
+    "ten": "Lương Văn Trường",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT006",
+    "ten": "Lưu Văn Thắng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT130",
+    "ten": "Mai Ngọc Biên",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT064",
+    "ten": "Nguyễn Bá Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": "Viết đơn xin nghỉ"
+  },
+  {
+    "ma_nv": "LXT093",
+    "ten": "Nguyễn Chí Công",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT124",
+    "ten": "Nguyễn Duy Hưởng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT113",
+    "ten": "Nguyễn Duy Linh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT055",
+    "ten": "Nguyễn Dương Tân",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Nguyễn Đình Thành",
+    "trang_thai": "Thử việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT040",
+    "ten": "Nguyễn Đình Tiến",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT051",
+    "ten": "Nguyễn Đình Tú",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT031",
+    "ten": "Nguyễn Đình Văn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT032",
+    "ten": "Nguyễn Huy Hoàng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT012",
+    "ten": "Nguyễn Hữu Dũng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT056",
+    "ten": "Nguyễn Khoa Trường",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT142",
+    "ten": "Nguyễn Mạnh Hoàng",
+    "trang_thai": "Đang làm việc",
+    "note": "Viết đơn xin nghỉ"
+  },
+  {
+    "ma_nv": "",
+    "ten": "Nguyễn Mạnh Hùng",
+    "trang_thai": "Thử việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT126",
+    "ten": "Nguyễn Minh Tuấn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT096",
+    "ten": "Nguyễn Ngọc Cửu",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Nguyễn Ngọc Toàn",
+    "trang_thai": "Thử việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT088",
+    "ten": "Nguyễn Quang Huân",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT003",
+    "ten": "Nguyễn Quang Huy",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT081",
+    "ten": "Nguyễn Quang Nghĩa",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT037",
+    "ten": "Nguyễn Quốc Thắng",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT002",
+    "ten": "Nguyễn Thanh Tĩnh",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT060",
+    "ten": "Nguyễn Thanh Tuấn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT020",
+    "ten": "Nguyễn Văn Ban",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT107",
+    "ten": "Nguyễn Văn Cương",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT105",
+    "ten": "Nguyễn Văn Cường",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT049",
+    "ten": "Nguyễn Văn Dương",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT090",
+    "ten": "Nguyễn Văn Đại",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT026",
+    "ten": "Nguyễn Văn Hiệp",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "",
+    "ten": "Nguyễn Văn Huyên",
+    "trang_thai": "Thử việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT077",
+    "ten": "Nguyễn Văn Hưng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT131",
+    "ten": "Nguyễn Văn Mạnh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT083",
+    "ten": "Nguyễn Văn Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT111",
+    "ten": "Nguyễn Văn Thạo",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT099",
+    "ten": "Nguyễn Văn Thêm",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT144",
+    "ten": "Nguyễn Văn Việt",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Nguyễn Việt Phúc",
+    "trang_thai": "Đang làm việc",
+    "note": "LXTC"
+  },
+  {
+    "ma_nv": "LXT108",
+    "ten": "Nhâm Gia Đạt",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT074",
+    "ten": "Ninh Văn Tuệ",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT076",
+    "ten": "Phạm Doãn Bình",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT071",
+    "ten": "Phạm Đình Hải",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT008",
+    "ten": "Phạm Đình Phơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT141",
+    "ten": "Phạm Đức Duy",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT021",
+    "ten": "Phạm Hồng Thái",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT097",
+    "ten": "Phạm Ngọc Dương",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT138",
+    "ten": "Phạm Quốc Cử",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT007",
+    "ten": "Phạm Quốc Hội",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT112",
+    "ten": "Phạm Thành Trung",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT013",
+    "ten": "Phạm Tiến Dũng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT070",
+    "ten": "Phạm Trọng Khanh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT115",
+    "ten": "Phạm Văn Đạo",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT146",
+    "ten": "Phạm Văn Đông",
+    "trang_thai": "Thử việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT092",
+    "ten": "Phạm Văn Hải",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT016",
+    "ten": "Phạm Văn Hưng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT054",
+    "ten": "Phạm Văn Nam",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT137",
+    "ten": "Phạm Văn Thám",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT091",
+    "ten": "Phan Anh Hiệp",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT067",
+    "ten": "Phan Văn Tuân",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT121",
+    "ten": "Phan Văn Việt",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT072",
+    "ten": "Quách Tùng Lâm",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "",
+    "ten": "Tạ Đức Nam",
+    "trang_thai": "Đang làm việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT029",
+    "ten": "Tạ Văn Binh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT034",
+    "ten": "Thi Văn Nam",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT010",
+    "ten": "Trần Đình Chiến",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT123",
+    "ten": "Trần Hải Nam",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT116",
+    "ten": "Trần Khắc Thanh",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT134",
+    "ten": "Trần Ngọc Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT073",
+    "ten": "Trần Tiến Trung",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT082",
+    "ten": "Trần Văn Hiếu",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT050",
+    "ten": "Trần Văn Long",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT038",
+    "ten": "Trần Văn Sơn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT014",
+    "ten": "Trần Xuân Nam",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT129",
+    "ten": "Trần Xuân Thụ",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT022",
+    "ten": "Trịnh Đức Tuấn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT068",
+    "ten": "Trương Công Dương",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT048",
+    "ten": "Trương Hoàng Định",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT004",
+    "ten": "Vi Anh Tuấn",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT044",
+    "ten": "Vũ Đình Đông",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Vũ Đức Tiến",
+    "trang_thai": "Thử việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT104",
+    "ten": "Vũ Quang Tùng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT147",
+    "ten": "Vũ Văn Cảnh",
+    "trang_thai": "Thử việc",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT075",
+    "ten": "Vũ Văn Tùng",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "LXT043",
+    "ten": "Vương Văn Quân",
+    "trang_thai": "Đang làm việc",
+    "note": ""
+  },
+  {
+    "ma_nv": "",
+    "ten": "Đỗ Bá Thanh",
+    "trang_thai": "Đã nghỉ",
+    "note": "Nghỉ"
+  },
+  {
+    "ma_nv": "LXT114",
+    "ten": "Nguyễn Sĩ Tân",
+    "trang_thai": "Đã nghỉ",
+    "note": "Nghỉ"
+  }
+]

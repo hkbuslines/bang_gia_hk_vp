@@ -133,6 +133,8 @@ def main():
         bus_groups = json.load(f)
     with open(os.path.join(REPO_ROOT, "data", "route_config.json"), encoding="utf-8") as f:
         route_config = json.load(f)
+    with open(os.path.join(REPO_ROOT, "data", "drivers_full.json"), encoding="utf-8") as f:
+        drivers_full = json.load(f)
     with open(os.path.join(REPO_ROOT, "template_xep_xe.html"), encoding="utf-8") as f:
         template = f.read()
 
@@ -143,14 +145,24 @@ def main():
     html = html.replace("__FALLBACK_IDX__", str(route_config["fallback_idx"]))
     html = html.replace("__GROUP_ORDER_KEYS_JS__", json.dumps(bus_groups["group_order"], ensure_ascii=False))
     html = html.replace("__GROUP_META_JS__", json.dumps(bus_groups["group_meta"], ensure_ascii=False))
+    html = html.replace("__DRIVERS_JSON__", json.dumps(drivers_full, ensure_ascii=False))
 
     out_path = os.path.join(REPO_ROOT, "xep_xe_timeline.html")
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
 
+    # kíp lái cần thiết/ngày = số nốt giờ (chuyến) thật trong ngày đó — cho trang xin nghỉ dùng thay vì số tĩnh đoán
+    kip_lai = {
+        day["date"]: {"kip": len(day["trips"]), "real": day["real"], "refDate": day.get("refDate")}
+        for day in days_out
+    }
+    kip_path = os.path.join(REPO_ROOT, "data", "kip_lai_theo_ngay.json")
+    with open(kip_path, "w", encoding="utf-8") as f:
+        json.dump(kip_lai, f, ensure_ascii=False, indent=2)
+
     real_count = sum(1 for x in days_out if x["real"])
     print(f"OK — {len(days_out)} ngày ({real_count} ngày thật, {len(days_out)-real_count} dự kiến), "
-          f"ghi vào {out_path}")
+          f"ghi vào {out_path} và {kip_path}")
 
 
 if __name__ == "__main__":

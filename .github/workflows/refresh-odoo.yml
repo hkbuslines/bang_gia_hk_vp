@@ -30,7 +30,7 @@ jobs:
         run: |
           git config user.name "odoo-refresh-bot"
           git config user.email "actions@users.noreply.github.com"
-          git add xep_xe_timeline.html
+          git add xep_xe_timeline.html data/kip_lai_theo_ngay.json
           git diff --cached --quiet && echo "Không có gì thay đổi." || (
             git commit -m "Tự động cập nhật lịch xe từ Odoo [skip ci]"
             git push
