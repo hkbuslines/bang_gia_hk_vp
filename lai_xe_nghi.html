@@ -1,0 +1,352 @@
+<meta charset="utf-8">
+<title>Xin Nghỉ Lái Xe</title>
+<style>
+:root{
+  --page:#EEF1EC; --surface:#FFFFFF; --surface-2:#F5F7F3;
+  --ink:#14201D; --ink-muted:#57645F; --ink-faint:#8B958F;
+  --line:#D7DCD3; --line-strong:#BFC7BB;
+  --accent:#2E5FA3; --accent-fill:rgba(46,95,163,0.16);
+  --warn:#B5701E; --warn-fill:rgba(181,112,30,0.16);
+  --danger:#B23B2E; --danger-fill:rgba(178,59,46,0.12);
+  --ok:#3F7D4A; --ok-fill:rgba(63,125,74,0.14);
+  --radius:8px;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+    --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+    --line:#2A312A; --line-strong:#3A433A;
+    --accent:#6FA0E0; --accent-fill:rgba(111,160,224,0.20);
+    --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+    --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+    --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+  --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+  --line:#2A312A; --line-strong:#3A433A;
+  --accent:#6FA0E0; --accent-fill:rgba(111,160,224,0.20);
+  --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+  --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+  --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-ui); font-size:14px;}
+.tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+.wrap{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
+h1{font-size:19px; font-weight:600; margin:0;}
+.sub{font-size:13px; color:var(--ink-muted); margin-top:2px; max-width:70ch; line-height:1.5;}
+
+.card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); padding:16px; margin-top:16px;}
+.card h2{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); margin:0 0 12px;}
+
+.formgrid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px;}
+.formgrid .full{grid-column:1 / -1;}
+.field{display:flex; flex-direction:column; gap:4px; position:relative;}
+.field label{font-size:11.5px; color:var(--ink-muted); font-weight:600;}
+.field input, .field select, .field textarea{
+  font-family:var(--font-ui); font-size:13.5px; padding:7px 9px; border-radius:6px;
+  border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--accent); outline-offset:-1px;}
+.field textarea{resize:vertical; min-height:44px; font-family:var(--font-ui);}
+
+.suggest{position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:2px; max-height:220px; overflow-y:auto;
+  background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
+.suggest .opt{padding:7px 10px; font-size:13px; cursor:pointer;}
+.suggest .opt:hover{background:var(--surface-2);}
+
+.btnrow{display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
+button.primary{
+  padding:9px 18px; border-radius:6px; border:0; background:var(--ink); color:var(--page);
+  font-size:13px; font-weight:600; cursor:pointer;
+}
+button.primary:hover{opacity:0.9;}
+button.ghost{
+  padding:9px 16px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface);
+  color:var(--ink); font-size:13px; cursor:pointer;
+}
+button.ghost:hover{background:var(--surface-2);}
+
+table{width:100%; border-collapse:collapse; font-size:13px;}
+th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 10px; border-bottom:1px solid var(--line-strong);}
+td{padding:9px 10px; border-bottom:0.5px solid var(--line); vertical-align:top;}
+tr:last-child td{border-bottom:0;}
+.tag{display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700;}
+.tag.p{background:var(--ok-fill); color:var(--ok);}
+.tag.dx{background:var(--warn-fill); color:var(--warn);}
+.tag.kb{background:var(--danger-fill); color:var(--danger);}
+.tag.d{background:var(--accent-fill); color:var(--accent);}
+.note{font-size:12px; color:var(--ink-faint);}
+.empty{color:var(--ink-faint); font-size:13px; padding:16px 4px;}
+.rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
+.rowbtn:hover{background:var(--surface-2); color:var(--ink);}
+
+.exportbox{margin-top:10px;}
+.exportbox textarea{width:100%; min-height:80px; font-family:var(--font-mono); font-size:11.5px; padding:8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface-2); color:var(--ink-muted);}
+::-webkit-scrollbar{height:10px; width:10px;}
+::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+</style>
+
+<div class="wrap">
+  <div>
+    <h1>Lái xe — báo nghỉ</h1>
+    <div class="sub">Điền lái xe nghỉ ngày nào ở đây. Bên xếp xe sẽ tự thấy: nếu Lái 1 (lái định biên) của 1 xe đang nghỉ,
+    xe đó sẽ hiện cảnh báo kèm gợi ý Lái 2 (lái đẩy) đang rảnh để thay thế. Nhớ bấm "Lưu lên GitHub" sau khi thêm/sửa
+    để bên xếp xe thấy thay đổi.</div>
+  </div>
+
+  <div class="card">
+    <h2>Thêm mục mới</h2>
+    <form id="entryForm">
+      <div class="formgrid">
+        <div class="field">
+          <label for="f-ten">Lái xe (gõ vài chữ để chọn)</label>
+          <input type="text" id="f-ten" placeholder="Gõ tên lái xe" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-loai">Loại nghỉ</label>
+          <select id="f-loai">
+            <option value="P">P — Theo đơn phép (đăng ký trước)</option>
+            <option value="DX">DX — Đột xuất, có báo trước</option>
+            <option value="KB">KB — Đột xuất, KHÔNG báo trước</option>
+            <option value="D">D — Nghỉ dài ngày</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-tungay">Từ ngày</label>
+          <input type="date" id="f-tungay" required>
+        </div>
+        <div class="field">
+          <label for="f-denngay">Đến ngày</label>
+          <input type="date" id="f-denngay" required>
+        </div>
+
+        <div class="field full">
+          <label for="f-ghichu">Ghi chú</label>
+          <input type="text" id="f-ghichu" placeholder="Không bắt buộc — ví dụ lý do nghỉ">
+        </div>
+      </div>
+      <div class="btnrow">
+        <button type="submit" class="primary">+ Thêm vào danh sách</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Danh sách đã báo (<span id="countLabel">0</span>)</h2>
+    <div id="listWrap"></div>
+  </div>
+
+  <div class="card">
+    <h2>Đồng bộ với bảng xếp xe (qua GitHub)</h2>
+    <div class="note" id="ghStatus">Chưa lưu lên GitHub lần nào trong phiên này.</div>
+    <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
+      <button type="button" class="primary" id="ghSaveBtn">💾 Lưu lên GitHub (để bên xếp xe thấy)</button>
+      <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+    </div>
+    <div class="exportbox">
+      <div class="note" style="margin-bottom:6px;">Hoặc copy JSON dán tay nếu chưa muốn dùng GitHub:</div>
+      <textarea id="exportArea" readonly></textarea>
+    </div>
+    <div class="btnrow" style="justify-content:flex-start;">
+      <button type="button" class="ghost" id="copyBtn">Copy JSON</button>
+    </div>
+  </div>
+</div>
+
+<script id="driver-data" type="application/json">["Bùi Ngọc Hưng", "Bùi Quang Tuyến", "Bùi Thanh Sang", "Bùi Văn Hợp", "Bùi Văn Tâm", "Chu Văn Định", "Dương Văn Sơn", "Giáp Thanh Nguyện", "Hoàng Anh Niên", "Hoàng Mạnh Hùng", "Hoàng Văn Phông", "Hoàng Văn Thế", "Hoàng Đình Năm", "Lê Ngọc Lân", "Lê Ngọc Sơn", "Lê Thanh Hải", "Lê Thanh Thanh", "Lê Văn Huê", "Lê Văn Thu", "Lưu Văn Thắng", "Lương Văn Trường", "Lương Đình Thể", "Lại Hồng Trường", "Mai Ngọc Biên", "Nguyẽn Minh Tuấn", "Nguyễn Bá Sơn", "Nguyễn Chí Công", "Nguyễn Duy Hưởng", "Nguyễn Duy Linh", "Nguyễn Dương Tân", "Nguyễn Huy Hoàng", "Nguyễn Hữu Dũng", "Nguyễn Khoa Trường", "Nguyễn Mạnh Hoàng", "Nguyễn Ngọc Cửu", "Nguyễn Quang Huy", "Nguyễn Quang Huân", "Nguyễn Quang Nghĩa", "Nguyễn Quốc Thắng", "Nguyễn Sĩ Tân", "Nguyễn Thanh Tuấn", "Nguyễn Văn Ban", "Nguyễn Văn Cương", "Nguyễn Văn Cường", "Nguyễn Văn Dương", "Nguyễn Văn Hưng", "Nguyễn Văn Mạnh", "Nguyễn Văn Sơn", "Nguyễn Văn Thêm", "Nguyễn Văn Thạo", "Nguyễn Văn Việt", "Nguyễn Văn Đại", "Nguyễn Đình Tiến", "Nguyễn Đình Tú", "Nguyễn Đình Văn", "Nhâm Gia Đạt", "Ninh Văn Tuệ", "Phan Anh Hiệp", "Phan Văn Tuân", "Phan Văn Việt", "Phạm Doãn Bình", "Phạm Hồng Thái", "Phạm Ngọc Dương", "Phạm Quốc Cử", "Phạm Quốc Hội", "Phạm Thành Trung", "Phạm Tiến Dũng", "Phạm Trọng Khanh", "Phạm Văn Hưng", "Phạm Văn Hải", "Phạm Văn Nam", "Phạm Văn Thám", "Phạm Văn Đông", "Phạm Văn Đạo", "Phạm Đình Hải", "Phạm Đình Phơn", "Phạm Đức Duy", "Thi Văn Nam", "Trương Công Dương", "Trương Hoàng Định", "Trần Hải Nam", "Trần Khắc Thanh", "Trần Ngọc Sơn", "Trần Tiến Trung", "Trần Văn Hiếu", "Trần Văn Sơn", "Trần Xuân Nam", "Trần Xuân Thụ", "Trần Đình Chiến", "Trịnh Đức Tuấn", "Tạ Văn Binh", "Vũ Quang Tùng", "Vũ Văn Cảnh", "Vũ Văn Tùng", "Vũ Đình Đông", "Vương Văn Quân", "Đinh Hà Ly", "Đinh Văn Chuyên", "Đinh Văn Giang", "Đào Ngọc Minh", "Đặng Thế Huy", "Đặng Văn Hùng", "Đặng Văn Thế", "Đỗ Văn Cư", "Đỗ Văn Kim", "Đỗ Văn Phương", "Đỗ Văn Quỳnh", "Đỗ Văn Thạch", "Đỗ Văn Vĩnh", "Đỗ Đình Mừng"]</script>
+<script>
+(function(){
+  const DRIVER_NAMES = JSON.parse(document.getElementById('driver-data').textContent);
+  const LOAI_LABEL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
+  const REPO = 'hkbuslines/bang_gia_hk_vp';
+  const DATA_PATH = 'lai_xe_nghi_data.json';
+  const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
+  const API_URL = `https://api.github.com/repos/${REPO}/contents/${DATA_PATH}`;
+  const TOKEN_KEY = 'hkbl_gh_token';
+  let entries = [];
+  let counter = 1;
+
+  function b64EncodeUtf8(str){
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+  function getToken(forcePrompt){
+    let t = localStorage.getItem(TOKEN_KEY);
+    if (!t || forcePrompt){
+      t = prompt(
+        'Dán Personal Access Token GitHub (fine-grained, chỉ cần quyền "Contents: Read and write" cho repo ' + REPO + ').\n' +
+        'Token chỉ lưu trong trình duyệt máy này. Nếu đã nhập bên trang Gara/Xếp xe trên cùng trình duyệt này rồi thì khỏi cần nhập lại.',
+        ''
+      );
+      if (t) localStorage.setItem(TOKEN_KEY, t.trim());
+    }
+    return t ? t.trim() : null;
+  }
+  document.getElementById('ghTokenBtn').addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    getToken(true);
+  });
+
+  async function loadFromGithub(){
+    const statusEl = document.getElementById('ghStatus');
+    try {
+      const res = await fetch(RAW_URL, {cache: 'no-store'});
+      if (res.status === 404){
+        statusEl.textContent = 'Chưa có dữ liệu nào trên GitHub — đây sẽ là lần lưu đầu tiên.';
+        return;
+      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      entries = data.entries || [];
+      counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
+      statusEl.textContent = `Đã tải ${entries.length} mục từ GitHub (cập nhật lần cuối: ${data.updated_at || '—'}).`;
+      render();
+    } catch(err){
+      statusEl.textContent = 'Không tải được dữ liệu cũ từ GitHub (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+    }
+  }
+
+  async function saveToGithub(){
+    const statusEl = document.getElementById('ghStatus');
+    const token = getToken(false);
+    if (!token){ statusEl.textContent = 'Chưa nhập mã kết nối GitHub, chưa lưu được.'; return; }
+    statusEl.textContent = 'Đang lưu lên GitHub...';
+    try {
+      let sha = null;
+      const cur = await fetch(API_URL, {headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json'}});
+      if (cur.ok){ const curJson = await cur.json(); sha = curJson.sha; }
+      else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
+
+      const payload = { entries, updated_at: new Date().toISOString() };
+      const body = {
+        message: 'Cập nhật lịch nghỉ lái xe — ' + new Date().toLocaleString('vi-VN'),
+        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
+      };
+      if (sha) body.sha = sha;
+
+      const put = await fetch(API_URL, {
+        method: 'PUT',
+        headers: {Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+      if (!put.ok){
+        const errJson = await put.json().catch(()=>({}));
+        if (put.status === 401){
+          statusEl.textContent = 'Mã kết nối GitHub sai hoặc hết hạn — bấm "Đổi mã kết nối GitHub" để nhập lại.';
+        } else {
+          statusEl.textContent = 'Lưu lỗi: ' + (errJson.message || ('HTTP ' + put.status));
+        }
+        return;
+      }
+      statusEl.textContent = `Đã lưu ${entries.length} mục lên GitHub lúc ${new Date().toLocaleTimeString('vi-VN')}. Bên xếp xe sẽ thấy khi tải lại trang.`;
+    } catch(err){
+      statusEl.textContent = 'Lưu lỗi: ' + err.message;
+    }
+  }
+  document.getElementById('ghSaveBtn').addEventListener('click', saveToGithub);
+
+  // gõ vài chữ tên lái xe -> hiện gợi ý bấm chọn
+  function normName(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d'); }
+  const nameNormOf = {}; DRIVER_NAMES.forEach(n => { nameNormOf[n] = normName(n); });
+  const tenInput = document.getElementById('f-ten');
+  let box = null;
+  function closeBox(){ if (box){ box.remove(); box = null; } }
+  function openBox(list){
+    closeBox();
+    if (!list.length) return;
+    box = document.createElement('div');
+    box.className = 'suggest';
+    list.forEach(name => {
+      const opt = document.createElement('div');
+      opt.className = 'opt';
+      opt.textContent = name;
+      opt.addEventListener('mousedown', e => { e.preventDefault(); tenInput.value = name; closeBox(); });
+      box.appendChild(opt);
+    });
+    tenInput.parentElement.appendChild(box);
+  }
+  tenInput.addEventListener('input', () => {
+    const q = normName(tenInput.value);
+    if (!q){ closeBox(); return; }
+    openBox(DRIVER_NAMES.filter(n => nameNormOf[n].includes(q)).slice(0, 8));
+  });
+  tenInput.addEventListener('focus', () => { if (tenInput.value) tenInput.dispatchEvent(new Event('input')); });
+  tenInput.addEventListener('blur', () => setTimeout(closeBox, 150));
+  tenInput.addEventListener('keydown', e => { if (e.key === 'Escape') closeBox(); });
+
+  const today = new Date();
+  const iso = d => d.toISOString().slice(0,10);
+  document.getElementById('f-tungay').value = iso(today);
+  document.getElementById('f-denngay').value = iso(today);
+
+  function fmtRange(e){
+    return e.tungay === e.denngay ? e.tungay : `${e.tungay} → ${e.denngay}`;
+  }
+
+  function render(){
+    const wrap = document.getElementById('listWrap');
+    document.getElementById('countLabel').textContent = entries.length;
+    if (!entries.length){
+      wrap.innerHTML = '<div class="empty">Chưa có mục nào — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
+    } else {
+      const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay)).map(e => `
+        <tr>
+          <td style="font-weight:700;">${e.ten}</td>
+          <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
+          <td class="tabular">${fmtRange(e)}</td>
+          <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
+          <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
+        </tr>`).join('');
+      wrap.innerHTML = `<table>
+        <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ghi chú</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+      wrap.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          entries = entries.filter(e => e.id !== Number(btn.dataset.del));
+          render();
+        });
+      });
+    }
+    document.getElementById('exportArea').value = JSON.stringify(entries, null, 2);
+  }
+
+  document.getElementById('entryForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const entry = {
+      id: counter++,
+      ten: tenInput.value.trim(),
+      loai: document.getElementById('f-loai').value,
+      tungay: document.getElementById('f-tungay').value,
+      denngay: document.getElementById('f-denngay').value,
+      ghichu: document.getElementById('f-ghichu').value.trim(),
+    };
+    if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
+    if (!entry.tungay || !entry.denngay || entry.denngay < entry.tungay){
+      alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
+    }
+    entries.push(entry);
+    tenInput.value = '';
+    document.getElementById('f-ghichu').value = '';
+    render();
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const area = document.getElementById('exportArea');
+    area.select();
+    document.execCommand('copy');
+    const btn = document.getElementById('copyBtn');
+    const old = btn.textContent;
+    btn.textContent = 'Đã copy ✓';
+    setTimeout(() => { btn.textContent = old; }, 1500);
+  });
+
+  render();
+  loadFromGithub();
+})();
+</script>

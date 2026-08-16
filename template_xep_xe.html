@@ -92,7 +92,9 @@ button.ghost:hover{background:var(--page);}
 .pendingpill{display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:6px; border:1.5px dashed var(--warn); background:var(--warn-fill); color:var(--warn); font-size:11px; font-weight:700; cursor:pointer;}
 .pendingpill:hover{background:var(--warn); color:#fff;}
 .bchip.pending{border-color:var(--warn); box-shadow:inset 0 0 0 1px var(--warn);}
+.bchip.leave{border-color:var(--danger); box-shadow:inset 0 0 0 1px var(--danger);}
 .bchip .gbadge{color:var(--warn); font-weight:700;}
+.bchip .gbadge.leave{color:var(--danger);}
 .legend .dot{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle;}
 
 .card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); overflow:hidden;}
@@ -166,6 +168,7 @@ button.ghost:hover{background:var(--page);}
 .lane .label .bks{font-weight:700; font-size:12.5px;}
 .lane .label .crew{font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .lane.has-gara .label{background:var(--warn-fill); box-shadow:inset 3px 0 0 var(--warn);}
+.lane.has-leave .label{background:var(--danger-fill); box-shadow:inset 3px 0 0 var(--danger);}
 .gicon{flex-shrink:0; font-size:14px; cursor:default; border:0; background:none; padding:0; line-height:1;}
 button.gicon:hover{transform:scale(1.15);}
 .block.maint{color:#fff; cursor:default;}
@@ -395,6 +398,32 @@ footer.note b{color:var(--ink-muted);}
   const STATE_ICON = {wait:'🔧', doing:'🛠️', done:'✅'};
   const STATE_LABEL_VN = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
 
+  // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua GitHub
+  const LEAVE_DATA_PATH = 'lai_xe_nghi_data.json';
+  const LEAVE_RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${LEAVE_DATA_PATH}?t=${Date.now()}`;
+  let driverLeaves = [];
+  function driverLeaveFor(name, dateStr){
+    if (!name) return null;
+    return driverLeaves.find(e => e.ten === name && e.tungay <= dateStr && dateStr <= e.denngay) || null;
+  }
+  async function loadDriverLeaves(){
+    try{
+      const res = await fetch(LEAVE_RAW_URL, {cache:'no-store'});
+      if (!res.ok) return;
+      const data = await res.json();
+      driverLeaves = data.entries || [];
+      renderAll();
+    } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua */ }
+  }
+  function leaveTooltip(b, leave1, dateStr){
+    const leave2 = b.lai2 ? driverLeaveFor(b.lai2, dateStr) : null;
+    const relief = !b.lai2 ? 'Xe này không có Lái 2 dự phòng.'
+      : leave2 ? `Lái 2 (${b.lai2}) cũng đang nghỉ.`
+      : `Lái 2 (${b.lai2}) đang rảnh — có thể thay thế.`;
+    const range = leave1.tungay === leave1.denngay ? leave1.tungay : `${leave1.tungay} → ${leave1.denngay}`;
+    return `⚠ Lái 1 (${b.lai1}) nghỉ ${range} (${leave1.loai}${leave1.ghichu ? ': ' + leave1.ghichu : ''}). ${relief}`;
+  }
+
   function b64EncodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
   function getToken(forcePrompt){
     let t = localStorage.getItem(TOKEN_KEY);
@@ -614,11 +643,15 @@ footer.note b{color:var(--ink-muted);}
       activeBuses.filter(b => corridorOf(b) === g).forEach(b => {
         const n = st.assignments[b.bks].length;
         const pendingCount = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong' && !e.scheduled).length;
+        const leave1 = driverLeaveFor(b.lai1, day.date);
         const chip = document.createElement('div');
-        chip.className = 'bchip' + (pendingCount ? ' pending' : '');
+        chip.className = 'bchip' + (pendingCount ? ' pending' : '') + (leave1 ? ' leave' : '');
         chip.draggable = true;
-        chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}`;
-        chip.title = (b.cap_lai_nha || '') + (pendingCount ? ' — Gara cần bảo dưỡng, chưa xếp giờ (xem tab Theo xe)' : '');
+        chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}${leave1 ? '<span class="gbadge leave">🌴</span>' : ''}`;
+        let chipTitle = (b.cap_lai_nha || '');
+        if (pendingCount) chipTitle += ' — Gara cần bảo dưỡng, chưa xếp giờ (xem tab Theo xe)';
+        if (leave1) chipTitle += ' — ' + leaveTooltip(b, leave1, day.date);
+        chip.title = chipTitle;
         chip.addEventListener('dragstart', e => {
           e.dataTransfer.setData('application/x-bks', b.bks);
           chip.classList.add('dragging');
@@ -982,6 +1015,16 @@ footer.note b{color:var(--ink-muted);}
           icon.title = `Bảo dưỡng hôm nay lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})${e.noidung ? ': ' + e.noidung : ''}`;
           label.appendChild(icon);
         });
+
+        const leave1 = driverLeaveFor(b.lai1, day.date);
+        if (leave1){
+          lane.classList.add('has-leave');
+          const icon = document.createElement('span');
+          icon.className = 'gicon';
+          icon.textContent = '🌴';
+          icon.title = leaveTooltip(b, leave1, day.date);
+          label.appendChild(icon);
+        }
         lane.appendChild(label);
 
         const track = document.createElement('div');
@@ -1138,5 +1181,6 @@ footer.note b{color:var(--ink-muted);}
   buildDayPills();
   renderAll();
   loadGaraData();
+  loadDriverLeaves();
 })();
 </script>
