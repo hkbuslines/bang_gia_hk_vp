@@ -36,12 +36,13 @@
 *{box-sizing:border-box;}
 body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-ui); font-size:14px;}
 .tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
-.wrap{max-width:1100px; margin:0 auto; padding:20px 20px 60px;}
+.wrap{max-width:1200px; margin:0 auto; padding:20px 20px 60px;}
 h1{font-size:19px; font-weight:600; margin:0;}
-.sub{font-size:13px; color:var(--ink-muted); margin-top:2px; max-width:70ch; line-height:1.5;}
+.sub{font-size:13px; color:var(--ink-muted); margin-top:2px; max-width:76ch; line-height:1.5;}
 
 .card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); padding:16px; margin-top:16px;}
 .card h2{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); margin:0 0 12px;}
+.card .cardsub{font-size:12px; color:var(--ink-faint); margin:-8px 0 12px; line-height:1.5; max-width:80ch;}
 
 .formgrid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px;}
 .formgrid .full{grid-column:1 / -1;}
@@ -53,11 +54,13 @@ h1{font-size:19px; font-weight:600; margin:0;}
 }
 .field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--accent); outline-offset:-1px;}
 .field textarea{resize:vertical; min-height:44px; font-family:var(--font-ui);}
+.field input[readonly]{background:var(--surface-2); color:var(--ink-muted);}
 
 .suggest{position:absolute; top:100%; left:0; right:0; z-index:20; margin-top:2px; max-height:220px; overflow-y:auto;
   background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
 .suggest .opt{padding:7px 10px; font-size:13px; cursor:pointer;}
 .suggest .opt:hover{background:var(--surface-2);}
+.suggest .opt .ma{color:var(--ink-faint); font-size:11px; margin-left:6px;}
 
 .btnrow{display:flex; justify-content:flex-end; gap:8px; margin-top:14px;}
 button.primary{
@@ -80,10 +83,13 @@ tr:last-child td{border-bottom:0;}
 .tag.dx{background:var(--warn-fill); color:var(--warn);}
 .tag.kb{background:var(--danger-fill); color:var(--danger);}
 .tag.d{background:var(--accent-fill); color:var(--accent);}
+.tag.ok{background:var(--ok-fill); color:var(--ok);}
+.tag.vuot{background:var(--danger-fill); color:var(--danger); font-weight:700;}
 .note{font-size:12px; color:var(--ink-faint);}
 .empty{color:var(--ink-faint); font-size:13px; padding:16px 4px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
 .rowbtn:hover{background:var(--surface-2); color:var(--ink);}
+tr.warnrow{background:var(--danger-fill);}
 
 .exportbox{margin-top:10px;}
 .exportbox textarea{width:100%; min-height:80px; font-family:var(--font-mono); font-size:11.5px; padding:8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface-2); color:var(--ink-muted);}
@@ -95,9 +101,10 @@ tr:last-child td{border-bottom:0;}
 <div class="wrap">
   <div>
     <h1>Lái xe — báo nghỉ</h1>
-    <div class="sub">Điền lái xe nghỉ ngày nào ở đây. Bên xếp xe sẽ tự thấy: nếu Lái 1 (lái định biên) của 1 xe đang nghỉ,
-    xe đó sẽ hiện cảnh báo kèm gợi ý Lái 2 (lái đẩy) đang rảnh để thay thế. Nhớ bấm "Lưu lên GitHub" sau khi thêm/sửa
-    để bên xếp xe thấy thay đổi.</div>
+    <div class="sub">Điền lái xe nghỉ ngày nào ở đây. Bên xếp xe sẽ tự thấy (tự tải lại vài phút 1 lần, không cần
+    làm gì thêm): nếu Lái 1 (lái định biên) của 1 xe đang nghỉ, xe đó sẽ hiện cảnh báo kèm gợi ý Lái 2 (lái đẩy)
+    đang rảnh để thay thế. Nhớ bấm "Lưu lên GitHub" sau khi thêm/sửa để bên xếp xe thấy thay đổi (không tự đồng bộ
+    ngay khi bạn gõ, phải bấm lưu).</div>
   </div>
 
   <div class="card">
@@ -143,6 +150,46 @@ tr:last-child td{border-bottom:0;}
   </div>
 
   <div class="card">
+    <h2>Tham số tính ngưỡng duyệt nghỉ</h2>
+    <div class="cardsub">Lấy đúng cách tính đang dùng trong file Excel (sheet "Tham số"). Ngưỡng nghỉ tối đa duyệt/ngày
+    = Số lái xe hoạt động − Kíp lái cần thiết/ngày − Vùng đệm an toàn − Dự phòng cho KB. Sửa số nếu cần, tự tính lại
+    ngay — số sẽ lưu chung lên GitHub khi bấm "Lưu lên GitHub" nên cả văn phòng thấy cùng 1 mức ngưỡng.</div>
+    <div class="formgrid">
+      <div class="field">
+        <label for="p-tong">Tổng số lái xe</label>
+        <input type="number" id="p-tong" min="0">
+      </div>
+      <div class="field">
+        <label for="p-hoatdong">Số lái xe hoạt động</label>
+        <input type="number" id="p-hoatdong" min="0">
+      </div>
+      <div class="field">
+        <label for="p-kip">Kíp lái cần thiết/ngày</label>
+        <input type="number" id="p-kip" min="0">
+      </div>
+      <div class="field">
+        <label for="p-dem">Vùng đệm an toàn tối thiểu</label>
+        <input type="number" id="p-dem" min="0">
+      </div>
+      <div class="field">
+        <label for="p-kb">Dự phòng cho KB/ngày</label>
+        <input type="number" id="p-kb" min="0">
+      </div>
+      <div class="field">
+        <label for="p-nguong">→ Ngưỡng nghỉ tối đa duyệt/ngày</label>
+        <input type="text" id="p-nguong" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Khả dụng lái xe theo ngày (14 ngày tới)</h2>
+    <div class="cardsub">Đang nghỉ = P+DX+D (nghỉ có kế hoạch). KB = đột xuất không báo trước, tính rủi ro riêng so
+    với "Dự phòng cho KB". Còn lại = Số lái hoạt động − tất cả đang nghỉ ngày đó (mọi loại).</div>
+    <div id="availWrap" style="overflow-x:auto;"></div>
+  </div>
+
+  <div class="card">
     <h2>Đồng bộ với bảng xếp xe (qua GitHub)</h2>
     <div class="note" id="ghStatus">Chưa lưu lên GitHub lần nào trong phiên này.</div>
     <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
@@ -159,10 +206,11 @@ tr:last-child td{border-bottom:0;}
   </div>
 </div>
 
-<script id="driver-data" type="application/json">["Bùi Ngọc Hưng", "Bùi Quang Tuyến", "Bùi Thanh Sang", "Bùi Văn Hợp", "Bùi Văn Tâm", "Chu Văn Định", "Dương Văn Sơn", "Giáp Thanh Nguyện", "Hoàng Anh Niên", "Hoàng Mạnh Hùng", "Hoàng Văn Phông", "Hoàng Văn Thế", "Hoàng Đình Năm", "Lê Ngọc Lân", "Lê Ngọc Sơn", "Lê Thanh Hải", "Lê Thanh Thanh", "Lê Văn Huê", "Lê Văn Thu", "Lưu Văn Thắng", "Lương Văn Trường", "Lương Đình Thể", "Lại Hồng Trường", "Mai Ngọc Biên", "Nguyẽn Minh Tuấn", "Nguyễn Bá Sơn", "Nguyễn Chí Công", "Nguyễn Duy Hưởng", "Nguyễn Duy Linh", "Nguyễn Dương Tân", "Nguyễn Huy Hoàng", "Nguyễn Hữu Dũng", "Nguyễn Khoa Trường", "Nguyễn Mạnh Hoàng", "Nguyễn Ngọc Cửu", "Nguyễn Quang Huy", "Nguyễn Quang Huân", "Nguyễn Quang Nghĩa", "Nguyễn Quốc Thắng", "Nguyễn Sĩ Tân", "Nguyễn Thanh Tuấn", "Nguyễn Văn Ban", "Nguyễn Văn Cương", "Nguyễn Văn Cường", "Nguyễn Văn Dương", "Nguyễn Văn Hưng", "Nguyễn Văn Mạnh", "Nguyễn Văn Sơn", "Nguyễn Văn Thêm", "Nguyễn Văn Thạo", "Nguyễn Văn Việt", "Nguyễn Văn Đại", "Nguyễn Đình Tiến", "Nguyễn Đình Tú", "Nguyễn Đình Văn", "Nhâm Gia Đạt", "Ninh Văn Tuệ", "Phan Anh Hiệp", "Phan Văn Tuân", "Phan Văn Việt", "Phạm Doãn Bình", "Phạm Hồng Thái", "Phạm Ngọc Dương", "Phạm Quốc Cử", "Phạm Quốc Hội", "Phạm Thành Trung", "Phạm Tiến Dũng", "Phạm Trọng Khanh", "Phạm Văn Hưng", "Phạm Văn Hải", "Phạm Văn Nam", "Phạm Văn Thám", "Phạm Văn Đông", "Phạm Văn Đạo", "Phạm Đình Hải", "Phạm Đình Phơn", "Phạm Đức Duy", "Thi Văn Nam", "Trương Công Dương", "Trương Hoàng Định", "Trần Hải Nam", "Trần Khắc Thanh", "Trần Ngọc Sơn", "Trần Tiến Trung", "Trần Văn Hiếu", "Trần Văn Sơn", "Trần Xuân Nam", "Trần Xuân Thụ", "Trần Đình Chiến", "Trịnh Đức Tuấn", "Tạ Văn Binh", "Vũ Quang Tùng", "Vũ Văn Cảnh", "Vũ Văn Tùng", "Vũ Đình Đông", "Vương Văn Quân", "Đinh Hà Ly", "Đinh Văn Chuyên", "Đinh Văn Giang", "Đào Ngọc Minh", "Đặng Thế Huy", "Đặng Văn Hùng", "Đặng Văn Thế", "Đỗ Văn Cư", "Đỗ Văn Kim", "Đỗ Văn Phương", "Đỗ Văn Quỳnh", "Đỗ Văn Thạch", "Đỗ Văn Vĩnh", "Đỗ Đình Mừng"]</script>
+<script id="driver-data" type="application/json">[{"ma_nv": "LXT086", "ten": "Bùi Đình Linh", "trang_thai": "Đã nghỉ", "note": "Nghỉ"}, {"ma_nv": "LXT132", "ten": "Bùi Ngọc Hưng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT080", "ten": "Bùi Quang Tâm", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT122", "ten": "Bùi Quang Tuyến", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT135", "ten": "Bùi Thanh Sang", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT094", "ten": "Bùi Văn Hợp", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Bùi Văn Hùng", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT052", "ten": "Bùi Văn Tâm", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT027", "ten": "Chu Văn Định", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT015", "ten": "Chu Văn Tạo", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT089", "ten": "Dương Văn Sơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT063", "ten": "Đào Ngọc Minh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT084", "ten": "Đặng Thế Huy", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT041", "ten": "Đặng Văn Hùng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT047", "ten": "Đặng Văn Thế", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT058", "ten": "Đinh Hà Ly", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT139", "ten": "Đinh Văn Chuyên", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT024", "ten": "Đinh Văn Giang", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Đoàn Bình Định", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT140", "ten": "Đỗ Đình Mừng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT005", "ten": "Đỗ Văn Cư", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT036", "ten": "Đỗ Văn Kim", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT025", "ten": "Đỗ Văn Phương", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT085", "ten": "Đỗ Văn Quỳnh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Đỗ Văn Tân", "trang_thai": "Đang làm việc", "note": "Phó giám đốc"}, {"ma_nv": "LXT069", "ten": "Đỗ Văn Thạch", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT103", "ten": "Đỗ Văn Vĩnh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT145", "ten": "Giáp Thanh Nguyện", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Hà Đình Sỹ", "trang_thai": "Thử việc", "note": ""}, {"ma_nv": "LXT011", "ten": "Hoàng Anh Niên", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT098", "ten": "Hoàng Đình Năm", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT087", "ten": "Hoàng Mạnh Hùng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT079", "ten": "Hoàng Văn Thế", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT101", "ten": "Lại Hồng Trường", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT033", "ten": "Lê Ngọc Lân", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT053", "ten": "Lê Ngọc Sơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT100", "ten": "Lê Thanh Hải", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT118", "ten": "Lê Thanh Thanh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT125", "ten": "Lê Văn Huê", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Lê Văn Thành", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT035", "ten": "Lê Văn Thu", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT030", "ten": "Lương Đình Thể", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT057", "ten": "Lương Văn Trường", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT006", "ten": "Lưu Văn Thắng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT130", "ten": "Mai Ngọc Biên", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT064", "ten": "Nguyễn Bá Sơn", "trang_thai": "Đang làm việc", "note": "Viết đơn xin nghỉ"}, {"ma_nv": "LXT093", "ten": "Nguyễn Chí Công", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT124", "ten": "Nguyễn Duy Hưởng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT113", "ten": "Nguyễn Duy Linh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT055", "ten": "Nguyễn Dương Tân", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Nguyễn Đình Thành", "trang_thai": "Thử việc", "note": "Nghỉ"}, {"ma_nv": "LXT040", "ten": "Nguyễn Đình Tiến", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT051", "ten": "Nguyễn Đình Tú", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT031", "ten": "Nguyễn Đình Văn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT032", "ten": "Nguyễn Huy Hoàng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT012", "ten": "Nguyễn Hữu Dũng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT056", "ten": "Nguyễn Khoa Trường", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT142", "ten": "Nguyễn Mạnh Hoàng", "trang_thai": "Đang làm việc", "note": "Viết đơn xin nghỉ"}, {"ma_nv": "", "ten": "Nguyễn Mạnh Hùng", "trang_thai": "Thử việc", "note": "Nghỉ"}, {"ma_nv": "LXT126", "ten": "Nguyễn Minh Tuấn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT096", "ten": "Nguyễn Ngọc Cửu", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Nguyễn Ngọc Toàn", "trang_thai": "Thử việc", "note": "Nghỉ"}, {"ma_nv": "LXT088", "ten": "Nguyễn Quang Huân", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT003", "ten": "Nguyễn Quang Huy", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT081", "ten": "Nguyễn Quang Nghĩa", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT037", "ten": "Nguyễn Quốc Thắng", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT002", "ten": "Nguyễn Thanh Tĩnh", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT060", "ten": "Nguyễn Thanh Tuấn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT020", "ten": "Nguyễn Văn Ban", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT107", "ten": "Nguyễn Văn Cương", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT105", "ten": "Nguyễn Văn Cường", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT049", "ten": "Nguyễn Văn Dương", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT090", "ten": "Nguyễn Văn Đại", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT026", "ten": "Nguyễn Văn Hiệp", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "", "ten": "Nguyễn Văn Huyên", "trang_thai": "Thử việc", "note": ""}, {"ma_nv": "LXT077", "ten": "Nguyễn Văn Hưng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT131", "ten": "Nguyễn Văn Mạnh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT083", "ten": "Nguyễn Văn Sơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT111", "ten": "Nguyễn Văn Thạo", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT099", "ten": "Nguyễn Văn Thêm", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT144", "ten": "Nguyễn Văn Việt", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Nguyễn Việt Phúc", "trang_thai": "Đang làm việc", "note": "LXTC"}, {"ma_nv": "LXT108", "ten": "Nhâm Gia Đạt", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT074", "ten": "Ninh Văn Tuệ", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT076", "ten": "Phạm Doãn Bình", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT071", "ten": "Phạm Đình Hải", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT008", "ten": "Phạm Đình Phơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT141", "ten": "Phạm Đức Duy", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT021", "ten": "Phạm Hồng Thái", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT097", "ten": "Phạm Ngọc Dương", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT138", "ten": "Phạm Quốc Cử", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT007", "ten": "Phạm Quốc Hội", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT112", "ten": "Phạm Thành Trung", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT013", "ten": "Phạm Tiến Dũng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT070", "ten": "Phạm Trọng Khanh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT115", "ten": "Phạm Văn Đạo", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT146", "ten": "Phạm Văn Đông", "trang_thai": "Thử việc", "note": ""}, {"ma_nv": "LXT092", "ten": "Phạm Văn Hải", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT016", "ten": "Phạm Văn Hưng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT054", "ten": "Phạm Văn Nam", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT137", "ten": "Phạm Văn Thám", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT091", "ten": "Phan Anh Hiệp", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT067", "ten": "Phan Văn Tuân", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT121", "ten": "Phan Văn Việt", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT072", "ten": "Quách Tùng Lâm", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "", "ten": "Tạ Đức Nam", "trang_thai": "Đang làm việc", "note": "Nghỉ"}, {"ma_nv": "LXT029", "ten": "Tạ Văn Binh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT034", "ten": "Thi Văn Nam", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT010", "ten": "Trần Đình Chiến", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT123", "ten": "Trần Hải Nam", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT116", "ten": "Trần Khắc Thanh", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT134", "ten": "Trần Ngọc Sơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT073", "ten": "Trần Tiến Trung", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT082", "ten": "Trần Văn Hiếu", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT050", "ten": "Trần Văn Long", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT038", "ten": "Trần Văn Sơn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT014", "ten": "Trần Xuân Nam", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT129", "ten": "Trần Xuân Thụ", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT022", "ten": "Trịnh Đức Tuấn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT068", "ten": "Trương Công Dương", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT048", "ten": "Trương Hoàng Định", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT004", "ten": "Vi Anh Tuấn", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT044", "ten": "Vũ Đình Đông", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Vũ Đức Tiến", "trang_thai": "Thử việc", "note": "Nghỉ"}, {"ma_nv": "LXT104", "ten": "Vũ Quang Tùng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT147", "ten": "Vũ Văn Cảnh", "trang_thai": "Thử việc", "note": "Nghỉ"}, {"ma_nv": "LXT075", "ten": "Vũ Văn Tùng", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "LXT043", "ten": "Vương Văn Quân", "trang_thai": "Đang làm việc", "note": ""}, {"ma_nv": "", "ten": "Đỗ Bá Thanh", "trang_thai": "Đã nghỉ", "note": "Nghỉ"}, {"ma_nv": "LXT114", "ten": "Nguyễn Sĩ Tân", "trang_thai": "Đã nghỉ", "note": "Nghỉ"}]</script>
 <script>
 (function(){
-  const DRIVER_NAMES = JSON.parse(document.getElementById('driver-data').textContent);
+  const DRIVERS = JSON.parse(document.getElementById('driver-data').textContent);
+  const DRIVER_NAMES = DRIVERS.map(d => d.ten);
   const LOAI_LABEL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
   const REPO = 'hkbuslines/bang_gia_hk_vp';
   const DATA_PATH = 'lai_xe_nghi_data.json';
@@ -171,6 +219,16 @@ tr:last-child td{border-bottom:0;}
   const TOKEN_KEY = 'hkbl_gh_token';
   let entries = [];
   let counter = 1;
+
+  // mặc định giống công thức Tham số!C4/C5 trong file Excel gốc:
+  // Tổng số lái xe = đếm tên khác rỗng; Số lái xe hoạt động = đếm những dòng cột Ghi chú để trống
+  const params = {
+    tong: DRIVERS.length,
+    hoatdong: DRIVERS.filter(d => !d.note).length,
+    kip: 98,
+    dem: 3,
+    kb: 3,
+  };
 
   function b64EncodeUtf8(str){
     return btoa(unescape(encodeURIComponent(str)));
@@ -192,22 +250,50 @@ tr:last-child td{border-bottom:0;}
     getToken(true);
   });
 
+  function fillParamInputs(){
+    document.getElementById('p-tong').value = params.tong;
+    document.getElementById('p-hoatdong').value = params.hoatdong;
+    document.getElementById('p-kip').value = params.kip;
+    document.getElementById('p-dem').value = params.dem;
+    document.getElementById('p-kb').value = params.kb;
+  }
+  function nguongDuyet(){
+    return params.hoatdong - params.kip - params.dem - params.kb;
+  }
+  function readParamInputs(){
+    params.tong = Number(document.getElementById('p-tong').value) || 0;
+    params.hoatdong = Number(document.getElementById('p-hoatdong').value) || 0;
+    params.kip = Number(document.getElementById('p-kip').value) || 0;
+    params.dem = Number(document.getElementById('p-dem').value) || 0;
+    params.kb = Number(document.getElementById('p-kb').value) || 0;
+    document.getElementById('p-nguong').value = nguongDuyet() + ' người';
+    renderAvailability();
+  }
+  ['p-tong','p-hoatdong','p-kip','p-dem','p-kb'].forEach(id => {
+    document.getElementById(id).addEventListener('input', readParamInputs);
+  });
+
   async function loadFromGithub(){
     const statusEl = document.getElementById('ghStatus');
     try {
       const res = await fetch(RAW_URL, {cache: 'no-store'});
       if (res.status === 404){
         statusEl.textContent = 'Chưa có dữ liệu nào trên GitHub — đây sẽ là lần lưu đầu tiên.';
+        fillParamInputs(); readParamInputs();
         return;
       }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       entries = data.entries || [];
       counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
+      if (data.params) Object.assign(params, data.params);
+      fillParamInputs();
       statusEl.textContent = `Đã tải ${entries.length} mục từ GitHub (cập nhật lần cuối: ${data.updated_at || '—'}).`;
       render();
+      readParamInputs();
     } catch(err){
       statusEl.textContent = 'Không tải được dữ liệu cũ từ GitHub (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+      fillParamInputs(); readParamInputs();
     }
   }
 
@@ -222,7 +308,7 @@ tr:last-child td{border-bottom:0;}
       if (cur.ok){ const curJson = await cur.json(); sha = curJson.sha; }
       else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
 
-      const payload = { entries, updated_at: new Date().toISOString() };
+      const payload = { entries, params, updated_at: new Date().toISOString() };
       const body = {
         message: 'Cập nhật lịch nghỉ lái xe — ' + new Date().toLocaleString('vi-VN'),
         content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
@@ -261,11 +347,11 @@ tr:last-child td{border-bottom:0;}
     if (!list.length) return;
     box = document.createElement('div');
     box.className = 'suggest';
-    list.forEach(name => {
+    list.forEach(d => {
       const opt = document.createElement('div');
       opt.className = 'opt';
-      opt.textContent = name;
-      opt.addEventListener('mousedown', e => { e.preventDefault(); tenInput.value = name; closeBox(); });
+      opt.innerHTML = `${d.ten}<span class="ma">${d.ma_nv}</span>`;
+      opt.addEventListener('mousedown', e => { e.preventDefault(); tenInput.value = d.ten; closeBox(); });
       box.appendChild(opt);
     });
     tenInput.parentElement.appendChild(box);
@@ -273,7 +359,7 @@ tr:last-child td{border-bottom:0;}
   tenInput.addEventListener('input', () => {
     const q = normName(tenInput.value);
     if (!q){ closeBox(); return; }
-    openBox(DRIVER_NAMES.filter(n => nameNormOf[n].includes(q)).slice(0, 8));
+    openBox(DRIVERS.filter(d => nameNormOf[d.ten].includes(q)).slice(0, 8));
   });
   tenInput.addEventListener('focus', () => { if (tenInput.value) tenInput.dispatchEvent(new Event('input')); });
   tenInput.addEventListener('blur', () => setTimeout(closeBox, 150));
@@ -283,6 +369,23 @@ tr:last-child td{border-bottom:0;}
   const iso = d => d.toISOString().slice(0,10);
   document.getElementById('f-tungay').value = iso(today);
   document.getElementById('f-denngay').value = iso(today);
+
+  function todayISO(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function addDaysISO(isoStr, n){
+    const [y,m,d] = isoStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m-1, d));
+    dt.setUTCDate(dt.getUTCDate() + n);
+    return dt.toISOString().slice(0,10);
+  }
+  const WEEKDAY_VN = ['CN','T2','T3','T4','T5','T6','T7'];
+  function weekdayOf(isoStr){
+    const [y,m,d] = isoStr.split('-').map(Number);
+    return WEEKDAY_VN[new Date(Date.UTC(y,m-1,d)).getUTCDay()];
+  }
+  function fmtDM(isoStr){ const [,m,d] = isoStr.split('-'); return `${d}/${m}`; }
 
   function fmtRange(e){
     return e.tungay === e.denngay ? e.tungay : `${e.tungay} → ${e.denngay}`;
@@ -310,10 +413,44 @@ tr:last-child td{border-bottom:0;}
         btn.addEventListener('click', () => {
           entries = entries.filter(e => e.id !== Number(btn.dataset.del));
           render();
+          renderAvailability();
         });
       });
     }
-    document.getElementById('exportArea').value = JSON.stringify(entries, null, 2);
+    document.getElementById('exportArea').value = JSON.stringify({entries, params}, null, 2);
+  }
+
+  // bảng khả dụng theo ngày — đúng công thức sheet "Lịch nghỉ phép": hàng 6/7/8/9/10/11
+  function countLeaveFor(dateStr, loaiList){
+    return entries.filter(e => loaiList.includes(e.loai) && e.tungay <= dateStr && dateStr <= e.denngay).length;
+  }
+  function renderAvailability(){
+    const wrap = document.getElementById('availWrap');
+    const start = todayISO();
+    const nguong = nguongDuyet();
+    const rows = [];
+    for (let i = 0; i < 14; i++){
+      const d = addDaysISO(start, i);
+      const nghiThuong = countLeaveFor(d, ['P','DX','D']);
+      const nghiKB = countLeaveFor(d, ['KB']);
+      const trangThai = nghiThuong > nguong ? 'VƯỢT NGƯỠNG DUYỆT!' : 'OK';
+      const trangThaiKB = nghiKB > params.kb ? 'KB VƯỢT DỰ PHÒNG!' : 'OK';
+      const conLai = params.hoatdong - nghiThuong - nghiKB;
+      const warn = trangThai !== 'OK' || trangThaiKB !== 'OK';
+      rows.push(`
+        <tr class="${warn ? 'warnrow' : ''}">
+          <td class="tabular">${weekdayOf(d)} ${fmtDM(d)}</td>
+          <td class="tabular">${nghiThuong} / ${nguong}</td>
+          <td><span class="tag ${trangThai === 'OK' ? 'ok' : 'vuot'}">${trangThai}</span></td>
+          <td class="tabular">${nghiKB} / ${params.kb}</td>
+          <td><span class="tag ${trangThaiKB === 'OK' ? 'ok' : 'vuot'}">${trangThaiKB}</span></td>
+          <td class="tabular" style="font-weight:700;">${conLai}</td>
+        </tr>`);
+    }
+    wrap.innerHTML = `<table>
+      <thead><tr><th>Ngày</th><th>Đang nghỉ / Ngưỡng</th><th>Trạng thái</th><th>Nghỉ KB / Dự phòng</th><th>Trạng thái KB</th><th>Còn lại (khả dụng)</th></tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>`;
   }
 
   document.getElementById('entryForm').addEventListener('submit', e => {
@@ -334,6 +471,7 @@ tr:last-child td{border-bottom:0;}
     tenInput.value = '';
     document.getElementById('f-ghichu').value = '';
     render();
+    renderAvailability();
   });
 
   document.getElementById('copyBtn').addEventListener('click', () => {
@@ -346,7 +484,9 @@ tr:last-child td{border-bottom:0;}
     setTimeout(() => { btn.textContent = old; }, 1500);
   });
 
+  fillParamInputs();
   render();
+  renderAvailability();
   loadFromGithub();
 })();
 </script>

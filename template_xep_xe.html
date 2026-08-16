@@ -1214,5 +1214,8 @@ footer.note b{color:var(--ink-muted);}
   renderAll();
   loadGaraData();
   loadDriverLeaves();
+  // tự tải lại vài phút 1 lần để thấy dữ liệu mới từ Gara/xin nghỉ mà không cần bấm F5 tay
+  setInterval(loadGaraData, 3 * 60 * 1000);
+  setInterval(loadDriverLeaves, 3 * 60 * 1000);
 })();
 </script>
