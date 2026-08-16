@@ -94,7 +94,6 @@ button.ghost:hover{background:var(--page);}
 .bchip.pending{border-color:var(--warn); box-shadow:inset 0 0 0 1px var(--warn);}
 .bchip.leave{border-color:var(--danger); box-shadow:inset 0 0 0 1px var(--danger);}
 .bchip .gbadge{color:var(--warn); font-weight:700;}
-.bchip .gbadge.leave{color:var(--danger);}
 .legend .dot{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle;}
 
 .card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); overflow:hidden;}
@@ -247,7 +246,10 @@ footer.note b{color:var(--ink-muted);}
 
   <div class="ghbar">
     <span id="ghStatus">Đang tải dữ liệu Gara…</span>
-    <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+      <button type="button" class="ghost" id="refreshOdooBtn">🔄 Làm mới từ Odoo</button>
+      <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+    </div>
   </div>
 
   <div class="brokenzone" id="brokenZone">
@@ -429,8 +431,8 @@ footer.note b{color:var(--ink-muted);}
     let t = localStorage.getItem(TOKEN_KEY);
     if (!t || forcePrompt){
       t = prompt(
-        'Dán Personal Access Token GitHub (fine-grained, quyền "Contents: Read and write" cho repo ' + REPO + ').\n' +
-        'Token chỉ lưu trong trình duyệt máy này. Nếu đã nhập bên trang Gara trên cùng trình duyệt này rồi thì khỏi cần nhập lại.',
+        'Dán Personal Access Token GitHub (fine-grained, cho repo ' + REPO + ', cần 2 quyền: "Contents: Read and write" và "Actions: Read and write" — quyền Actions để nút "Làm mới từ Odoo" chạy được).\n' +
+        'Token chỉ lưu trong trình duyệt máy này. Nếu đã nhập bên trang Gara/xin nghỉ trên cùng trình duyệt này rồi mà thiếu quyền Actions thì bấm "Đổi mã kết nối GitHub" để nhập token mới.',
         ''
       );
       if (t) localStorage.setItem(TOKEN_KEY, t.trim());
@@ -647,7 +649,7 @@ footer.note b{color:var(--ink-muted);}
         const chip = document.createElement('div');
         chip.className = 'bchip' + (pendingCount ? ' pending' : '') + (leave1 ? ' leave' : '');
         chip.draggable = true;
-        chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}${leave1 ? '<span class="gbadge leave">🌴</span>' : ''}`;
+        chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}`;
         let chipTitle = (b.cap_lai_nha || '');
         if (pendingCount) chipTitle += ' — Gara cần bảo dưỡng, chưa xếp giờ (xem tab Theo xe)';
         if (leave1) chipTitle += ' — ' + leaveTooltip(b, leave1, day.date);
@@ -1019,11 +1021,7 @@ footer.note b{color:var(--ink-muted);}
         const leave1 = driverLeaveFor(b.lai1, day.date);
         if (leave1){
           lane.classList.add('has-leave');
-          const icon = document.createElement('span');
-          icon.className = 'gicon';
-          icon.textContent = '🌴';
-          icon.title = leaveTooltip(b, leave1, day.date);
-          label.appendChild(icon);
+          label.title = leaveTooltip(b, leave1, day.date) + ' — ' + label.title;
         }
         lane.appendChild(label);
 
@@ -1176,6 +1174,40 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('ghTokenBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); getToken(true); });
+
+  // nút bấm chạy lại Action lấy dữ liệu Odoo — chỉ gửi lệnh "chạy ngay" qua GitHub, mật khẩu Odoo vẫn nằm trong
+  // GitHub Secrets phía server, trình duyệt không bao giờ thấy — không lộ thông tin đăng nhập Odoo
+  const DISPATCH_URL = `https://api.github.com/repos/${REPO}/actions/workflows/refresh-odoo.yml/dispatches`;
+  document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
+    const btn = document.getElementById('refreshOdooBtn');
+    const oldText = btn.textContent;
+    const token = getToken(false);
+    if (!token){ alert('Chưa có mã kết nối GitHub — bấm "Đổi mã kết nối GitHub" để nhập trước.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Đang yêu cầu...';
+    try{
+      const res = await fetch(DISPATCH_URL, {
+        method: 'POST',
+        headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'},
+        body: JSON.stringify({ref: 'main'}),
+      });
+      if (res.status === 204){
+        btn.textContent = 'Đã yêu cầu ✓ — đợi ~20-30s rồi tải lại trang';
+        setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 25000);
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        if (res.status === 401 || res.status === 403 || res.status === 404){
+          alert('Mã kết nối GitHub chưa đủ quyền chạy Action (cần thêm quyền "Actions: Read and write" cho repo ' + REPO + '). Bấm "Đổi mã kết nối GitHub" để nhập token mới có đủ quyền.');
+        } else {
+          alert('Lỗi: ' + (errJson.message || ('HTTP ' + res.status)));
+        }
+        btn.textContent = oldText; btn.disabled = false;
+      }
+    } catch(err){
+      alert('Lỗi mạng: ' + err.message);
+      btn.textContent = oldText; btn.disabled = false;
+    }
+  });
 
   buildWeekQuick();
   buildDayPills();
