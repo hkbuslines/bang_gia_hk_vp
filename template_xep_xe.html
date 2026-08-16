@@ -95,6 +95,7 @@ button.ghost:hover{background:var(--page);}
 
 .card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); overflow:hidden;}
 .tray-head{padding:10px 14px; border-bottom:0.5px solid var(--line); background:var(--surface-2); font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); font-weight:600;}
+.card.trayCard{position:sticky; top:8px; z-index:6; box-shadow:0 6px 14px -8px rgba(0,0,0,0.35);}
 .tray-body{display:flex; flex-direction:column; gap:8px; padding:12px 14px; max-height:280px; overflow-y:auto;}
 .tray-body.dragover{background:var(--surface-2);}
 .tray-empty{color:var(--ink-faint); font-size:12.5px; padding:6px 2px;}
@@ -236,7 +237,7 @@ footer.note b{color:var(--ink-muted);}
 
   <!-- ============ TAB 1: theo nốt giờ ============ -->
   <div class="tabpane active" id="paneSlots">
-    <div class="card">
+    <div class="card trayCard">
       <div class="tray-head">Xe chưa dùng — kéo vào nốt giờ bên dưới</div>
       <div class="tray-body" id="busTray"></div>
     </div>
@@ -281,6 +282,14 @@ footer.note b{color:var(--ink-muted);}
   const PX_PER_MIN = 0.60;
   const laneWidth = AXIS_END * PX_PER_MIN;
   const MIN_TURNAROUND = 20; // phút — ngưỡng tối thiểu giữa 2 chuyến cùng điểm
+  // tuyến dài cần tài nghỉ lâu hơn trước khi chạy tiếp — ghi đè theo tuyến của chuyến TRƯỚC
+  const ROUTE_TURNAROUND_MIN = { 'Hà Nội - Sa Pa': 360, 'Sa Pa - Hà Nội': 360 };
+  function turnaroundNeed(route){ return ROUTE_TURNAROUND_MIN[route] || MIN_TURNAROUND; }
+  function fmtTurnaround(m){
+    if (m < 60) return `${m} phút`;
+    const h = Math.floor(m / 60), mm = m % 60;
+    return mm ? `${h}h${mm}p` : `${h} tiếng`;
+  }
 
   function routeIdx(route){
     const i = ROUTE_ORDER.indexOf(route);
@@ -439,7 +448,8 @@ footer.note b{color:var(--ink-muted);}
         add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
       } else {
         const gap = b.dep - a.arr;
-        if (gap < MIN_TURNAROUND) add(b.id, `⏱ Chỉ ${gap} phút quay đầu (nên ≥ ${MIN_TURNAROUND}p)`);
+        const need = turnaroundNeed(a.route);
+        if (gap < need) add(b.id, `⏱ Chỉ ${fmtTurnaround(gap)} quay đầu (nên ≥ ${fmtTurnaround(need)})`);
       }
     }
     const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
@@ -454,6 +464,21 @@ footer.note b{color:var(--ink-muted);}
   }
   function allIssuesFor(date, bks, tripId){
     return (computeBksIssues(date, bks)[tripId]) || [];
+  }
+
+  // chuyến của hôm qua chạy qua nửa đêm sang hôm nay (arr > 1440) — chỉ hiển thị, không tính cảnh báo
+  function getCarryover(dayIndex, bks){
+    if (dayIndex <= 0) return null;
+    const prevDay = DAYS[dayIndex - 1];
+    const prevSt = stateByDay[prevDay.date];
+    const prevTripById = tripByIdByDay[prevDay.date];
+    let best = null;
+    (prevSt.assignments[bks] || []).forEach(id => {
+      const t = prevTripById[id];
+      if (t.arr > 1440 && (!best || t.arr > best.arr)) best = t;
+    });
+    if (!best) return null;
+    return { trip: best, endMin: best.arr - 1440 };
   }
 
   function buildDayPills(){
@@ -723,6 +748,21 @@ footer.note b{color:var(--ink-muted);}
     return el;
   }
 
+  function carryoverBlockEl(trip, endMin){
+    const idx = routeIdx(trip.route);
+    const el = document.createElement('div');
+    el.className = 'block';
+    el.style.background = `var(--rt${idx})`;
+    el.style.left = '0px';
+    el.style.width = Math.max(8, Math.min(AXIS_END, endMin)) * PX_PER_MIN + 'px';
+    el.style.cursor = 'default';
+    const label = document.createElement('span');
+    label.className = 'chiptext';
+    label.textContent = `${trip.depStr} · ${trip.route}`;
+    el.appendChild(label);
+    return el;
+  }
+
   function buildRuler(){
     const ruler = document.createElement('div');
     ruler.className = 'ruler';
@@ -842,6 +882,8 @@ footer.note b{color:var(--ink-muted);}
           mb.appendChild(del);
           track.appendChild(mb);
         });
+        const carry = getCarryover(dayIdx, b.bks);
+        if (carry) track.appendChild(carryoverBlockEl(carry.trip, carry.endMin));
         st.assignments[b.bks].forEach(id => track.appendChild(chipEl(tripById[id], day.date, b.bks)));
         track.addEventListener('dragover', e => {
           if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); track.classList.add('dragover'); }
