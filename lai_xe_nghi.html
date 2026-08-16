@@ -91,8 +91,6 @@ tr:last-child td{border-bottom:0;}
 .rowbtn:hover{background:var(--surface-2); color:var(--ink);}
 tr.warnrow{background:var(--danger-fill);}
 
-.exportbox{margin-top:10px;}
-.exportbox textarea{width:100%; min-height:80px; font-family:var(--font-mono); font-size:11.5px; padding:8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface-2); color:var(--ink-muted);}
 ::-webkit-scrollbar{height:10px; width:10px;}
 ::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -195,13 +193,6 @@ tr.warnrow{background:var(--danger-fill);}
     <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
       <button type="button" class="primary" id="ghSaveBtn">💾 Lưu lên GitHub (để bên xếp xe thấy)</button>
       <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
-    </div>
-    <div class="exportbox">
-      <div class="note" style="margin-bottom:6px;">Hoặc copy JSON dán tay nếu chưa muốn dùng GitHub:</div>
-      <textarea id="exportArea" readonly></textarea>
-    </div>
-    <div class="btnrow" style="justify-content:flex-start;">
-      <button type="button" class="ghost" id="copyBtn">Copy JSON</button>
     </div>
   </div>
 </div>
@@ -417,7 +408,6 @@ tr.warnrow{background:var(--danger-fill);}
         });
       });
     }
-    document.getElementById('exportArea').value = JSON.stringify({entries, params}, null, 2);
   }
 
   // bảng khả dụng theo ngày — đúng công thức sheet "Lịch nghỉ phép": hàng 6/7/8/9/10/11
@@ -472,16 +462,6 @@ tr.warnrow{background:var(--danger-fill);}
     document.getElementById('f-ghichu').value = '';
     render();
     renderAvailability();
-  });
-
-  document.getElementById('copyBtn').addEventListener('click', () => {
-    const area = document.getElementById('exportArea');
-    area.select();
-    document.execCommand('copy');
-    const btn = document.getElementById('copyBtn');
-    const old = btn.textContent;
-    btn.textContent = 'Đã copy ✓';
-    setTimeout(() => { btn.textContent = old; }, 1500);
   });
 
   fillParamInputs();
