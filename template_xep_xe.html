@@ -1116,6 +1116,14 @@ footer.note b{color:var(--ink-muted);}
       board.appendChild(lanes);
     });
 
+    // chuyến quá ngắn, chữ tràn ra ngoài khối màu — nới cả khối màu ra theo đúng độ dài chữ
+    // thay vì chỉ hiện chữ nổi trên nền trong suốt, để luôn là 1 thanh màu liền, dễ đọc hơn
+    board.querySelectorAll('.block .chiptext').forEach(label => {
+      const block = label.parentElement;
+      const needed = label.scrollWidth + 16;
+      if (needed > block.offsetWidth) block.style.width = needed + 'px';
+    });
+
     board.ondragover = e => { if (e.dataTransfer.types.includes('application/x-bks')) e.preventDefault(); };
     board.ondrop = e => {
       const bks = e.dataTransfer.getData('application/x-bks');
