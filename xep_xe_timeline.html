@@ -123,17 +123,20 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .board{overflow-x:auto; margin-top:14px;}
 .board-inner{min-width:1180px;}
 .ruler-row{display:flex; gap:10px; margin-bottom:6px;}
-.ruler-row .corner{width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;}
+.ruler-row .corner{width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;
+  position:sticky; left:0; z-index:4; background:var(--page);}
 .ruler{position:relative; flex:1; height:18px; border-bottom:0.5px solid var(--line);}
 .ruler .tick{position:absolute; top:0; font-size:10.5px; color:var(--ink-faint); transform:translateX(-50%);}
 
 .grouphead{display:flex; gap:10px; margin:10px 0 4px;}
-.grouphead .label{width:190px; flex-shrink:0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); padding-top:4px;}
+.grouphead .label{width:190px; flex-shrink:0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); padding-top:4px;
+  position:sticky; left:0; z-index:3; background:var(--page);}
 .grouphead .rest{flex:1; border-top:0.5px solid var(--line); margin-top:9px;}
 
 .lanes{display:flex; flex-direction:column; gap:6px;}
 .lane{display:flex; gap:10px; align-items:center;}
-.lane .label{width:190px; flex-shrink:0; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 10px; background:var(--surface-2); border-radius:var(--radius); cursor:grab;}
+.lane .label{width:190px; flex-shrink:0; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 10px; background:var(--surface-2); border-radius:var(--radius); cursor:grab;
+  position:sticky; left:0; z-index:3; box-shadow:2px 0 4px -2px rgba(0,0,0,0.15);}
 .lane .label:active{cursor:grabbing;}
 .lane .label .info{flex:1; min-width:0; display:flex; flex-direction:column;}
 .lane .label .bks{font-weight:700; font-size:12.5px;}
@@ -256,7 +259,7 @@ footer.note b{color:var(--ink-muted);}
     const i = ROUTE_ORDER.indexOf(route);
     return i === -1 ? FALLBACK_IDX : i;
   }
-  function corridorOf(bus){
+  function tuyenLabel(bus){
     if (bus.limo) return "SA PA (LIMOUSINE)";
     const t = bus.tuyen_chinh || "";
     if (t === "SAPA") return "SA PA · NINH BÌNH · HẠ LONG";
@@ -264,6 +267,16 @@ footer.note b{color:var(--ink-muted);}
     if (t === "NHA TRANG") return "NHA TRANG";
     return t || "KHÁC";
   }
+  function corridorOf(bus){
+    const loai = bus.phan_loai || "KHÁC";
+    return `${loai} · ${tuyenLabel(bus)}`;
+  }
+  const GROUP_ORDER = [
+    "CỐ ĐỊNH · SA PA · NINH BÌNH · HẠ LONG", "CỐ ĐỊNH · HỘI AN", "CỐ ĐỊNH · NHA TRANG",
+    "BÁN ỔN ĐỊNH · SA PA · NINH BÌNH · HẠ LONG", "BÁN ỔN ĐỊNH · HỘI AN", "BÁN ỔN ĐỊNH · NHA TRANG",
+    "LUÂN CHUYỂN · SA PA · NINH BÌNH · HẠ LONG", "LUÂN CHUYỂN · SA PA (LIMOUSINE)",
+    "LUÂN CHUYỂN · HỘI AN", "LUÂN CHUYỂN · NHA TRANG",
+  ];
   function routesInDay(day){
     const present = new Set(day.trips.map(t => t.route));
     const ordered = ROUTE_ORDER.filter(r => present.has(r));
@@ -399,7 +412,6 @@ footer.note b{color:var(--ink-muted);}
     const garaBroken = garaBrokenSetFor(day.date);
     const tray = document.getElementById('busTray');
     tray.innerHTML = '';
-    const GROUP_ORDER = ["SA PA · NINH BÌNH · HẠ LONG", "SA PA (LIMOUSINE)", "HỘI AN", "NHA TRANG"];
     const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
     const present = new Set(activeBuses.map(corridorOf));
     const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
@@ -646,7 +658,6 @@ footer.note b{color:var(--ink-muted);}
 
     const garaBroken = garaBrokenSetFor(day.date);
     const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
-    const GROUP_ORDER = ["SA PA · NINH BÌNH · HẠ LONG", "SA PA (LIMOUSINE)", "HỘI AN", "NHA TRANG"];
     const present = new Set(activeBuses.map(corridorOf));
     const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
 
