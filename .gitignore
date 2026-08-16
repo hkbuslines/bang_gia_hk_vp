@@ -7,6 +7,13 @@
 !gara_bao_duong.html
 !xep_xe_timeline.html
 !bao_duong_data.json
+!template_xep_xe.html
 !.gitignore
 !hoan-tien
 !hoan-tien/**
+!data
+!data/**
+!scripts
+!scripts/**
+!.github
+!.github/**

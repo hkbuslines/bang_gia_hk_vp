@@ -1,0 +1,972 @@
+<meta charset="utf-8">
+<title>Bảng Xếp Xe</title>
+<style>
+:root{
+  --page:#EEF1EC; --surface:#FFFFFF; --surface-2:#F5F7F3;
+  --ink:#14201D; --ink-muted:#57645F; --ink-faint:#8B958F;
+  --line:#D7DCD3; --line-strong:#BFC7BB;
+  --danger:#B23B2E; --danger-fill:rgba(178,59,46,0.12);
+  --warn:#B5701E; --warn-fill:rgba(181,112,30,0.16);
+  --ok:#3F7D4A; --ok-fill:rgba(63,125,74,0.14);
+  --radius:8px;
+  --font-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --font-mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+    --rt0:#2E9E66; --rt0-soft:#D7F4E6;
+    --rt1:#2E9E82; --rt1-soft:#D7F4ED;
+    --rt2:#2E9E3D; --rt2-soft:#D7F4DB;
+    --rt3:#2E9E53; --rt3-soft:#D7F4E1;
+    --rt4:#2E9E9A; --rt4-soft:#D7F4F3;
+    --rt5:#2E8B9E; --rt5-soft:#D7EFF4;
+    --rt6:#419E2E; --rt6-soft:#DCF4D7;
+    --rt7:#539E2E; --rt7-soft:#E1F4D7;
+    --rt8:#9E502E; --rt8-soft:#F4E0D7;
+    --rt9:#9E6D2E; --rt9-soft:#F4E7D7;
+    --rt10:#9E8B2E; --rt10-soft:#F4EFD7;
+    --rt11:#2E629E; --rt11-soft:#D7E5F4;
+    --rt12:#2E449E; --rt12-soft:#D7DDF4;
+    --rt13:#352E9E; --rt13-soft:#D9D7F4;
+    --rt14:#2E7C9E; --rt14-soft:#D7EBF4;
+    --rt15:#822E9E; --rt15-soft:#EDD7F4;
+    --rt16:#9E2E82; --rt16-soft:#F4D7ED;
+    --rt17:#9E792E; --rt17-soft:#F4EAD7;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+    --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+    --line:#2A312A; --line-strong:#3A433A;
+    --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+    --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+    --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#10140F; --surface:#171C17; --surface-2:#1D231C;
+  --ink:#E7ECE6; --ink-muted:#9AA69A; --ink-faint:#6C766B;
+  --line:#2A312A; --line-strong:#3A433A;
+  --danger:#E17F72; --danger-fill:rgba(225,127,114,0.16);
+  --warn:#E2A346; --warn-fill:rgba(226,163,70,0.18);
+  --ok:#7BC28A; --ok-fill:rgba(123,194,138,0.16);
+}
+*{box-sizing:border-box;}
+body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-ui); font-size:14px;}
+.tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
+.wrap{max-width:1500px; margin:0 auto; padding:20px 20px 60px;}
+h1{font-size:19px; font-weight:600; margin:0;}
+.sub{font-size:13px; color:var(--ink-muted); margin-top:2px;}
+
+.stats{display:flex; gap:8px; flex-wrap:wrap;}
+.stat{display:flex; align-items:baseline; gap:6px; padding:6px 12px; background:var(--surface-2); border-radius:999px; font-size:12.5px; color:var(--ink-muted);}
+.stat b{font-family:var(--font-mono); font-variant-numeric:tabular-nums; color:var(--ink); font-size:14px;}
+.stat.warn b{color:var(--danger);}
+
+.daystrip{display:flex; align-items:center; gap:6px; margin:14px 0 10px;}
+.daystrip .navbtn{flex-shrink:0; width:30px; height:30px; border-radius:50%; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:14px;}
+.daystrip .navbtn:hover{background:var(--surface-2);}
+.daystrip .pills{display:flex; gap:6px; overflow-x:auto; padding:2px; flex:1;}
+.pill{flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:1px; width:52px; padding:6px 0; border-radius:var(--radius); border:0.5px solid var(--line-strong); background:var(--surface); cursor:pointer; font-size:11px; color:var(--ink);}
+.pill .wd{color:var(--ink-faint); font-size:10px;}
+.pill.active{background:var(--ink); color:var(--page); border-color:var(--ink);}
+.pill.active .wd{color:var(--page); opacity:0.75;}
+.pill .dot2{font-size:8px; color:var(--ink-faint); line-height:1;}
+.pill.real .dot2{color:var(--ok);}
+.pill.active .dot2{color:inherit; opacity:0.85;}
+.daybanner{font-size:11.5px; padding:6px 12px; border-radius:var(--radius); margin-bottom:10px; display:inline-block;}
+.daybanner.real{background:var(--ok-fill); color:var(--ok);}
+.daybanner.proj{background:var(--warn-fill); color:var(--warn);}
+
+.tabbar{display:flex; gap:8px; margin-bottom:14px;}
+.tabbtn{padding:8px 16px; border-radius:var(--radius); border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:13px; font-weight:600;}
+.tabbtn.active{background:var(--ink); color:var(--page); border-color:var(--ink);}
+.tabpane{display:none;}
+.tabpane.active{display:block;}
+
+.legend{display:flex; gap:12px; flex-wrap:wrap; margin:0 0 12px; font-size:11.5px; color:var(--ink-muted);}
+
+.ghbar{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; margin-bottom:12px; background:var(--surface-2); border-radius:var(--radius); font-size:11.5px; color:var(--ink-muted);}
+button.ghost{padding:6px 12px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); font-size:11.5px; cursor:pointer;}
+button.ghost:hover{background:var(--page);}
+
+.pendingpill{display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:6px; border:1.5px dashed var(--warn); background:var(--warn-fill); color:var(--warn); font-size:11px; font-weight:700; cursor:pointer;}
+.pendingpill:hover{background:var(--warn); color:#fff;}
+.bchip.pending{border-color:var(--warn); box-shadow:inset 0 0 0 1px var(--warn);}
+.bchip .gbadge{color:var(--warn); font-weight:700;}
+.legend .dot{display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle;}
+
+.card{background:var(--surface); border-radius:12px; border:0.5px solid var(--line); overflow:hidden;}
+.tray-head{padding:10px 14px; border-bottom:0.5px solid var(--line); background:var(--surface-2); font-size:11.5px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); font-weight:600;}
+.tray-body{display:flex; flex-direction:column; gap:8px; padding:12px 14px; max-height:280px; overflow-y:auto;}
+.tray-body.dragover{background:var(--surface-2);}
+.tray-empty{color:var(--ink-faint); font-size:12.5px; padding:6px 2px;}
+.rgroup{display:flex; align-items:flex-start; gap:10px;}
+.rgroup .rlabel{flex:0 0 190px; padding-top:4px; font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.rgroup .rlabel .n{font-weight:400; color:var(--ink-faint); margin-left:4px;}
+.rgroup .rchips{flex:1; display:flex; flex-wrap:wrap; gap:6px; min-height:26px;}
+.rgroup .rchips:empty::before{content:"— hết —"; color:var(--ink-faint); font-size:11px; padding-top:4px;}
+
+.bchip{display:inline-flex; align-items:center; gap:5px; padding:4px 6px 4px 9px; border-radius:6px; cursor:grab; user-select:none; font-size:11.5px; font-weight:700;
+  background:var(--surface-2); border:1px solid var(--line-strong); color:var(--ink);}
+.bchip:active{cursor:grabbing;}
+.bchip.dragging{opacity:0.35;}
+.bchip .count{font-weight:400; color:var(--ink-faint); font-size:10.5px;}
+
+.chip{display:inline-flex; align-items:center; gap:5px; padding:4px 6px 4px 9px; border-radius:6px; cursor:grab; user-select:none; font-size:11.5px; font-weight:600; color:#fff; box-shadow:0 1px 1px rgba(0,0,0,0.08);}
+.chip:active{cursor:grabbing;}
+.chip.dragging{opacity:0.35;}
+.chiptext{pointer-events:none;}
+.del{flex-shrink:0; width:15px; height:15px; line-height:13px; padding:0; border-radius:50%; border:0; background:rgba(0,0,0,0.22); color:#fff; font-size:12px; cursor:pointer;}
+.del:hover{background:rgba(0,0,0,0.4);}
+.block .del{position:absolute; top:-6px; right:-6px; width:15px; height:15px; border:1px solid var(--surface);}
+
+/* ---- slot list (Theo nốt giờ) ---- */
+.slotgroup{margin-bottom:4px;}
+.slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
+.slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
+.slotrow:hover{background:var(--surface-2);}
+.slotrow .time{flex:0 0 56px; font-weight:700;}
+.slotrow .route{flex:0 0 190px; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center;}
+.dropzone{flex:1; min-height:30px; border:1.5px dashed var(--line-strong); border-radius:6px; display:flex; align-items:center; padding:0 8px; font-size:11.5px; color:var(--ink-faint);}
+.dropzone.dragover{border-color:var(--ink); background:var(--surface-2);}
+.dropzone.filled{border-style:solid; border-color:transparent; padding:0;}
+.assignedchip{display:flex; align-items:center; gap:8px; width:100%; padding:5px 10px; border-radius:6px; cursor:grab; color:#fff; font-weight:700; font-size:12px;}
+.assignedchip:active{cursor:grabbing;}
+.slotrow .issues{flex:0 0 auto; max-width:260px; font-size:11px; color:var(--danger); display:flex; flex-direction:column; gap:2px;}
+.slotrow .issues span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+
+/* ---- board (Theo xe) ---- */
+.board{overflow-x:auto; margin-top:14px;}
+.board-inner{min-width:1180px;}
+.ruler-row{display:flex; gap:10px; margin-bottom:6px;}
+.ruler-row .corner{width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;
+  position:sticky; left:0; z-index:4; background:var(--page);}
+.ruler{position:relative; flex:1; height:18px; border-bottom:0.5px solid var(--line);}
+.ruler .tick{position:absolute; top:0; font-size:10.5px; color:var(--ink-faint); transform:translateX(-50%);}
+
+.grouphead{display:flex; gap:10px; margin:10px 0 4px;}
+.grouphead .label{width:190px; flex-shrink:0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); padding-top:4px;
+  position:sticky; left:0; z-index:3; background:var(--page);}
+.grouphead .rest{flex:1; border-top:0.5px solid var(--line); margin-top:9px;}
+
+.lanes{display:flex; flex-direction:column; gap:6px;}
+.lane{display:flex; gap:10px; align-items:center;}
+.lane .label{width:190px; flex-shrink:0; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 10px; background:var(--surface-2); border-radius:var(--radius); cursor:grab;
+  position:sticky; left:0; z-index:3; box-shadow:2px 0 4px -2px rgba(0,0,0,0.15);}
+.lane .label:active{cursor:grabbing;}
+.lane .label .info{flex:1; min-width:0; display:flex; flex-direction:column;}
+.lane .label .bks{font-weight:700; font-size:12.5px;}
+.lane .label .crew{font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.lane.has-gara .label{background:var(--warn-fill); box-shadow:inset 3px 0 0 var(--warn);}
+.gicon{flex-shrink:0; font-size:14px; cursor:default; border:0; background:none; padding:0; line-height:1;}
+button.gicon:hover{transform:scale(1.15);}
+.block.maint{color:#fff; cursor:default;}
+.block.maint.wait{background:repeating-linear-gradient(45deg, var(--danger), var(--danger) 6px, #c9765f 6px, #c9765f 12px);}
+.block.maint.doing{background:repeating-linear-gradient(45deg, var(--warn), var(--warn) 6px, #cf9a52 6px, #cf9a52 12px);}
+.block.maint.done{background:var(--ok); opacity:0.55;}
+
+.brokenzone{border:1.5px dashed var(--danger); border-radius:var(--radius); background:var(--danger-fill); padding:10px 14px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px;}
+.brokenzone .bzhead{flex:0 0 220px; font-size:11.5px; font-weight:700; color:var(--danger); line-height:1.4;}
+.brokenzone .bzhead .sub2{font-weight:400; color:var(--ink-muted); display:block; margin-top:2px;}
+.brokenzone .bzchips{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px;}
+.brokenzone.dragover{background:var(--danger); }
+.brokenzone.dragover .bzhead, .brokenzone.dragover .bzempty{color:#fff;}
+.bzempty{color:var(--ink-faint); font-size:12px;}
+.bkschip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--danger); color:var(--danger); font-size:12px; font-weight:700; cursor:grab;}
+.bkschip:active{cursor:grabbing;}
+.bkschip.dragging{opacity:0.35;}
+.bkschip.gara{cursor:default; border-style:dashed;}
+.track{position:relative; flex:1; height:34px; border-radius:var(--radius);
+  background-color:var(--surface-2);
+  background-image:repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent calc(100%/10));}
+.track.dragover{outline:2px dashed var(--ink-muted); outline-offset:-2px;}
+
+.block{position:absolute; top:3px; bottom:3px; border-radius:6px; display:flex; align-items:center; padding:0 7px; font-size:11px; font-weight:600; color:#fff; cursor:grab; white-space:nowrap;}
+.block .chiptext{overflow:hidden; text-overflow:ellipsis;}
+.block:active{cursor:grabbing;}
+.block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
+.block.conflict::before{content:"⚠ "; }
+.block.dragging{opacity:0.35;}
+
+footer.note{margin-top:16px; font-size:12px; color:var(--ink-faint); max-width:78ch; line-height:1.6;}
+footer.note b{color:var(--ink-muted);}
+::-webkit-scrollbar{height:10px; width:10px;}
+::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+</style>
+
+<div class="wrap">
+  <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h1>Bảng xếp xe theo nốt giờ</h1>
+      <div class="sub">Kéo 1 xe (BKS) từ khay thả vào đúng nốt giờ muốn xếp — kéo giữa các nốt để đổi, kéo lại vào khay để gỡ. Xe hỏng thì kéo nhãn BKS thả vào ô đỏ phía trên.</div>
+    </div>
+    <div class="stats">
+      <div class="stat"><span>Đã xếp</span><b id="statAssigned">0</b></div>
+      <div class="stat"><span>Chưa xếp</span><b id="statUnassigned">0</b></div>
+      <div class="stat"><span>Xe đang dùng</span><b id="statVehicles">0</b></div>
+      <div class="stat warn"><span>Cảnh báo</span><b id="statConflicts">0</b></div>
+      <div class="stat warn"><span>Xe hỏng</span><b id="statBroken">0</b></div>
+    </div>
+  </div>
+
+  <div class="daystrip">
+    <button class="navbtn" id="dayPrev" aria-label="Ngày trước">‹</button>
+    <div class="pills" id="dayPills"></div>
+    <button class="navbtn" id="dayNext" aria-label="Ngày sau">›</button>
+  </div>
+
+  <div id="dayBanner"></div>
+
+  <div class="tabbar">
+    <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
+    <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="ghbar">
+    <span id="ghStatus">Đang tải dữ liệu Gara…</span>
+    <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+  </div>
+
+  <div class="brokenzone" id="brokenZone">
+    <div class="bzhead">🚫 Xe hỏng — không xếp hôm nay<span class="sub2">Kéo BKS từ khay thả vào đây</span></div>
+    <div class="bzchips" id="brokenChips"></div>
+  </div>
+
+  <!-- ============ TAB 1: theo nốt giờ ============ -->
+  <div class="tabpane active" id="paneSlots">
+    <div class="card">
+      <div class="tray-head">Xe chưa dùng — kéo vào nốt giờ bên dưới</div>
+      <div class="tray-body" id="busTray"></div>
+    </div>
+    <div class="card" style="margin-top:14px;">
+      <div class="tray-head">Nốt giờ trong ngày</div>
+      <div id="slotList"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 2: theo xe ============ -->
+  <div class="tabpane" id="paneBoard">
+    <div class="board">
+      <div class="board-inner" id="boardInner"></div>
+    </div>
+  </div>
+
+  <footer class="note">
+    <b>Cách dùng:</b> tab "Theo nốt giờ" là nơi xếp chính — kéo 1 xe (BKS) từ khay thả vào ô chấm chấm cạnh nốt giờ
+    muốn xếp; kéo xe đã xếp sang nốt khác để đổi, kéo lại vào khay để gỡ. Hệ thống tự cảnh báo 3 kiểu (không chặn,
+    chỉ báo để bạn cân nhắc): <b>trùng giờ</b> (xe đang bận chuyến khác cùng lúc), <b>không đủ thời gian quay đầu</b>
+    (khoảng cách giữa 2 chuyến liên tiếp của cùng 1 xe quá ngắn), và <b>sai vị trí</b> (điểm đến chuyến trước không
+    trùng điểm đi chuyến sau — nghĩa là xe không thể có mặt đúng chỗ). Tab "Theo xe" xem lại lịch chạy đầy đủ của
+    từng xe trong ngày dạng thanh thời gian 24h, kéo thả được y hệt tab kia vì dùng chung dữ liệu. Xe hỏng (kéo tay
+    hoặc do Gara báo) tự loại khỏi khay và khỏi lịch xếp đúng ngày đó. Ngày có nhãn <b>✓ xanh</b> (chấm strip trên
+    cùng) là lịch <b>thật lấy trực tiếp từ Odoo</b> tại thời điểm dựng trang này — xe/tài nào Odoo đã gán sẵn thì
+    trang này tự nhận đúng luôn (không cần xếp lại). Ngày nhãn <b>≈ vàng</b> là Odoo <b>chưa có lịch thật</b> (đặt vé
+    sát ngày mới có), nên tạm dùng nề nếp 1 ngày cùng thứ trong quá khứ làm ước tính — sẽ cập nhật thành thật khi có
+    dữ liệu, báo tôi dựng lại trang gần ngày hơn để lấy đúng lịch thật. Dữ liệu là ảnh chụp tại lúc tạo trang, không
+    tự làm mới — bản dựng thử để bạn góp ý trước khi làm chính thức.
+  </footer>
+</div>
+
+<script id="bus-data" type="application/json">__BUSES_JSON__</script>
+<script id="day-data" type="application/json">__DAYS_JSON__</script>
+<script>
+(function(){
+  const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
+  const DAYS = JSON.parse(document.getElementById('day-data').textContent);
+  const ROUTE_ORDER = __ROUTE_ORDER_JS__;
+  const FALLBACK_IDX = __FALLBACK_IDX__;
+  const AXIS_END = 1440;
+  const PX_PER_MIN = 0.60;
+  const laneWidth = AXIS_END * PX_PER_MIN;
+  const MIN_TURNAROUND = 20; // phút — ngưỡng tối thiểu giữa 2 chuyến cùng điểm
+
+  function routeIdx(route){
+    const i = ROUTE_ORDER.indexOf(route);
+    return i === -1 ? FALLBACK_IDX : i;
+  }
+  const GROUP_META = __GROUP_META_JS__;
+  const GROUP_ORDER = __GROUP_ORDER_KEYS_JS__;
+  function corridorOf(bus){
+    return bus.group_key || "KHÁC";
+  }
+  function corridorLabel(key){
+    const m = GROUP_META[key];
+    return m ? m.name : key;
+  }
+  function routesInDay(day){
+    const present = new Set(day.trips.map(t => t.route));
+    const ordered = ROUTE_ORDER.filter(r => present.has(r));
+    const extra = [...present].filter(r => !ROUTE_ORDER.includes(r)).sort();
+    return [...ordered, ...extra];
+  }
+
+  const stateByDay = {};
+  DAYS.forEach(day => {
+    const assignments = {};
+    BUSES.forEach(b => assignments[b.bks] = []);
+    const unassigned = new Set();
+    day.trips.forEach(t => {
+      if (t.assignedBks && assignments[t.assignedBks]) assignments[t.assignedBks].push(t.id);
+      else unassigned.add(t.id);
+    });
+    stateByDay[day.date] = { assignments, unassigned, broken: new Set() };
+  });
+  const busByBks = {}; BUSES.forEach(b => busByBks[b.bks] = b);
+  const tripByIdByDay = {};
+  DAYS.forEach(day => {
+    const m = {}; day.trips.forEach(t => m[t.id] = t); tripByIdByDay[day.date] = m;
+  });
+
+  const REPO = 'hkbuslines/bang_gia_hk_vp';
+  const DATA_PATH = 'bao_duong_data.json';
+  const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
+  const API_URL = `https://api.github.com/repos/${REPO}/contents/${DATA_PATH}`;
+  const TOKEN_KEY = 'hkbl_gh_token';
+  let garaEntries = [];
+  let gaSavedAt = null;
+
+  function garaEntriesFor(bks, dateStr){
+    return garaEntries.filter(e => e.bks === bks && e.ngaybd <= dateStr && dateStr <= e.ngaykt);
+  }
+  function garaBrokenSetFor(dateStr){
+    const s = new Set();
+    garaEntries.forEach(e => { if (e.loai === 'hong' && e.ngaybd <= dateStr && dateStr <= e.ngaykt) s.add(e.bks); });
+    return s;
+  }
+  const STATE_ICON = {wait:'🔧', doing:'🛠️', done:'✅'};
+  const STATE_LABEL_VN = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
+
+  function b64EncodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
+  function getToken(forcePrompt){
+    let t = localStorage.getItem(TOKEN_KEY);
+    if (!t || forcePrompt){
+      t = prompt(
+        'Dán Personal Access Token GitHub (fine-grained, quyền "Contents: Read and write" cho repo ' + REPO + ').\n' +
+        'Token chỉ lưu trong trình duyệt máy này. Nếu đã nhập bên trang Gara trên cùng trình duyệt này rồi thì khỏi cần nhập lại.',
+        ''
+      );
+      if (t) localStorage.setItem(TOKEN_KEY, t.trim());
+    }
+    return t ? t.trim() : null;
+  }
+
+  function ghStatusEl(){ return document.getElementById('ghStatus'); }
+
+  async function loadGaraData(){
+    const el = ghStatusEl();
+    try{
+      const res = await fetch(RAW_URL, {cache:'no-store'});
+      if (res.status === 404){ if (el) el.textContent = 'Chưa có dữ liệu từ Gara.'; return; }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      garaEntries = data.entries || [];
+      gaSavedAt = data.updated_at || null;
+      if (el) el.textContent = `Đã tải ${garaEntries.length} mục từ Gara (cập nhật lần cuối: ${gaSavedAt || '—'}).`;
+      renderAll();
+    } catch(err){
+      if (el) el.textContent = 'Không tải được dữ liệu từ Gara (mạng lỗi hoặc chưa có dữ liệu).';
+    }
+  }
+
+  async function saveGaraEntries(successMsg){
+    const el = ghStatusEl();
+    const token = getToken(false);
+    if (!token){ if (el) el.textContent = 'Chưa có mã kết nối GitHub — bấm "Đổi mã kết nối GitHub" để nhập.'; return false; }
+    if (el) el.textContent = 'Đang lưu lên GitHub...';
+    try{
+      let sha = null;
+      const cur = await fetch(API_URL, {headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json'}});
+      if (cur.ok){ sha = (await cur.json()).sha; }
+      else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
+      const payload = { entries: garaEntries, updated_at: new Date().toISOString() };
+      const body = {
+        message: 'Xếp xe cập nhật lịch bảo dưỡng — ' + new Date().toLocaleString('vi-VN'),
+        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
+      };
+      if (sha) body.sha = sha;
+      const put = await fetch(API_URL, {
+        method: 'PUT',
+        headers: {Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'Content-Type':'application/json'},
+        body: JSON.stringify(body),
+      });
+      if (!put.ok){
+        const errJson = await put.json().catch(()=>({}));
+        if (el) el.textContent = put.status === 401
+          ? 'Mã kết nối GitHub sai/hết hạn — bấm "Đổi mã kết nối GitHub".'
+          : 'Lưu lỗi: ' + (errJson.message || ('HTTP ' + put.status));
+        return false;
+      }
+      if (el) el.textContent = successMsg || `Đã lưu lên GitHub lúc ${new Date().toLocaleTimeString('vi-VN')}.`;
+      return true;
+    } catch(err){
+      if (el) el.textContent = 'Lưu lỗi: ' + err.message;
+      return false;
+    }
+  }
+
+  async function scheduleMaint(entry, date, startHour){
+    entry.scheduled = { date, startHour };
+    renderAll();
+    await saveGaraEntries(`Đã xếp bảo dưỡng ${entry.bks} vào ${date} lúc ${String(startHour).padStart(2,'0')}:00 — đã lưu lên GitHub.`);
+  }
+  async function unscheduleMaint(entry){
+    entry.scheduled = null;
+    renderAll();
+    await saveGaraEntries(`Đã gỡ lịch bảo dưỡng ${entry.bks} — đã lưu lên GitHub.`);
+  }
+
+  let dayIdx = 0;
+  let activeTab = 'slots';
+
+  function overlaps(a, b){ return a.dep < b.arr && b.dep < a.arr; }
+
+  // pairwise issues for a bks's own chain of trips that day: overlap / turnaround / position
+  function computeBksIssues(date, bks){
+    const st = stateByDay[date];
+    const tripById = tripByIdByDay[date];
+    const ids = [...st.assignments[bks]].sort((a,b) => tripById[a].dep - tripById[b].dep);
+    const issues = {}; // tripId -> [str,...]
+    const add = (id, msg) => { (issues[id] = issues[id] || []).push(msg); };
+    for (let i = 0; i < ids.length - 1; i++){
+      const a = tripById[ids[i]], b = tripById[ids[i+1]];
+      if (overlaps(a, b)){
+        add(b.id, `⚠ Trùng giờ với chuyến ${a.depStr} (${a.route})`);
+        continue;
+      }
+      if (a.to !== b.from){
+        add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
+      } else {
+        const gap = b.dep - a.arr;
+        if (gap < MIN_TURNAROUND) add(b.id, `⏱ Chỉ ${gap} phút quay đầu (nên ≥ ${MIN_TURNAROUND}p)`);
+      }
+    }
+    const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
+    ids.forEach(id => {
+      const t = tripById[id];
+      scheduledToday.forEach(e => {
+        const win = { dep: e.scheduled.startHour*60, arr: e.scheduled.startHour*60 + Math.round(e.sogio*60) };
+        if (overlaps(win, t)) add(id, `🔧 Trùng giờ bảo dưỡng đã xếp (${String(e.scheduled.startHour).padStart(2,'0')}:00, ~${e.sogio}h)`);
+      });
+    });
+    return issues;
+  }
+  function allIssuesFor(date, bks, tripId){
+    return (computeBksIssues(date, bks)[tripId]) || [];
+  }
+
+  function buildDayPills(){
+    const wrap = document.getElementById('dayPills');
+    wrap.innerHTML = '';
+    DAYS.forEach((day, i) => {
+      const p = document.createElement('button');
+      p.className = 'pill tabular' + (day.real ? ' real' : '');
+      p.innerHTML = `<span class="wd">${day.weekday}</span><span>${day.dd}</span><span class="dot2" title="${day.real ? 'Lịch thật từ Odoo' : 'Dự kiến theo nề nếp ' + (day.refDate||'')}">${day.real ? '●' : '○'}</span>`;
+      p.title = day.real ? 'Lịch thật từ Odoo' : `Dự kiến — chưa có lịch thật trong Odoo, theo nề nếp ngày ${day.refDate || ''}`;
+      p.addEventListener('click', () => setDay(i));
+      wrap.appendChild(p);
+    });
+  }
+  function highlightPills(){
+    const wrap = document.getElementById('dayPills');
+    [...wrap.children].forEach((el, i) => el.classList.toggle('active', i === dayIdx));
+    const active = wrap.children[dayIdx];
+    if (active) active.scrollIntoView({inline:'center', block:'nearest'});
+  }
+  function setDay(i){
+    dayIdx = Math.max(0, Math.min(DAYS.length - 1, i));
+    highlightPills();
+    renderAll();
+  }
+  function setTab(t){
+    activeTab = t;
+    document.getElementById('tabSlots').classList.toggle('active', t === 'slots');
+    document.getElementById('tabBoard').classList.toggle('active', t === 'board');
+    document.getElementById('paneSlots').classList.toggle('active', t === 'slots');
+    document.getElementById('paneBoard').classList.toggle('active', t === 'board');
+    renderAll();
+  }
+
+  function buildLegend(){
+    const day = DAYS[dayIdx];
+    const el = document.getElementById('legend');
+    el.innerHTML = '';
+    routesInDay(day).forEach(route => {
+      const idx = routeIdx(route);
+      const span = document.createElement('span');
+      span.innerHTML = `<span class="dot" style="background:var(--rt${idx})"></span>${route}`;
+      el.appendChild(span);
+    });
+  }
+
+  // ---------------- bus pool (Tab 1) ----------------
+  function renderBusTray(){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    const garaBroken = garaBrokenSetFor(day.date);
+    const tray = document.getElementById('busTray');
+    tray.innerHTML = '';
+    const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
+    const present = new Set(activeBuses.map(corridorOf));
+    const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
+    groups.forEach(g => {
+      const group = document.createElement('div');
+      group.className = 'rgroup';
+      const label = document.createElement('div');
+      label.className = 'rlabel';
+      label.textContent = corridorLabel(g);
+      if (GROUP_META[g]) label.style.color = GROUP_META[g].color;
+      const chips = document.createElement('div');
+      chips.className = 'rchips';
+      activeBuses.filter(b => corridorOf(b) === g).forEach(b => {
+        const n = st.assignments[b.bks].length;
+        const pendingCount = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong' && !e.scheduled).length;
+        const chip = document.createElement('div');
+        chip.className = 'bchip' + (pendingCount ? ' pending' : '');
+        chip.draggable = true;
+        chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}`;
+        chip.title = (b.cap_lai_nha || '') + (pendingCount ? ' — Gara cần bảo dưỡng, chưa xếp giờ (xem tab Theo xe)' : '');
+        chip.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('application/x-bks', b.bks);
+          chip.classList.add('dragging');
+        });
+        chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+        chips.appendChild(chip);
+      });
+      group.appendChild(label); group.appendChild(chips);
+      tray.appendChild(group);
+    });
+  }
+
+  function assignBksToTrip(date, tripId, bks){
+    const st = stateByDay[date];
+    // remove this trip from whichever bks currently holds it
+    Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== tripId); });
+    st.unassigned.delete(tripId);
+    if (bks) st.assignments[bks].push(tripId); else st.unassigned.add(tripId);
+    renderAll();
+  }
+
+  function assignedChipEl(date, tripId, bks){
+    const idx_ = routeIdx(tripByIdByDay[date][tripId].route);
+    const el = document.createElement('div');
+    el.className = 'assignedchip';
+    el.style.background = `var(--rt${routeIdx(tripByIdByDay[date][tripId].route)})`;
+    el.draggable = true;
+    el.innerHTML = `<span class="tabular">${bks}</span>`;
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('application/x-slotmove', JSON.stringify({tripId, bks}));
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    return el;
+  }
+
+  // ---------------- slot list (Tab 1) ----------------
+  function renderSlotList(){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    const tripById = tripByIdByDay[day.date];
+    const wrap = document.getElementById('slotList');
+    wrap.innerHTML = '';
+
+    const bksOfTrip = {};
+    Object.keys(st.assignments).forEach(bks => st.assignments[bks].forEach(id => bksOfTrip[id] = bks));
+
+    routesInDay(day).forEach(route => {
+      const ids = day.trips.filter(t => t.route === route).map(t => t.id).sort((a,b) => tripById[a].dep - tripById[b].dep);
+      if (!ids.length) return;
+      const idx = routeIdx(route);
+      const group = document.createElement('div');
+      group.className = 'slotgroup';
+      const ghead = document.createElement('div');
+      ghead.className = 'ghead';
+      ghead.style.color = `var(--rt${idx})`;
+      ghead.textContent = route;
+      group.appendChild(ghead);
+
+      ids.forEach(id => {
+        const t = tripById[id];
+        const row = document.createElement('div');
+        row.className = 'slotrow';
+
+        const time = document.createElement('div');
+        time.className = 'time tabular';
+        time.textContent = t.depStr;
+        row.appendChild(time);
+
+        const rr = document.createElement('div');
+        rr.className = 'route';
+        rr.textContent = `${t.from} → ${t.to}`;
+        rr.style.color = `var(--rt${idx})`;
+        row.appendChild(rr);
+
+        const dzWrap = document.createElement('div');
+        dzWrap.className = 'dz';
+        const bks = bksOfTrip[id];
+        const dz = document.createElement('div');
+        dz.className = 'dropzone' + (bks ? ' filled' : '');
+        if (bks){
+          dz.appendChild(assignedChipEl(day.date, id, bks));
+        } else {
+          dz.textContent = 'kéo xe vào đây';
+        }
+        dz.addEventListener('dragover', e => {
+          if (e.dataTransfer.types.includes('application/x-bks') || e.dataTransfer.types.includes('application/x-slotmove')){
+            e.preventDefault(); dz.classList.add('dragover');
+          }
+        });
+        dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+        dz.addEventListener('drop', e => {
+          e.preventDefault(); dz.classList.remove('dragover');
+          const rawBks = e.dataTransfer.getData('application/x-bks');
+          const rawMove = e.dataTransfer.getData('application/x-slotmove');
+          if (rawBks){ assignBksToTrip(day.date, id, rawBks); }
+          else if (rawMove){ const {bks: fromBks} = JSON.parse(rawMove); assignBksToTrip(day.date, id, fromBks); }
+        });
+        dzWrap.appendChild(dz);
+        row.appendChild(dzWrap);
+
+        const issuesEl = document.createElement('div');
+        issuesEl.className = 'issues';
+        if (bks){
+          allIssuesFor(day.date, bks, id).forEach(msg => {
+            const s = document.createElement('span');
+            s.textContent = msg;
+            s.title = msg;
+            issuesEl.appendChild(s);
+          });
+        }
+        row.appendChild(issuesEl);
+
+        const del = document.createElement('button');
+        del.className = 'del';
+        del.type = 'button';
+        del.textContent = '×';
+        del.title = 'Xoá nốt này khỏi lịch';
+        del.style.position = 'static';
+        del.style.background = 'var(--surface-2)';
+        del.style.color = 'var(--ink-faint)';
+        del.addEventListener('click', () => {
+          if (confirm(`Xoá nốt ${t.depStr} (${t.route})? Sẽ mất hẳn khỏi lịch, không phục hồi được.`)){
+            deleteTrip(day.date, id);
+          }
+        });
+        row.appendChild(del);
+
+        group.appendChild(row);
+      });
+      wrap.appendChild(group);
+    });
+
+    // unassigned pool drop target: dropping a slotmove chip on empty tray area unassigns it
+    const trayCard = document.getElementById('busTray');
+    trayCard.ondragover = e => { if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); trayCard.classList.add('dragover'); } };
+    trayCard.ondragleave = () => trayCard.classList.remove('dragover');
+    trayCard.ondrop = e => {
+      const raw = e.dataTransfer.getData('application/x-slotmove');
+      if (raw){ e.preventDefault(); trayCard.classList.remove('dragover'); const {tripId} = JSON.parse(raw); assignBksToTrip(day.date, tripId, null); }
+    };
+  }
+
+  function deleteTrip(date, id){
+    const st = stateByDay[date];
+    st.unassigned.delete(id);
+    Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== id); });
+    delete tripByIdByDay[date][id];
+    const day = DAYS.find(d => d.date === date);
+    if (day) day.trips = day.trips.filter(t => t.id !== id);
+    renderAll();
+  }
+
+  // ---------------- board (Tab 2, theo xe) ----------------
+  function chipEl(trip, originDate, forLane){
+    const idx = routeIdx(trip.route);
+    const el = document.createElement('div');
+    el.className = forLane ? 'block' : 'chip';
+    el.style.background = `var(--rt${idx})`;
+    el.draggable = true;
+    el.dataset.tripId = trip.id;
+    el.dataset.origin = originDate;
+    if (forLane && allIssuesFor(originDate, forLane, trip.id).length) el.classList.add('conflict');
+    const label = document.createElement('span');
+    label.className = 'chiptext';
+    label.textContent = forLane ? `${trip.depStr} · ${trip.route}` : trip.depStr;
+    if (forLane){
+      const iss = allIssuesFor(originDate, forLane, trip.id);
+      if (iss.length) el.title = iss.join('\n');
+    }
+    el.appendChild(label);
+    const del = document.createElement('button');
+    del.className = 'del'; del.type = 'button'; del.textContent = '×';
+    del.title = 'Xoá nốt này khỏi lịch';
+    del.addEventListener('mousedown', e => e.stopPropagation());
+    del.addEventListener('click', e => {
+      e.stopPropagation();
+      if (confirm(`Xoá nốt ${trip.depStr} (${trip.route})? Sẽ mất hẳn khỏi lịch, không phục hồi được.`)){
+        deleteTrip(originDate, trip.id);
+      }
+    });
+    el.appendChild(del);
+    if (forLane){
+      const left = trip.dep * PX_PER_MIN;
+      const width = Math.max(8, Math.min(AXIS_END, trip.arr) - trip.dep) * PX_PER_MIN;
+      el.style.left = left + 'px';
+      el.style.width = width + 'px';
+    }
+    el.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('application/x-slotmove', JSON.stringify({tripId: trip.id, bks: forLane}));
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => el.classList.remove('dragging'));
+    return el;
+  }
+
+  function buildRuler(){
+    const ruler = document.createElement('div');
+    ruler.className = 'ruler';
+    ruler.style.width = laneWidth + 'px';
+    for (let h = 0; h <= 24; h += 2){
+      const t = document.createElement('div');
+      t.className = 'tick tabular';
+      t.style.left = (h * 60 * PX_PER_MIN) + 'px';
+      t.textContent = h.toString().padStart(2,'0') + 'h';
+      ruler.appendChild(t);
+    }
+    return ruler;
+  }
+
+  function renderBoard(){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    const tripById = tripByIdByDay[day.date];
+    const board = document.getElementById('boardInner');
+    board.innerHTML = '';
+
+    const rulerRow = document.createElement('div');
+    rulerRow.className = 'ruler-row';
+    const corner = document.createElement('div');
+    corner.className = 'corner';
+    corner.textContent = 'BKS';
+    rulerRow.appendChild(corner);
+    rulerRow.appendChild(buildRuler());
+    board.appendChild(rulerRow);
+
+    const garaBroken = garaBrokenSetFor(day.date);
+    const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
+    const present = new Set(activeBuses.map(corridorOf));
+    const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
+
+    groups.forEach(g => {
+      const gh = document.createElement('div');
+      gh.className = 'grouphead';
+      const glabel = corridorLabel(g);
+      const gcolor = GROUP_META[g] ? GROUP_META[g].color : '';
+      gh.innerHTML = `<div class="label"${gcolor ? ` style="color:${gcolor}"` : ''}>${glabel}</div><div class="rest"></div>`;
+      board.appendChild(gh);
+
+      const lanes = document.createElement('div');
+      lanes.className = 'lanes';
+      activeBuses.filter(b => corridorOf(b) === g).forEach(b => {
+        const lane = document.createElement('div');
+        lane.className = 'lane';
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.draggable = true;
+        label.title = 'Kéo vào khu "Xe hỏng" nếu xe này không chạy được';
+        label.innerHTML = `<span class="info"><span class="bks tabular">${b.bks}</span><span class="crew">${b.cap_lai_nha || ''}</span></span>`;
+        label.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('application/x-bks', b.bks);
+          label.style.opacity = '0.35';
+        });
+        label.addEventListener('dragend', () => { label.style.opacity = '1'; });
+
+        const garaBD = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong');
+        const pending = garaBD.filter(e => !e.scheduled);
+        const scheduledToday = garaBD.filter(e => e.scheduled && e.scheduled.date === day.date);
+        const scheduledElsewhere = garaBD.filter(e => e.scheduled && e.scheduled.date !== day.date);
+        if (garaBD.length) lane.classList.add('has-gara');
+
+        pending.forEach(e => {
+          const btn = document.createElement('button');
+          btn.className = 'gicon';
+          btn.type = 'button';
+          btn.style.cursor = 'pointer';
+          btn.textContent = '🔧';
+          btn.title = `Gara cần bảo dưỡng ~${e.sogio}h (trong ${e.ngaybd}→${e.ngaykt})${e.noidung ? ': ' + e.noidung : ''} — bấm để xếp giờ vào hôm nay (${day.date})`;
+          btn.addEventListener('mousedown', ev => ev.stopPropagation());
+          btn.addEventListener('click', () => {
+            const hStr = prompt(`Xếp bảo dưỡng ${e.sogio}h cho xe ${b.bks} vào ngày ${day.date} — giờ bắt đầu (0-23):`, '13');
+            if (hStr === null) return;
+            const h = Number(hStr);
+            if (!Number.isFinite(h) || h < 0 || h > 23){ alert('Giờ không hợp lệ (0-23).'); return; }
+            scheduleMaint(e, day.date, h);
+          });
+          label.appendChild(btn);
+        });
+        scheduledElsewhere.forEach(e => {
+          const icon = document.createElement('span');
+          icon.className = 'gicon';
+          icon.textContent = STATE_ICON[e.trangthai];
+          icon.title = `Đã xếp bảo dưỡng ${b.bks} vào ${e.scheduled.date} lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
+          label.appendChild(icon);
+        });
+        scheduledToday.forEach(e => {
+          const icon = document.createElement('span');
+          icon.className = 'gicon';
+          icon.textContent = STATE_ICON[e.trangthai];
+          icon.title = `Bảo dưỡng hôm nay lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})${e.noidung ? ': ' + e.noidung : ''}`;
+          label.appendChild(icon);
+        });
+        lane.appendChild(label);
+
+        const track = document.createElement('div');
+        track.className = 'track';
+        track.style.width = laneWidth + 'px';
+        scheduledToday.forEach(e => {
+          const dep = e.scheduled.startHour * 60, arr = dep + Math.round(e.sogio * 60);
+          const mb = document.createElement('div');
+          mb.className = 'block maint ' + e.trangthai;
+          mb.style.left = (dep * PX_PER_MIN) + 'px';
+          mb.style.width = Math.max(8, Math.min(AXIS_END, arr) - dep) * PX_PER_MIN + 'px';
+          const s = document.createElement('span');
+          s.className = 'chiptext';
+          s.textContent = `${STATE_ICON[e.trangthai]} Bảo dưỡng ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
+          mb.title = `Theo Gara: ${e.sogio} tiếng${e.noidung ? ' — ' + e.noidung : ''}. Bấm × để gỡ lịch (Gara vẫn còn nhu cầu, chỉ gỡ giờ đã xếp).`;
+          mb.appendChild(s);
+          const del = document.createElement('button');
+          del.className = 'del'; del.type = 'button'; del.textContent = '×';
+          del.addEventListener('mousedown', ev => ev.stopPropagation());
+          del.addEventListener('click', ev => { ev.stopPropagation(); unscheduleMaint(e); });
+          mb.appendChild(del);
+          track.appendChild(mb);
+        });
+        st.assignments[b.bks].forEach(id => track.appendChild(chipEl(tripById[id], day.date, b.bks)));
+        track.addEventListener('dragover', e => {
+          if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); track.classList.add('dragover'); }
+        });
+        track.addEventListener('dragleave', () => track.classList.remove('dragover'));
+        track.addEventListener('drop', e => {
+          e.preventDefault(); track.classList.remove('dragover');
+          const raw = e.dataTransfer.getData('application/x-slotmove');
+          if (raw){ const {tripId} = JSON.parse(raw); assignBksToTrip(day.date, tripId, b.bks); }
+        });
+        lane.appendChild(track);
+        lanes.appendChild(lane);
+      });
+      board.appendChild(lanes);
+    });
+
+    board.ondragover = e => { if (e.dataTransfer.types.includes('application/x-bks')) e.preventDefault(); };
+    board.ondrop = e => {
+      const bks = e.dataTransfer.getData('application/x-bks');
+      if (bks) { e.preventDefault(); restoreBus(bks); }
+    };
+  }
+
+  function markBroken(bks){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    st.broken.add(bks);
+    st.assignments[bks].forEach(id => st.unassigned.add(id));
+    st.assignments[bks] = [];
+    renderAll();
+  }
+  function restoreBus(bks){
+    const day = DAYS[dayIdx];
+    stateByDay[day.date].broken.delete(bks);
+    renderAll();
+  }
+  function renderBrokenZone(){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    const garaBroken = garaBrokenSetFor(day.date);
+    const zone = document.getElementById('brokenZone');
+    const chips = document.getElementById('brokenChips');
+    chips.innerHTML = '';
+    if (!st.broken.size && !garaBroken.size){
+      const e = document.createElement('span');
+      e.className = 'bzempty';
+      e.textContent = 'Chưa có xe nào bị đánh dấu hỏng hôm nay.';
+      chips.appendChild(e);
+    }
+    [...garaBroken].sort().forEach(bks => {
+      const entry = garaEntriesFor(bks, day.date).find(e => e.loai === 'hong');
+      const chip = document.createElement('div');
+      chip.className = 'bkschip gara';
+      chip.innerHTML = `<span class="tabular">${bks}</span><span style="opacity:0.7;">(theo Gara)</span>`;
+      chip.title = entry ? `${entry.ngaybd} → ${entry.ngaykt}${entry.noidung ? ' — ' + entry.noidung : ''} (${STATE_LABEL_VN[entry.trangthai]}). Cập nhật trạng thái bên trang Gara.` : '';
+      chips.appendChild(chip);
+    });
+    [...st.broken].sort().forEach(bks => {
+      const chip = document.createElement('div');
+      chip.className = 'bkschip';
+      chip.draggable = true;
+      chip.innerHTML = `<span class="tabular">${bks}</span><span>✕</span>`;
+      chip.title = 'Kéo ra ngoài để khôi phục, hoặc bấm ✕';
+      chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('application/x-bks', bks);
+        chip.classList.add('dragging');
+      });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+      chip.querySelector('span:last-child').addEventListener('click', () => restoreBus(bks));
+      chips.appendChild(chip);
+    });
+    zone.ondragover = e => { if (e.dataTransfer.types.includes('application/x-bks')) { e.preventDefault(); zone.classList.add('dragover'); } };
+    zone.ondragleave = () => zone.classList.remove('dragover');
+    zone.ondrop = e => {
+      const bks = e.dataTransfer.getData('application/x-bks');
+      if (bks){ e.preventDefault(); zone.classList.remove('dragover'); markBroken(bks); }
+    };
+  }
+
+  function updateStats(){
+    const day = DAYS[dayIdx];
+    const st = stateByDay[day.date];
+    const total = day.trips.length;
+    const assigned = total - st.unassigned.size;
+    let issueCount = 0, vehiclesUsed = 0;
+    Object.keys(st.assignments).forEach(bks => {
+      const ids = st.assignments[bks];
+      if (ids.length) vehiclesUsed++;
+      const issues = computeBksIssues(day.date, bks);
+      issueCount += Object.keys(issues).length;
+    });
+    document.getElementById('statAssigned').textContent = assigned;
+    document.getElementById('statUnassigned').textContent = st.unassigned.size;
+    document.getElementById('statVehicles').textContent = vehiclesUsed;
+    document.getElementById('statConflicts').textContent = issueCount;
+    document.getElementById('statBroken').textContent = st.broken.size + garaBrokenSetFor(day.date).size;
+  }
+
+  function renderDayBanner(){
+    const day = DAYS[dayIdx];
+    const el = document.getElementById('dayBanner');
+    el.innerHTML = day.real
+      ? `<span class="daybanner real">✓ Lịch thật từ Odoo — xe/chuyến đã có sẵn trong hệ thống được tự nhận vào đúng chỗ.</span>`
+      : `<span class="daybanner proj">≈ Dự kiến — Odoo chưa có lịch chuyến thật cho ngày này, đang dùng nề nếp ngày ${day.refDate || ''} làm tạm.</span>`;
+  }
+
+  function renderAll(){
+    renderDayBanner();
+    buildLegend();
+    renderBrokenZone();
+    renderBusTray();
+    if (activeTab === 'slots') renderSlotList();
+    else renderBoard();
+    updateStats();
+  }
+
+  document.getElementById('dayPrev').addEventListener('click', () => setDay(dayIdx - 1));
+  document.getElementById('dayNext').addEventListener('click', () => setDay(dayIdx + 1));
+  document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
+  document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
+  document.getElementById('ghTokenBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); getToken(true); });
+
+  buildDayPills();
+  highlightPills();
+  renderAll();
+  loadGaraData();
+})();
+</script>
