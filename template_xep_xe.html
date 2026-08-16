@@ -133,6 +133,7 @@ button.ghost:hover{background:var(--page);}
 .dropzone{flex:1; min-height:30px; border:1.5px dashed var(--line-strong); border-radius:6px; display:flex; align-items:center; padding:0 8px; font-size:11.5px; color:var(--ink-faint);}
 .bksTypeWrap{position:relative; flex-shrink:0;}
 .bksType{width:98px; font-size:11.5px; padding:5px 7px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
+.bksType.driverType{width:150px;}
 .bksType:focus{outline:none; border-color:var(--ink);}
 .bks-suggest{position:absolute; top:100%; left:0; z-index:20; margin-top:2px; min-width:150px; max-height:220px; overflow-y:auto; background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
 .bks-suggest .opt{padding:6px 10px; font-size:12px; cursor:pointer; white-space:nowrap;}
@@ -209,7 +210,7 @@ footer.note b{color:var(--ink-muted);}
   <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
     <div>
       <h1>Bảng xếp xe theo nốt giờ</h1>
-      <div class="sub">Kéo 1 xe (BKS) từ khay thả vào đúng nốt giờ muốn xếp, hoặc gõ vài số biển số vào ô cạnh bên rồi bấm chọn gợi ý — kéo giữa các nốt để đổi, kéo/xoá trắng ô gõ để gỡ. Xe hỏng thì kéo nhãn BKS thả vào ô đỏ phía trên.</div>
+      <div class="sub">Kéo 1 xe (BKS) từ khay thả vào đúng nốt giờ muốn xếp, hoặc gõ vài số biển số vào ô cạnh bên rồi bấm chọn gợi ý — kéo giữa các nốt để đổi, kéo/xoá trắng ô gõ để gỡ. Sau khi có xe, tự hiện thêm 2 ô Lái 1/Lái 2 theo đúng lái định biên của xe đó, gõ để đổi hoặc xoá trắng nếu xe chỉ có 1 lái. Xe hỏng thì kéo nhãn BKS thả vào ô đỏ phía trên.</div>
     </div>
     <div class="stats">
       <div class="stat"><span>Đã xếp</span><b id="statAssigned">0</b></div>
@@ -352,18 +353,25 @@ footer.note b{color:var(--ink-muted);}
     return [...ordered, ...extra];
   }
 
+  const busByBks = {}; BUSES.forEach(b => busByBks[b.bks] = b);
+  function defaultDrivers(bks){
+    const bus = busByBks[bks];
+    return { lai1: (bus && bus.lai1) || '', lai2: (bus && bus.lai2) || '' };
+  }
   const stateByDay = {};
   DAYS.forEach(day => {
     const assignments = {};
     BUSES.forEach(b => assignments[b.bks] = []);
     const unassigned = new Set();
+    const drivers = {};
     day.trips.forEach(t => {
-      if (t.assignedBks && assignments[t.assignedBks]) assignments[t.assignedBks].push(t.id);
-      else unassigned.add(t.id);
+      if (t.assignedBks && assignments[t.assignedBks]){
+        assignments[t.assignedBks].push(t.id);
+        drivers[t.id] = defaultDrivers(t.assignedBks);
+      } else unassigned.add(t.id);
     });
-    stateByDay[day.date] = { assignments, unassigned, broken: new Set() };
+    stateByDay[day.date] = { assignments, unassigned, broken: new Set(), drivers };
   });
-  const busByBks = {}; BUSES.forEach(b => busByBks[b.bks] = b);
   const tripByIdByDay = {};
   DAYS.forEach(day => {
     const m = {}; day.trips.forEach(t => m[t.id] = t); tripByIdByDay[day.date] = m;
@@ -372,7 +380,7 @@ footer.note b{color:var(--ink-muted);}
   function ensureState(dateStr){
     if (!stateByDay[dateStr]){
       const assignments = {}; BUSES.forEach(b => assignments[b.bks] = []);
-      stateByDay[dateStr] = { assignments, unassigned: new Set(), broken: new Set() };
+      stateByDay[dateStr] = { assignments, unassigned: new Set(), broken: new Set(), drivers: {} };
     }
     return stateByDay[dateStr];
   }
@@ -666,49 +674,59 @@ footer.note b{color:var(--ink-muted);}
     });
   }
 
-  // gõ vài số biển số -> hiện gợi ý bấm chọn, thay cho việc phải kéo thả
+  // gõ vài chữ -> hiện gợi ý bấm chọn, dùng chung cho ô biển số và ô tên lái xe
   function normBks(s){ return (s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  function normName(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d'); }
   const bksNormOf = {}; BUSES.forEach(b => { bksNormOf[b.bks] = normBks(b.bks); });
   const allBksList = BUSES.map(b => b.bks);
-  function attachBksAutocomplete(input, onSelect){
+  const DRIVER_NAME_POOL = [...new Set(BUSES.flatMap(b => [b.lai1, b.lai2].filter(Boolean)))].sort();
+  const driverNormOf = {}; DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
+
+  function attachAutocomplete(input, list, normOf, normFn, onSelect){
     const wrap = input.parentElement;
     let box = null;
     function closeBox(){ if (box){ box.remove(); box = null; } }
-    function openBox(list){
+    function openBox(items){
       closeBox();
-      if (!list.length) return;
+      if (!items.length) return;
       box = document.createElement('div');
       box.className = 'bks-suggest';
-      list.forEach(bks => {
+      items.forEach(val => {
         const opt = document.createElement('div');
         opt.className = 'opt tabular';
-        opt.textContent = bks;
+        opt.textContent = val;
         opt.addEventListener('mousedown', e => {
           e.preventDefault();
-          input.value = bks;
+          input.value = val;
           closeBox();
-          onSelect(bks);
+          onSelect(val);
         });
         box.appendChild(opt);
       });
       wrap.appendChild(box);
     }
     input.addEventListener('input', () => {
-      const q = normBks(input.value);
+      const q = normFn(input.value);
       if (!q){ closeBox(); return; }
-      openBox(allBksList.filter(bks => bksNormOf[bks].includes(q)).slice(0, 8));
+      openBox(list.filter(val => normOf[val].includes(q)).slice(0, 8));
     });
     input.addEventListener('focus', () => { if (input.value) input.dispatchEvent(new Event('input')); });
     input.addEventListener('blur', () => { setTimeout(closeBox, 150); });
     input.addEventListener('keydown', e => {
       if (e.key === 'Escape'){ closeBox(); return; }
       if (e.key === 'Enter'){
-        const q = normBks(input.value);
-        if (!q){ closeBox(); onSelect(null); return; }
-        const exact = allBksList.find(bks => bksNormOf[bks] === q);
+        const q = normFn(input.value);
+        if (!q){ closeBox(); onSelect(''); return; }
+        const exact = list.find(val => normOf[val] === q);
         if (exact){ input.value = exact; closeBox(); onSelect(exact); }
       }
     });
+  }
+  function attachBksAutocomplete(input, onSelect){
+    attachAutocomplete(input, allBksList, bksNormOf, normBks, v => onSelect(v || null));
+  }
+  function attachDriverAutocomplete(input, onSelect){
+    attachAutocomplete(input, DRIVER_NAME_POOL, driverNormOf, normName, onSelect);
   }
 
   function assignBksToTrip(date, tripId, bks){
@@ -716,7 +734,19 @@ footer.note b{color:var(--ink-muted);}
     // remove this trip from whichever bks currently holds it
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== tripId); });
     st.unassigned.delete(tripId);
-    if (bks) st.assignments[bks].push(tripId); else st.unassigned.add(tripId);
+    if (bks){
+      st.assignments[bks].push(tripId);
+      st.drivers[tripId] = defaultDrivers(bks); // auto xếp lái định biên (lái 1) + lái đẩy (lái 2)
+    } else {
+      st.unassigned.add(tripId);
+      delete st.drivers[tripId];
+    }
+    renderAll();
+  }
+  function setTripDriver(date, tripId, slot, name){
+    const st = ensureState(date);
+    if (!st.drivers[tripId]) st.drivers[tripId] = {lai1:'', lai2:''};
+    st.drivers[tripId][slot] = name.trim();
     renderAll();
   }
 
@@ -809,6 +839,23 @@ footer.note b{color:var(--ink-muted);}
         attachBksAutocomplete(typeInput, selected => assignBksToTrip(day.date, id, selected));
         dzWrap.appendChild(typeWrap);
 
+        if (bks){
+          const drv = st.drivers[id] || {lai1:'', lai2:''};
+          [['lai1','Lái 1'], ['lai2','Lái 2 (bỏ trống nếu xe chỉ 1 lái)']].forEach(([slot, ph]) => {
+            const dWrap = document.createElement('div');
+            dWrap.className = 'bksTypeWrap';
+            const dInput = document.createElement('input');
+            dInput.className = 'bksType driverType';
+            dInput.placeholder = ph;
+            dInput.value = drv[slot] || '';
+            dInput.title = ph;
+            dWrap.appendChild(dInput);
+            attachDriverAutocomplete(dInput, selected => setTripDriver(day.date, id, slot, selected));
+            dInput.addEventListener('blur', () => setTripDriver(day.date, id, slot, dInput.value));
+            dzWrap.appendChild(dWrap);
+          });
+        }
+
         row.appendChild(dzWrap);
 
         const issuesEl = document.createElement('div');
@@ -857,6 +904,7 @@ footer.note b{color:var(--ink-muted);}
     const st = ensureState(date);
     st.unassigned.delete(id);
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== id); });
+    delete st.drivers[id];
     delete ensureTripMap(date)[id];
     const day = DAYS.find(d => d.date === date);
     if (day) day.trips = day.trips.filter(t => t.id !== id);
@@ -878,7 +926,11 @@ footer.note b{color:var(--ink-muted);}
     label.textContent = forLane ? `${trip.depStr} · ${trip.route}` : trip.depStr;
     if (forLane){
       const iss = allIssuesFor(originDate, forLane, trip.id);
-      if (iss.length) el.title = iss.join('\n');
+      const drv = ensureState(originDate).drivers[trip.id];
+      const drvLine = drv && (drv.lai1 || drv.lai2)
+        ? `Lái 1: ${drv.lai1 || '—'}${drv.lai2 ? ' · Lái 2: ' + drv.lai2 : ''}` : '';
+      const titleParts = [drvLine, ...iss].filter(Boolean);
+      if (titleParts.length) el.title = titleParts.join('\n');
     }
     el.appendChild(label);
     const del = document.createElement('button');
