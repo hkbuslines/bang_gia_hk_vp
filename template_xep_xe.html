@@ -216,6 +216,8 @@ footer.note b{color:var(--ink-muted);}
       <div class="stat"><span>Đã xếp</span><b id="statAssigned">0</b></div>
       <div class="stat"><span>Chưa xếp</span><b id="statUnassigned">0</b></div>
       <div class="stat"><span>Xe đang dùng</span><b id="statVehicles">0</b></div>
+      <div class="stat"><span>Xe khả dụng</span><b id="statBusesAvail">0</b></div>
+      <div class="stat"><span>Lái khả dụng</span><b id="statDriversAvail">0</b></div>
       <div class="stat warn"><span>Cảnh báo</span><b id="statConflicts">0</b></div>
       <div class="stat warn"><span>Xe hỏng</span><b id="statBroken">0</b></div>
     </div>
@@ -1206,7 +1208,12 @@ footer.note b{color:var(--ink-muted);}
     document.getElementById('statUnassigned').textContent = st.unassigned.size;
     document.getElementById('statVehicles').textContent = vehiclesUsed;
     document.getElementById('statConflicts').textContent = issueCount;
-    document.getElementById('statBroken').textContent = st.broken.size + garaBrokenSetFor(day.date).size;
+    const busesDown = st.broken.size + garaBrokenSetFor(day.date).size;
+    document.getElementById('statBroken').textContent = busesDown;
+    document.getElementById('statBusesAvail').textContent = `${BUSES.length - busesDown}/${BUSES.length}`;
+    const driversOnLeave = new Set();
+    driverLeaves.forEach(e => { if (e.tungay <= day.date && day.date <= e.denngay) driversOnLeave.add(e.ten); });
+    document.getElementById('statDriversAvail').textContent = `${DRIVERS_FULL.length - driversOnLeave.size}/${DRIVERS_FULL.length}`;
   }
 
   function renderDayBanner(){
