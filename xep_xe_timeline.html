@@ -210,6 +210,12 @@ footer.note b{color:var(--ink-muted);}
     </div>
   </div>
 
+  <div style="display:flex; align-items:center; gap:8px; margin:14px 0 0;">
+    <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Chọn nhanh tuần
+      <select id="weekQuick" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);"></select>
+    </label>
+  </div>
+
   <div class="daystrip">
     <button class="navbtn" id="dayPrev" aria-label="Ngày trước">‹</button>
     <div class="pills" id="dayPills"></div>
@@ -282,13 +288,18 @@ footer.note b{color:var(--ink-muted);}
   const PX_PER_MIN = 0.60;
   const laneWidth = AXIS_END * PX_PER_MIN;
   const MIN_TURNAROUND = 20; // phút — ngưỡng tối thiểu giữa 2 chuyến cùng điểm
-  // tuyến dài cần tài nghỉ lâu hơn trước khi chạy tiếp — ghi đè theo tuyến của chuyến TRƯỚC
-  const ROUTE_TURNAROUND_MIN = { 'Hà Nội - Sa Pa': 360, 'Sa Pa - Hà Nội': 360 };
-  function turnaroundNeed(route){ return ROUTE_TURNAROUND_MIN[route] || MIN_TURNAROUND; }
-  function fmtTurnaround(m){
-    if (m < 60) return `${m} phút`;
-    const h = Math.floor(m / 60), mm = m % 60;
-    return mm ? `${h}h${mm}p` : `${h} tiếng`;
+  // tuyến này thực tế chỉ chạy hết ngần này phút — chặn bớt arr nếu dữ liệu ghi dài hơn thực tế,
+  // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan
+  const ROUTE_DURATION_CAP_MIN = {
+    'Hà Nội - Sa Pa': 360, 'Sa Pa - Hà Nội': 360,
+    'Ninh Bình - Sa Pa': 480, 'Sa Pa - Ninh Bình': 480,
+    'Hạ Long - Sa Pa': 480, 'Sa Pa - Hạ Long': 480,
+    'Hà Nội - Huế': 660, 'Huế - Hà Nội': 660,
+    'Hà Nội - Hội An': 840, 'Hội An - Hà Nội': 840,
+  };
+  function effArr(t){
+    const cap = ROUTE_DURATION_CAP_MIN[t.route];
+    return cap != null ? Math.min(t.arr, t.dep + cap) : t.arr;
   }
 
   function routeIdx(route){
@@ -429,7 +440,7 @@ footer.note b{color:var(--ink-muted);}
   let dayIdx = 0;
   let activeTab = 'slots';
 
-  function overlaps(a, b){ return a.dep < b.arr && b.dep < a.arr; }
+  function overlaps(a, b){ return a.dep < effArr(b) && b.dep < effArr(a); }
 
   // pairwise issues for a bks's own chain of trips that day: overlap / turnaround / position
   function computeBksIssues(date, bks){
@@ -447,9 +458,8 @@ footer.note b{color:var(--ink-muted);}
       if (a.to !== b.from){
         add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
       } else {
-        const gap = b.dep - a.arr;
-        const need = turnaroundNeed(a.route);
-        if (gap < need) add(b.id, `⏱ Chỉ ${fmtTurnaround(gap)} quay đầu (nên ≥ ${fmtTurnaround(need)})`);
+        const gap = b.dep - effArr(a);
+        if (gap < MIN_TURNAROUND) add(b.id, `⏱ Chỉ ${gap} phút quay đầu (nên ≥ ${MIN_TURNAROUND}p)`);
       }
     }
     const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
@@ -472,13 +482,14 @@ footer.note b{color:var(--ink-muted);}
     const prevDay = DAYS[dayIndex - 1];
     const prevSt = stateByDay[prevDay.date];
     const prevTripById = tripByIdByDay[prevDay.date];
-    let best = null;
+    let best = null, bestArr = -1;
     (prevSt.assignments[bks] || []).forEach(id => {
       const t = prevTripById[id];
-      if (t.arr > 1440 && (!best || t.arr > best.arr)) best = t;
+      const ea = effArr(t);
+      if (ea > 1440 && ea > bestArr){ best = t; bestArr = ea; }
     });
     if (!best) return null;
-    return { trip: best, endMin: best.arr - 1440 };
+    return { trip: best, endMin: bestArr - 1440 };
   }
 
   function buildDayPills(){
@@ -498,6 +509,20 @@ footer.note b{color:var(--ink-muted);}
     [...wrap.children].forEach((el, i) => el.classList.toggle('active', i === dayIdx));
     const active = wrap.children[dayIdx];
     if (active) active.scrollIntoView({inline:'center', block:'nearest'});
+    const wq = document.getElementById('weekQuick');
+    if (wq) wq.value = String(Math.floor(dayIdx / 7) * 7);
+  }
+  function buildWeekQuick(){
+    const sel = document.getElementById('weekQuick');
+    sel.innerHTML = '';
+    for (let i = 0; i < DAYS.length; i += 7){
+      const chunk = DAYS.slice(i, Math.min(i + 7, DAYS.length));
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = `${chunk[0].dd} - ${chunk[chunk.length - 1].dd}`;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', e => setDay(Number(e.target.value)));
   }
   function setDay(i){
     dayIdx = Math.max(0, Math.min(DAYS.length - 1, i));
@@ -736,7 +761,7 @@ footer.note b{color:var(--ink-muted);}
     el.appendChild(del);
     if (forLane){
       const left = trip.dep * PX_PER_MIN;
-      const width = Math.max(8, Math.min(AXIS_END, trip.arr) - trip.dep) * PX_PER_MIN;
+      const width = Math.max(8, Math.min(AXIS_END, effArr(trip)) - trip.dep) * PX_PER_MIN;
       el.style.left = left + 'px';
       el.style.width = width + 'px';
     }
@@ -1007,6 +1032,7 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('ghTokenBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); getToken(true); });
 
   buildDayPills();
+  buildWeekQuick();
   highlightPills();
   renderAll();
   loadGaraData();
