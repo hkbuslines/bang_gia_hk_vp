@@ -128,8 +128,14 @@ button.ghost:hover{background:var(--page);}
 .slotrow:hover{background:var(--surface-2);}
 .slotrow .time{flex:0 0 56px; font-weight:700;}
 .slotrow .route{flex:0 0 190px; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-.slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center;}
+.slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center; gap:6px;}
 .dropzone{flex:1; min-height:30px; border:1.5px dashed var(--line-strong); border-radius:6px; display:flex; align-items:center; padding:0 8px; font-size:11.5px; color:var(--ink-faint);}
+.bksTypeWrap{position:relative; flex-shrink:0;}
+.bksType{width:98px; font-size:11.5px; padding:5px 7px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
+.bksType:focus{outline:none; border-color:var(--ink);}
+.bks-suggest{position:absolute; top:100%; left:0; z-index:20; margin-top:2px; min-width:150px; max-height:220px; overflow-y:auto; background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
+.bks-suggest .opt{padding:6px 10px; font-size:12px; cursor:pointer; white-space:nowrap;}
+.bks-suggest .opt:hover{background:var(--surface-2);}
 .dropzone.dragover{border-color:var(--ink); background:var(--surface-2);}
 .dropzone.filled{border-style:solid; border-color:transparent; padding:0;}
 .assignedchip{display:flex; align-items:center; gap:8px; width:100%; padding:5px 10px; border-radius:6px; cursor:grab; color:#fff; font-weight:700; font-size:12px;}
@@ -201,7 +207,7 @@ footer.note b{color:var(--ink-muted);}
   <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
     <div>
       <h1>Bảng xếp xe theo nốt giờ</h1>
-      <div class="sub">Kéo 1 xe (BKS) từ khay thả vào đúng nốt giờ muốn xếp — kéo giữa các nốt để đổi, kéo lại vào khay để gỡ. Xe hỏng thì kéo nhãn BKS thả vào ô đỏ phía trên.</div>
+      <div class="sub">Kéo 1 xe (BKS) từ khay thả vào đúng nốt giờ muốn xếp, hoặc gõ vài số biển số vào ô cạnh bên rồi bấm chọn gợi ý — kéo giữa các nốt để đổi, kéo/xoá trắng ô gõ để gỡ. Xe hỏng thì kéo nhãn BKS thả vào ô đỏ phía trên.</div>
     </div>
     <div class="stats">
       <div class="stat"><span>Đã xếp</span><b id="statAssigned">0</b></div>
@@ -625,6 +631,51 @@ footer.note b{color:var(--ink-muted);}
     });
   }
 
+  // gõ vài số biển số -> hiện gợi ý bấm chọn, thay cho việc phải kéo thả
+  function normBks(s){ return (s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+  const bksNormOf = {}; BUSES.forEach(b => { bksNormOf[b.bks] = normBks(b.bks); });
+  const allBksList = BUSES.map(b => b.bks);
+  function attachBksAutocomplete(input, onSelect){
+    const wrap = input.parentElement;
+    let box = null;
+    function closeBox(){ if (box){ box.remove(); box = null; } }
+    function openBox(list){
+      closeBox();
+      if (!list.length) return;
+      box = document.createElement('div');
+      box.className = 'bks-suggest';
+      list.forEach(bks => {
+        const opt = document.createElement('div');
+        opt.className = 'opt tabular';
+        opt.textContent = bks;
+        opt.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = bks;
+          closeBox();
+          onSelect(bks);
+        });
+        box.appendChild(opt);
+      });
+      wrap.appendChild(box);
+    }
+    input.addEventListener('input', () => {
+      const q = normBks(input.value);
+      if (!q){ closeBox(); return; }
+      openBox(allBksList.filter(bks => bksNormOf[bks].includes(q)).slice(0, 8));
+    });
+    input.addEventListener('focus', () => { if (input.value) input.dispatchEvent(new Event('input')); });
+    input.addEventListener('blur', () => { setTimeout(closeBox, 150); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape'){ closeBox(); return; }
+      if (e.key === 'Enter'){
+        const q = normBks(input.value);
+        if (!q){ closeBox(); onSelect(null); return; }
+        const exact = allBksList.find(bks => bksNormOf[bks] === q);
+        if (exact){ input.value = exact; closeBox(); onSelect(exact); }
+      }
+    });
+  }
+
   function assignBksToTrip(date, tripId, bks){
     const st = ensureState(date);
     // remove this trip from whichever bks currently holds it
@@ -712,6 +763,17 @@ footer.note b{color:var(--ink-muted);}
           else if (rawMove){ const {bks: fromBks} = JSON.parse(rawMove); assignBksToTrip(day.date, id, fromBks); }
         });
         dzWrap.appendChild(dz);
+
+        const typeWrap = document.createElement('div');
+        typeWrap.className = 'bksTypeWrap';
+        const typeInput = document.createElement('input');
+        typeInput.className = 'bksType tabular';
+        typeInput.placeholder = 'gõ BKS';
+        typeInput.value = bks || '';
+        typeWrap.appendChild(typeInput);
+        attachBksAutocomplete(typeInput, selected => assignBksToTrip(day.date, id, selected));
+        dzWrap.appendChild(typeWrap);
+
         row.appendChild(dzWrap);
 
         const issuesEl = document.createElement('div');
