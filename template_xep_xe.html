@@ -77,6 +77,7 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .daybanner.proj{background:var(--warn-fill); color:var(--warn);}
 .daybanner.empty{background:var(--surface-2); color:var(--ink-muted);}
 
+.weeklabel{font-size:16px; font-weight:700; white-space:nowrap;}
 .tabbar{display:flex; gap:8px; margin-bottom:14px;}
 .tabbtn{padding:8px 16px; border-radius:var(--radius); border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:13px; font-weight:600;}
 .tabbtn.active{background:var(--ink); color:var(--page); border-color:var(--ink);}
@@ -230,10 +231,10 @@ footer.note b{color:var(--ink-muted);}
     </div>
   </div>
 
-  <div style="display:flex; align-items:center; gap:8px; margin:14px 0 0; flex-wrap:wrap;">
-    <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Chọn nhanh tuần
-      <select id="weekQuick" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);"></select>
-    </label>
+  <div style="display:flex; align-items:center; gap:10px; margin:14px 0 0; flex-wrap:wrap;">
+    <button type="button" class="ghost" id="weekPrevBtn">‹ Tuần trước</button>
+    <div class="weeklabel" id="weekLabel">Tuần —</div>
+    <button type="button" class="ghost" id="weekNextBtn">Tuần sau ›</button>
     <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Hoặc chọn đúng ngày (xem được mọi năm, kể cả ngày Odoo chưa có dữ liệu)
       <input type="date" id="dateJump" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
     </label>
@@ -600,26 +601,16 @@ footer.note b{color:var(--ink-muted);}
       p.addEventListener('click', () => setDate(dateStr));
       wrap.appendChild(p);
     }
-    const wq = document.getElementById('weekQuick');
-    if (wq) wq.value = mondayOfISO(currentDate);
+    updateWeekLabel();
     const jump = document.getElementById('dateJump');
     if (jump) jump.value = currentDate;
   }
-  // chọn nhanh tuần: ±12 tuần quanh tuần hiện tại (tiện dụng) — muốn xa hơn (nhiều năm) dùng ô "chọn đúng ngày" bên cạnh
-  function buildWeekQuick(){
-    const sel = document.getElementById('weekQuick');
-    sel.innerHTML = '';
-    const thisMonday = mondayOfISO(DAYS[0].date);
-    for (let w = -12; w <= 12; w++){
-      const start = addDays(thisMonday, w * 7);
-      const end = addDays(start, 6);
-      const opt = document.createElement('option');
-      opt.value = start;
-      const label = w === 0 ? 'Tuần này' : w === 1 ? 'Tuần sau' : w === -1 ? 'Tuần trước' : (w > 0 ? `Tuần +${w}` : `Tuần ${w}`);
-      opt.textContent = `${label} (${ddOf(start)} - ${ddOf(end)})`;
-      sel.appendChild(opt);
-    }
-    sel.addEventListener('change', e => setDate(e.target.value));
+  function fmtDMY(dateStr){ const [y,m,d] = dateStr.split('-'); return `${d}/${m}/${y}`; }
+  function updateWeekLabel(){
+    const monday = mondayOfISO(currentDate);
+    const sunday = addDays(monday, 6);
+    const el = document.getElementById('weekLabel');
+    if (el) el.textContent = `Tuần ${ddOf(monday)} – ${fmtDMY(sunday)}`;
   }
   function setDate(dateStr){
     currentDate = dateStr;
@@ -1277,6 +1268,8 @@ footer.note b{color:var(--ink-muted);}
 
   document.getElementById('dayPrev').addEventListener('click', () => setDate(addDays(currentDate, -1)));
   document.getElementById('dayNext').addEventListener('click', () => setDate(addDays(currentDate, 1)));
+  document.getElementById('weekPrevBtn').addEventListener('click', () => setDate(addDays(currentDate, -7)));
+  document.getElementById('weekNextBtn').addEventListener('click', () => setDate(addDays(currentDate, 7)));
   document.getElementById('dateJump').addEventListener('change', e => { if (e.target.value) setDate(e.target.value); });
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
@@ -1316,7 +1309,6 @@ footer.note b{color:var(--ink-muted);}
     }
   });
 
-  buildWeekQuick();
   buildDayPills();
   renderAll();
   loadGaraData();
