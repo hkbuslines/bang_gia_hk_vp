@@ -1,0 +1,180 @@
+{
+  "entries": [
+    {
+      "id": 1,
+      "ten": "Phạm Văn Đạo",
+      "loai": "P",
+      "tungay": "2026-08-14",
+      "denngay": "2026-08-16",
+      "ghichu": ""
+    },
+    {
+      "id": 2,
+      "ten": "Trần Tiến Trung",
+      "loai": "P",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-20",
+      "ghichu": ""
+    },
+    {
+      "id": 3,
+      "ten": "Đặng Thế Huy",
+      "loai": "P",
+      "tungay": "2026-08-14",
+      "denngay": "2026-08-17",
+      "ghichu": ""
+    },
+    {
+      "id": 4,
+      "ten": "Phạm Quốc Hội",
+      "loai": "P",
+      "tungay": "2026-08-13",
+      "denngay": "2026-08-16",
+      "ghichu": ""
+    },
+    {
+      "id": 5,
+      "ten": "Mai Ngọc Biên",
+      "loai": "P",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-17",
+      "ghichu": ""
+    },
+    {
+      "id": 6,
+      "ten": "Bùi Quang Tuyến",
+      "loai": "P",
+      "tungay": "2026-08-13",
+      "denngay": "2026-08-16",
+      "ghichu": ""
+    },
+    {
+      "id": 7,
+      "ten": "Đinh Văn Chuyên",
+      "loai": "P",
+      "tungay": "2026-08-15",
+      "denngay": "2026-08-17",
+      "ghichu": ""
+    },
+    {
+      "id": 8,
+      "ten": "Phan Văn Tuân",
+      "loai": "P",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": ""
+    },
+    {
+      "id": 9,
+      "ten": "Vũ Đức Tiến",
+      "loai": "DX",
+      "tungay": "2026-08-15",
+      "denngay": "2026-08-18",
+      "ghichu": "nghỉ đột xuất"
+    },
+    {
+      "id": 10,
+      "ten": "Lê Văn Thành",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "Ns giải quyết ko thoả đáng do vướng mắc tiền thế chấp"
+    },
+    {
+      "id": 11,
+      "ten": "Nguyễn Đình Thành",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "Chăm mẹ ốm"
+    },
+    {
+      "id": 12,
+      "ten": "Nguyễn Văn Đại",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "Đau chân tái phát"
+    },
+    {
+      "id": 13,
+      "ten": "Nguyễn Văn Thạo",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "đau chân tái phát"
+    },
+    {
+      "id": 14,
+      "ten": "Trần Hải Nam",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "con ốm nhập viện"
+    },
+    {
+      "id": 15,
+      "ten": "Lê Văn Thu",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "nghỉ vô lý do"
+    },
+    {
+      "id": 16,
+      "ten": "Nguyễn Khoa Trường",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "phát ban, xin nghỉ đột xuất"
+    },
+    {
+      "id": 17,
+      "ten": "Đinh Văn Giang",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "lái xe gọi A Cường"
+    },
+    {
+      "id": 18,
+      "ten": "Nguyễn Ngọc Toàn",
+      "loai": "KB",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "nhà có người mất"
+    },
+    {
+      "id": 19,
+      "ten": "Tạ Văn Bình",
+      "loai": "D",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "xử lý VCGT"
+    },
+    {
+      "id": 20,
+      "ten": "Nguyễn Văn Ban",
+      "loai": "D",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "Chữa bệnh (mổ vai)"
+    },
+    {
+      "id": 21,
+      "ten": "Nguyễn Bá Sơn",
+      "loai": "D",
+      "tungay": "2026-08-16",
+      "denngay": "2026-08-16",
+      "ghichu": "Lái xe nghỉ ốm"
+    }
+  ],
+  "params": {
+    "tong": 130,
+    "hoatdong": 110,
+    "kip": 98,
+    "dem": 3,
+    "kb": 3
+  },
+  "updated_at": "2026-08-16T16:59:17.271Z"
+}
