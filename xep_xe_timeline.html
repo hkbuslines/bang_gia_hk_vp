@@ -187,6 +187,12 @@ button.gicon:hover{transform:scale(1.15);}
 .bkschip:active{cursor:grabbing;}
 .bkschip.dragging{opacity:0.35;}
 .bkschip.gara{cursor:default; border-style:dashed;}
+.idlezone{border:1.5px dashed var(--ok); border-radius:var(--radius); background:var(--ok-fill); padding:10px 14px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px;}
+.idlezone .izhead{flex:0 0 220px; font-size:11.5px; font-weight:700; color:var(--ok); line-height:1.4;}
+.idlezone .izhead .sub2{font-weight:400; color:var(--ink-muted); display:block; margin-top:2px;}
+.idlezone .izchips{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px;}
+.izempty{color:var(--ink-faint); font-size:12px;}
+.izchip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--ok); color:var(--ok); font-size:12px; font-weight:700;}
 .track{position:relative; flex:1; height:34px; border-radius:var(--radius);
   background-color:var(--surface-2);
   background-image:repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent calc(100%/10));}
@@ -216,6 +222,7 @@ footer.note b{color:var(--ink-muted);}
       <div class="stat"><span>Đã xếp</span><b id="statAssigned">0</b></div>
       <div class="stat"><span>Chưa xếp</span><b id="statUnassigned">0</b></div>
       <div class="stat"><span>Xe đang dùng</span><b id="statVehicles">0</b></div>
+      <div class="stat"><span>Xe chưa dùng</span><b id="statIdle">0</b></div>
       <div class="stat"><span>Xe khả dụng</span><b id="statBusesAvail">0</b></div>
       <div class="stat"><span>Lái khả dụng</span><b id="statDriversAvail">0</b></div>
       <div class="stat warn"><span>Cảnh báo</span><b id="statConflicts">0</b></div>
@@ -258,6 +265,11 @@ footer.note b{color:var(--ink-muted);}
   <div class="brokenzone" id="brokenZone">
     <div class="bzhead">🚫 Xe hỏng — không xếp hôm nay<span class="sub2">Kéo BKS từ khay thả vào đây</span></div>
     <div class="bzchips" id="brokenChips"></div>
+  </div>
+
+  <div class="idlezone" id="idleZone">
+    <div class="izhead">✓ Xe chưa dùng hôm nay<span class="sub2">Còn rảnh, có thể xếp thêm chuyến</span></div>
+    <div class="izchips" id="idleChips"></div>
   </div>
 
   <!-- ============ TAB 1: theo nốt giờ ============ -->
@@ -1192,6 +1204,29 @@ footer.note b{color:var(--ink-muted);}
     };
   }
 
+  // báo cáo nhanh: xe nào còn rảnh hôm nay (chưa có chuyến nào) để biết còn bao nhiêu xe, xếp thêm được luôn
+  function renderIdleZone(){
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
+    const garaBroken = garaBrokenSetFor(day.date);
+    const chips = document.getElementById('idleChips');
+    chips.innerHTML = '';
+    const idleBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks) && !st.assignments[b.bks].length);
+    if (!idleBuses.length){
+      const e = document.createElement('span');
+      e.className = 'izempty';
+      e.textContent = 'Hết xe rảnh — tất cả xe còn hoạt động đều đã có chuyến hôm nay.';
+      chips.appendChild(e);
+    }
+    idleBuses.sort((a,b) => a.bks.localeCompare(b.bks)).forEach(b => {
+      const chip = document.createElement('div');
+      chip.className = 'izchip tabular';
+      chip.textContent = b.bks;
+      chip.title = b.cap_lai_nha || '';
+      chips.appendChild(chip);
+    });
+  }
+
   function updateStats(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -1211,6 +1246,7 @@ footer.note b{color:var(--ink-muted);}
     const busesDown = st.broken.size + garaBrokenSetFor(day.date).size;
     document.getElementById('statBroken').textContent = busesDown;
     document.getElementById('statBusesAvail').textContent = `${BUSES.length - busesDown}/${BUSES.length}`;
+    document.getElementById('statIdle').textContent = BUSES.length - busesDown - vehiclesUsed;
     const driversOnLeave = new Set();
     driverLeaves.forEach(e => { if (e.tungay <= day.date && day.date <= e.denngay) driversOnLeave.add(e.ten); });
     document.getElementById('statDriversAvail').textContent = `${DRIVERS_FULL.length - driversOnLeave.size}/${DRIVERS_FULL.length}`;
@@ -1232,6 +1268,7 @@ footer.note b{color:var(--ink-muted);}
     renderDayBanner();
     buildLegend();
     renderBrokenZone();
+    renderIdleZone();
     renderBusTray();
     if (activeTab === 'slots') renderSlotList();
     else renderBoard();
