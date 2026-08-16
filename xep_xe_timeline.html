@@ -70,10 +70,12 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .pill.active .wd{color:var(--page); opacity:0.75;}
 .pill .dot2{font-size:8px; color:var(--ink-faint); line-height:1;}
 .pill.real .dot2{color:var(--ok);}
+.pill.empty{opacity:0.6;}
 .pill.active .dot2{color:inherit; opacity:0.85;}
 .daybanner{font-size:11.5px; padding:6px 12px; border-radius:var(--radius); margin-bottom:10px; display:inline-block;}
 .daybanner.real{background:var(--ok-fill); color:var(--ok);}
 .daybanner.proj{background:var(--warn-fill); color:var(--warn);}
+.daybanner.empty{background:var(--surface-2); color:var(--ink-muted);}
 
 .tabbar{display:flex; gap:8px; margin-bottom:14px;}
 .tabbtn{padding:8px 16px; border-radius:var(--radius); border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:13px; font-weight:600;}
@@ -210,9 +212,12 @@ footer.note b{color:var(--ink-muted);}
     </div>
   </div>
 
-  <div style="display:flex; align-items:center; gap:8px; margin:14px 0 0;">
+  <div style="display:flex; align-items:center; gap:8px; margin:14px 0 0; flex-wrap:wrap;">
     <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Chọn nhanh tuần
       <select id="weekQuick" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);"></select>
+    </label>
+    <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Hoặc chọn đúng ngày (xem được mọi năm, kể cả ngày Odoo chưa có dữ liệu)
+      <input type="date" id="dateJump" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
     </label>
   </div>
 
@@ -302,6 +307,20 @@ footer.note b{color:var(--ink-muted);}
     return cap != null ? Math.min(t.arr, t.dep + cap) : t.arr;
   }
 
+  // ---- điều hướng theo ngày thật (không giới hạn trong khoảng dữ liệu Odoo đã lấy) ----
+  const WEEKDAY_VN = ['CN','T2','T3','T4','T5','T6','T7']; // khớp Date.getUTCDay(): 0=CN
+  function parseISO(s){ const [y,m,d] = s.split('-').map(Number); return new Date(Date.UTC(y, m-1, d)); }
+  function toISO(d){ return d.toISOString().slice(0,10); }
+  function addDays(dateStr, n){ const d = parseISO(dateStr); d.setUTCDate(d.getUTCDate()+n); return toISO(d); }
+  function weekdayOf(dateStr){ return WEEKDAY_VN[parseISO(dateStr).getUTCDay()]; }
+  function ddOf(dateStr){ const [,m,d] = dateStr.split('-'); return `${d}/${m}`; }
+  function mondayOfISO(dateStr){ const wd = parseISO(dateStr).getUTCDay(); return addDays(dateStr, wd === 0 ? -6 : 1 - wd); }
+
+  const dayByDate = {}; DAYS.forEach(d => dayByDate[d.date] = d);
+  function dayFor(dateStr){
+    return dayByDate[dateStr] || { date: dateStr, weekday: weekdayOf(dateStr), dd: ddOf(dateStr), trips: [], real: false, empty: true };
+  }
+
   function routeIdx(route){
     const i = ROUTE_ORDER.indexOf(route);
     return i === -1 ? FALLBACK_IDX : i;
@@ -338,6 +357,18 @@ footer.note b{color:var(--ink-muted);}
   DAYS.forEach(day => {
     const m = {}; day.trips.forEach(t => m[t.id] = t); tripByIdByDay[day.date] = m;
   });
+  // ngày ngoài khoảng dữ liệu đã lấy (quá khứ xa hoặc tương lai xa) — tạo state rỗng khi cần, không chặn xem
+  function ensureState(dateStr){
+    if (!stateByDay[dateStr]){
+      const assignments = {}; BUSES.forEach(b => assignments[b.bks] = []);
+      stateByDay[dateStr] = { assignments, unassigned: new Set(), broken: new Set() };
+    }
+    return stateByDay[dateStr];
+  }
+  function ensureTripMap(dateStr){
+    if (!tripByIdByDay[dateStr]) tripByIdByDay[dateStr] = {};
+    return tripByIdByDay[dateStr];
+  }
 
   const REPO = 'hkbuslines/bang_gia_hk_vp';
   const DATA_PATH = 'bao_duong_data.json';
@@ -437,15 +468,15 @@ footer.note b{color:var(--ink-muted);}
     await saveGaraEntries(`Đã gỡ lịch bảo dưỡng ${entry.bks} — đã lưu lên GitHub.`);
   }
 
-  let dayIdx = 0;
+  let currentDate = DAYS[0].date;
   let activeTab = 'slots';
 
   function overlaps(a, b){ return a.dep < effArr(b) && b.dep < effArr(a); }
 
   // pairwise issues for a bks's own chain of trips that day: overlap / turnaround / position
   function computeBksIssues(date, bks){
-    const st = stateByDay[date];
-    const tripById = tripByIdByDay[date];
+    const st = ensureState(date);
+    const tripById = ensureTripMap(date);
     const ids = [...st.assignments[bks]].sort((a,b) => tripById[a].dep - tripById[b].dep);
     const issues = {}; // tripId -> [str,...]
     const add = (id, msg) => { (issues[id] = issues[id] || []).push(msg); };
@@ -477,11 +508,10 @@ footer.note b{color:var(--ink-muted);}
   }
 
   // chuyến của hôm qua chạy qua nửa đêm sang hôm nay (arr > 1440) — chỉ hiển thị, không tính cảnh báo
-  function getCarryover(dayIndex, bks){
-    if (dayIndex <= 0) return null;
-    const prevDay = DAYS[dayIndex - 1];
-    const prevSt = stateByDay[prevDay.date];
-    const prevTripById = tripByIdByDay[prevDay.date];
+  function getCarryover(dateStr, bks){
+    const prevDate = addDays(dateStr, -1);
+    const prevSt = ensureState(prevDate);
+    const prevTripById = ensureTripMap(prevDate);
     let best = null, bestArr = -1;
     (prevSt.assignments[bks] || []).forEach(id => {
       const t = prevTripById[id];
@@ -492,41 +522,47 @@ footer.note b{color:var(--ink-muted);}
     return { trip: best, endMin: bestArr - 1440 };
   }
 
+  // dải ngày chỉ hiện 1 cửa sổ 7 ngày quanh ngày đang chọn (3 trước + hôm nay + 3 sau), không giới hạn theo dữ liệu Odoo
   function buildDayPills(){
     const wrap = document.getElementById('dayPills');
     wrap.innerHTML = '';
-    DAYS.forEach((day, i) => {
+    const start = addDays(currentDate, -3);
+    for (let i = 0; i < 7; i++){
+      const dateStr = addDays(start, i);
+      const day = dayFor(dateStr);
       const p = document.createElement('button');
-      p.className = 'pill tabular' + (day.real ? ' real' : '');
-      p.innerHTML = `<span class="wd">${day.weekday}</span><span>${day.dd}</span><span class="dot2" title="${day.real ? 'Lịch thật từ Odoo' : 'Dự kiến theo nề nếp ' + (day.refDate||'')}">${day.real ? '●' : '○'}</span>`;
-      p.title = day.real ? 'Lịch thật từ Odoo' : `Dự kiến — chưa có lịch thật trong Odoo, theo nề nếp ngày ${day.refDate || ''}`;
-      p.addEventListener('click', () => setDay(i));
+      p.className = 'pill tabular' + (day.real ? ' real' : '') + (day.empty ? ' empty' : '') + (dateStr === currentDate ? ' active' : '');
+      const dotTitle = day.empty ? 'Chưa có dữ liệu Odoo cho ngày này — vẫn xem/xếp thử được' : (day.real ? 'Lịch thật từ Odoo' : `Dự kiến — theo nề nếp ${day.refDate || ''}`);
+      const dot = day.real ? '●' : (day.empty ? '·' : '○');
+      p.innerHTML = `<span class="wd">${day.weekday}</span><span>${day.dd}</span><span class="dot2" title="${dotTitle}">${dot}</span>`;
+      p.title = dotTitle;
+      p.addEventListener('click', () => setDate(dateStr));
       wrap.appendChild(p);
-    });
-  }
-  function highlightPills(){
-    const wrap = document.getElementById('dayPills');
-    [...wrap.children].forEach((el, i) => el.classList.toggle('active', i === dayIdx));
-    const active = wrap.children[dayIdx];
-    if (active) active.scrollIntoView({inline:'center', block:'nearest'});
+    }
     const wq = document.getElementById('weekQuick');
-    if (wq) wq.value = String(Math.floor(dayIdx / 7) * 7);
+    if (wq) wq.value = mondayOfISO(currentDate);
+    const jump = document.getElementById('dateJump');
+    if (jump) jump.value = currentDate;
   }
+  // chọn nhanh tuần: ±12 tuần quanh tuần hiện tại (tiện dụng) — muốn xa hơn (nhiều năm) dùng ô "chọn đúng ngày" bên cạnh
   function buildWeekQuick(){
     const sel = document.getElementById('weekQuick');
     sel.innerHTML = '';
-    for (let i = 0; i < DAYS.length; i += 7){
-      const chunk = DAYS.slice(i, Math.min(i + 7, DAYS.length));
+    const thisMonday = mondayOfISO(DAYS[0].date);
+    for (let w = -12; w <= 12; w++){
+      const start = addDays(thisMonday, w * 7);
+      const end = addDays(start, 6);
       const opt = document.createElement('option');
-      opt.value = i;
-      opt.textContent = `${chunk[0].dd} - ${chunk[chunk.length - 1].dd}`;
+      opt.value = start;
+      const label = w === 0 ? 'Tuần này' : w === 1 ? 'Tuần sau' : w === -1 ? 'Tuần trước' : (w > 0 ? `Tuần +${w}` : `Tuần ${w}`);
+      opt.textContent = `${label} (${ddOf(start)} - ${ddOf(end)})`;
       sel.appendChild(opt);
     }
-    sel.addEventListener('change', e => setDay(Number(e.target.value)));
+    sel.addEventListener('change', e => setDate(e.target.value));
   }
-  function setDay(i){
-    dayIdx = Math.max(0, Math.min(DAYS.length - 1, i));
-    highlightPills();
+  function setDate(dateStr){
+    currentDate = dateStr;
+    buildDayPills();
     renderAll();
   }
   function setTab(t){
@@ -539,7 +575,7 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function buildLegend(){
-    const day = DAYS[dayIdx];
+    const day = dayFor(currentDate);
     const el = document.getElementById('legend');
     el.innerHTML = '';
     routesInDay(day).forEach(route => {
@@ -552,8 +588,8 @@ footer.note b{color:var(--ink-muted);}
 
   // ---------------- bus pool (Tab 1) ----------------
   function renderBusTray(){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
     const garaBroken = garaBrokenSetFor(day.date);
     const tray = document.getElementById('busTray');
     tray.innerHTML = '';
@@ -590,7 +626,7 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function assignBksToTrip(date, tripId, bks){
-    const st = stateByDay[date];
+    const st = ensureState(date);
     // remove this trip from whichever bks currently holds it
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== tripId); });
     st.unassigned.delete(tripId);
@@ -615,9 +651,9 @@ footer.note b{color:var(--ink-muted);}
 
   // ---------------- slot list (Tab 1) ----------------
   function renderSlotList(){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
-    const tripById = tripByIdByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
+    const tripById = ensureTripMap(day.date);
     const wrap = document.getElementById('slotList');
     wrap.innerHTML = '';
 
@@ -721,10 +757,10 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function deleteTrip(date, id){
-    const st = stateByDay[date];
+    const st = ensureState(date);
     st.unassigned.delete(id);
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== id); });
-    delete tripByIdByDay[date][id];
+    delete ensureTripMap(date)[id];
     const day = DAYS.find(d => d.date === date);
     if (day) day.trips = day.trips.filter(t => t.id !== id);
     renderAll();
@@ -803,9 +839,9 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function renderBoard(){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
-    const tripById = tripByIdByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
+    const tripById = ensureTripMap(day.date);
     const board = document.getElementById('boardInner');
     board.innerHTML = '';
 
@@ -907,7 +943,7 @@ footer.note b{color:var(--ink-muted);}
           mb.appendChild(del);
           track.appendChild(mb);
         });
-        const carry = getCarryover(dayIdx, b.bks);
+        const carry = getCarryover(day.date, b.bks);
         if (carry) track.appendChild(carryoverBlockEl(carry.trip, carry.endMin));
         st.assignments[b.bks].forEach(id => track.appendChild(chipEl(tripById[id], day.date, b.bks)));
         track.addEventListener('dragover', e => {
@@ -933,21 +969,21 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function markBroken(bks){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
     st.broken.add(bks);
     st.assignments[bks].forEach(id => st.unassigned.add(id));
     st.assignments[bks] = [];
     renderAll();
   }
   function restoreBus(bks){
-    const day = DAYS[dayIdx];
-    stateByDay[day.date].broken.delete(bks);
+    const day = dayFor(currentDate);
+    ensureState(day.date).broken.delete(bks);
     renderAll();
   }
   function renderBrokenZone(){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
     const garaBroken = garaBrokenSetFor(day.date);
     const zone = document.getElementById('brokenZone');
     const chips = document.getElementById('brokenChips');
@@ -989,8 +1025,8 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function updateStats(){
-    const day = DAYS[dayIdx];
-    const st = stateByDay[day.date];
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
     const total = day.trips.length;
     const assigned = total - st.unassigned.size;
     let issueCount = 0, vehiclesUsed = 0;
@@ -1008,11 +1044,15 @@ footer.note b{color:var(--ink-muted);}
   }
 
   function renderDayBanner(){
-    const day = DAYS[dayIdx];
+    const day = dayFor(currentDate);
     const el = document.getElementById('dayBanner');
-    el.innerHTML = day.real
-      ? `<span class="daybanner real">✓ Lịch thật từ Odoo — xe/chuyến đã có sẵn trong hệ thống được tự nhận vào đúng chỗ.</span>`
-      : `<span class="daybanner proj">≈ Dự kiến — Odoo chưa có lịch chuyến thật cho ngày này, đang dùng nề nếp ngày ${day.refDate || ''} làm tạm.</span>`;
+    if (day.empty){
+      el.innerHTML = `<span class="daybanner empty">— Ngoài phạm vi dữ liệu Odoo đã lấy (quá khứ xa hoặc tương lai xa) — vẫn xem và xếp thử được, chỉ là không có gì tham chiếu/lịch thật cho ngày này.</span>`;
+    } else if (day.real){
+      el.innerHTML = `<span class="daybanner real">✓ Lịch thật từ Odoo — xe/chuyến đã có sẵn trong hệ thống được tự nhận vào đúng chỗ.</span>`;
+    } else {
+      el.innerHTML = `<span class="daybanner proj">≈ Dự kiến — Odoo chưa có lịch chuyến thật cho ngày này, đang dùng nề nếp ngày ${day.refDate || ''} làm tạm.</span>`;
+    }
   }
 
   function renderAll(){
@@ -1025,15 +1065,15 @@ footer.note b{color:var(--ink-muted);}
     updateStats();
   }
 
-  document.getElementById('dayPrev').addEventListener('click', () => setDay(dayIdx - 1));
-  document.getElementById('dayNext').addEventListener('click', () => setDay(dayIdx + 1));
+  document.getElementById('dayPrev').addEventListener('click', () => setDate(addDays(currentDate, -1)));
+  document.getElementById('dayNext').addEventListener('click', () => setDate(addDays(currentDate, 1)));
+  document.getElementById('dateJump').addEventListener('change', e => { if (e.target.value) setDate(e.target.value); });
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('ghTokenBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); getToken(true); });
 
-  buildDayPills();
   buildWeekQuick();
-  highlightPills();
+  buildDayPills();
   renderAll();
   loadGaraData();
 })();
