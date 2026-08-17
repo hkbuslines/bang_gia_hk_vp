@@ -212,6 +212,15 @@ footer.note b{color:var(--ink-muted);}
 ::-webkit-scrollbar{height:10px; width:10px;}
 ::-webkit-scrollbar-thumb{background:var(--line-strong); border-radius:6px;}
 ::-webkit-scrollbar-track{background:transparent;}
+
+#printArea{display:none;}
+#printArea table{width:100%; border-collapse:collapse; font-size:12px;}
+#printArea th, #printArea td{border:1px solid #333; padding:4px 8px; text-align:left;}
+@media print{
+  body *{visibility:hidden;}
+  #printArea, #printArea *{visibility:visible;}
+  #printArea{display:block; position:absolute; left:0; top:0; width:100%;}
+}
 </style>
 
 <div class="wrap">
@@ -252,6 +261,11 @@ footer.note b{color:var(--ink-muted);}
   <div class="tabbar">
     <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
     <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
+  </div>
+
+  <div style="display:flex; gap:8px; margin-bottom:12px;">
+    <button type="button" class="ghost" id="exportPdfBtn">🖨 Xuất PDF (lịch ngày này)</button>
+    <button type="button" class="ghost" id="exportCsvBtn">📊 Xuất Excel (lịch ngày này)</button>
   </div>
 
   <div class="legend" id="legend"></div>
@@ -307,6 +321,8 @@ footer.note b{color:var(--ink-muted);}
     tự làm mới — bản dựng thử để bạn góp ý trước khi làm chính thức.
   </footer>
 </div>
+
+<div id="printArea"></div>
 
 <script id="bus-data" type="application/json">__BUSES_JSON__</script>
 <script id="day-data" type="application/json">__DAYS_JSON__</script>
@@ -790,6 +806,51 @@ footer.note b{color:var(--ink-muted);}
     });
     el.addEventListener('dragend', () => el.classList.remove('dragging'));
     return el;
+  }
+
+  // ---------------- xuất PDF / Excel lịch trong ngày đang xem ----------------
+  function buildScheduleRows(){
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
+    const tripById = ensureTripMap(day.date);
+    const bksOfTrip = {};
+    Object.keys(st.assignments).forEach(bks => st.assignments[bks].forEach(id => bksOfTrip[id] = bks));
+    const rows = [];
+    routesInDay(day).forEach(route => {
+      const ids = day.trips.filter(t => t.route === route).map(t => t.id).sort((a,b) => tripById[a].dep - tripById[b].dep);
+      ids.forEach(id => {
+        const t = tripById[id];
+        const bks = bksOfTrip[id] || '';
+        const drv = st.drivers[id] || {};
+        rows.push({ time: t.depStr, route, bks, lai1: drv.lai1 || '', lai2: drv.lai2 || '' });
+      });
+    });
+    return rows;
+  }
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+  function exportScheduleCSV(){
+    const day = dayFor(currentDate);
+    const rows = buildScheduleRows();
+    const header = ['Giờ', 'Tuyến', 'BKS', 'Lái 1', 'Lái 2'];
+    const csvRows = [header, ...rows.map(r => [r.time, r.route, r.bks, r.lai1, r.lai2])];
+    const csv = csvRows.map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    // thêm BOM để Excel đọc đúng tiếng Việt có dấu
+    downloadBlob(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'}), `lich_xep_xe_${day.date}.csv`);
+  }
+  function exportSchedulePDF(){
+    const day = dayFor(currentDate);
+    const rows = buildScheduleRows();
+    const body = rows.map(r => `<tr><td>${r.time}</td><td>${r.route}</td><td>${r.bks || '—'}</td><td>${r.lai1 || '—'}</td><td>${r.lai2 || '—'}</td></tr>`).join('');
+    document.getElementById('printArea').innerHTML =
+      `<h2>Lịch xếp xe — ${day.weekday} ${day.dd}</h2>` +
+      `<table><thead><tr><th>Giờ</th><th>Tuyến</th><th>BKS</th><th>Lái 1</th><th>Lái 2</th></tr></thead><tbody>${body}</tbody></table>`;
+    window.print();
   }
 
   // ---------------- slot list (Tab 1) ----------------
@@ -1292,6 +1353,8 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('dateJump').addEventListener('change', e => { if (e.target.value) setDate(e.target.value); });
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
+  document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
+  document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
   // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
   // GitHub trong Script Properties), trình duyệt không cần token gì cả
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
