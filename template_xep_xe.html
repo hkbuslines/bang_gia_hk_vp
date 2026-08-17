@@ -407,10 +407,10 @@ footer.note b{color:var(--ink-muted);}
   }
 
   const REPO = 'hkbuslines/bang_gia_hk_vp';
-  const DATA_PATH = 'bao_duong_data.json';
-  const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
-  // server nhỏ giữ token GitHub 1 chỗ duy nhất — trang này không cần token gì cả
-  const WORKER_URL = 'https://hkbl-api.YOUR-SUBDOMAIN.workers.dev';
+  // Google Sheet (qua Apps Script Web App) giữ dữ liệu Gara + xin nghỉ dùng chung — không cần token
+  const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
+  const GARA_SHEET_KEY = 'gara';
+  const LEAVE_SHEET_KEY = 'leave';
   let garaEntries = [];
   let gaSavedAt = null;
 
@@ -425,9 +425,7 @@ footer.note b{color:var(--ink-muted);}
   const STATE_ICON = {wait:'🔧', doing:'🛠️', done:'✅'};
   const STATE_LABEL_VN = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
 
-  // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua GitHub
-  const LEAVE_DATA_PATH = 'lai_xe_nghi_data.json';
-  const LEAVE_RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${LEAVE_DATA_PATH}?t=${Date.now()}`;
+  // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua Google Sheet
   let driverLeaves = [];
   function driverLeaveFor(name, dateStr){
     if (!name) return null;
@@ -435,7 +433,7 @@ footer.note b{color:var(--ink-muted);}
   }
   async function loadDriverLeaves(){
     try{
-      const res = await fetch(LEAVE_RAW_URL, {cache:'no-store'});
+      const res = await fetch(`${SHEET_API_URL}?key=${LEAVE_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
       if (!res.ok) return;
       const data = await res.json();
       driverLeaves = data.entries || [];
@@ -456,13 +454,14 @@ footer.note b{color:var(--ink-muted);}
   async function loadGaraData(){
     const el = ghStatusEl();
     try{
-      const res = await fetch(RAW_URL, {cache:'no-store'});
-      if (res.status === 404){ if (el) el.textContent = 'Chưa có dữ liệu từ Gara.'; return; }
+      const res = await fetch(`${SHEET_API_URL}?key=${GARA_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       garaEntries = data.entries || [];
       gaSavedAt = data.updated_at || null;
-      if (el) el.textContent = `Đã tải ${garaEntries.length} mục từ Gara (cập nhật lần cuối: ${gaSavedAt || '—'}).`;
+      if (el) el.textContent = garaEntries.length
+        ? `Đã tải ${garaEntries.length} mục từ Gara (cập nhật lần cuối: ${gaSavedAt || '—'}).`
+        : 'Chưa có dữ liệu từ Gara.';
       renderAll();
     } catch(err){
       if (el) el.textContent = 'Không tải được dữ liệu từ Gara (mạng lỗi hoặc chưa có dữ liệu).';
@@ -473,10 +472,10 @@ footer.note b{color:var(--ink-muted);}
     const el = ghStatusEl();
     if (el) el.textContent = 'Đang lưu...';
     try{
-      const res = await fetch(`${WORKER_URL}/save`, {
+      // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
+      const res = await fetch(SHEET_API_URL, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ path: DATA_PATH, payload: { entries: garaEntries } }),
+        body: JSON.stringify({ action: 'save', key: GARA_SHEET_KEY, payload: { entries: garaEntries } }),
       });
       const result = await res.json();
       if (!result.ok){ if (el) el.textContent = 'Lưu lỗi: ' + result.error; return false; }
@@ -1293,15 +1292,16 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('dateJump').addEventListener('change', e => { if (e.target.value) setDate(e.target.value); });
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
-  // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua server nhỏ (Worker) giữ token,
-  // trình duyệt không cần token gì cả, mật khẩu Odoo vẫn nằm trong GitHub Secrets phía server
+  // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
+  // GitHub trong Script Properties), trình duyệt không cần token gì cả
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
     const btn = document.getElementById('refreshOdooBtn');
     const oldText = btn.textContent;
     btn.disabled = true;
     btn.textContent = 'Đang yêu cầu...';
     try{
-      const res = await fetch(`${WORKER_URL}/trigger-refresh`, { method: 'POST' });
+      // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
+      const res = await fetch(SHEET_API_URL, { method: 'POST', body: JSON.stringify({ action: 'triggerRefresh' }) });
       const result = await res.json();
       if (result.ok){
         btn.textContent = 'Đã yêu cầu ✓ — đợi ~20-30s rồi tải lại trang';

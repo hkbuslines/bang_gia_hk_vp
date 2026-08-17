@@ -240,11 +240,10 @@ tr.warnrow{background:var(--danger-fill);}
   const DRIVER_NAMES = DRIVERS.map(d => d.ten);
   const LOAI_LABEL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
   const REPO = 'hkbuslines/bang_gia_hk_vp';
-  const DATA_PATH = 'lai_xe_nghi_data.json';
-  const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
   const KIP_RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/data/kip_lai_theo_ngay.json?t=${Date.now()}`;
-  // server nhỏ giữ token GitHub 1 chỗ duy nhất — trang này không cần token gì cả
-  const WORKER_URL = 'https://hkbl-api.YOUR-SUBDOMAIN.workers.dev';
+  // Google Sheet (qua Apps Script Web App) giữ dữ liệu dùng chung — không trang nào cần token
+  const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
+  const SHEET_KEY = 'leave';
   let entries = [];
   let counter = 1;
   let kipLaiTheoNgay = {}; // {date: {kip, real, refDate}} — số nốt giờ thật lấy từ bên xếp xe/Odoo, tự cập nhật mỗi giờ
@@ -294,24 +293,21 @@ tr.warnrow{background:var(--danger-fill);}
   async function loadFromGithub(){
     const statusEl = document.getElementById('ghStatus');
     try {
-      const res = await fetch(RAW_URL, {cache: 'no-store'});
-      if (res.status === 404){
-        statusEl.textContent = 'Chưa có dữ liệu nào trên GitHub — đây sẽ là lần lưu đầu tiên.';
-        fillParamInputs(); readParamInputs();
-        return;
-      }
+      const res = await fetch(`${SHEET_API_URL}?key=${SHEET_KEY}&t=${Date.now()}`, {cache: 'no-store'});
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       entries = data.entries || [];
       counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
       if (data.params) Object.assign(params, data.params);
       fillParamInputs();
-      statusEl.textContent = `Đã tải ${entries.length} mục từ GitHub (cập nhật lần cuối: ${data.updated_at || '—'}).`;
+      statusEl.textContent = entries.length
+        ? `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}).`
+        : 'Chưa có dữ liệu nào — đây sẽ là lần lưu đầu tiên.';
       render();
       readParamInputs();
       renderWeeklyTable();
     } catch(err){
-      statusEl.textContent = 'Không tải được dữ liệu cũ từ GitHub (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+      statusEl.textContent = 'Không tải được dữ liệu cũ (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
       fillParamInputs(); readParamInputs();
     }
   }
@@ -320,10 +316,10 @@ tr.warnrow{background:var(--danger-fill);}
     const statusEl = document.getElementById('ghStatus');
     statusEl.textContent = 'Đang lưu...';
     try {
-      const res = await fetch(`${WORKER_URL}/save`, {
+      // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
+      const res = await fetch(SHEET_API_URL, {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ path: DATA_PATH, payload: { entries, params } }),
+        body: JSON.stringify({ action: 'save', key: SHEET_KEY, payload: { entries, params } }),
       });
       const result = await res.json();
       if (!result.ok){ statusEl.textContent = 'Lưu lỗi: ' + result.error; return; }
