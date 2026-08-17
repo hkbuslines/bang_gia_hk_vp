@@ -139,6 +139,7 @@ button.ghost:hover{background:var(--page);}
 .bks-suggest{position:absolute; top:100%; left:0; z-index:20; margin-top:2px; min-width:150px; max-height:220px; overflow-y:auto; background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
 .bks-suggest .opt{padding:6px 10px; font-size:12px; cursor:pointer; white-space:nowrap;}
 .bks-suggest .opt:hover{background:var(--surface-2);}
+.bks-suggest .opt .note{color:var(--ok); font-weight:600; margin-left:4px;}
 .dropzone.dragover{border-color:var(--ink); background:var(--surface-2);}
 .dropzone.filled{border-style:solid; border-color:transparent; padding:0;}
 .assignedchip{display:flex; align-items:center; gap:8px; width:100%; padding:5px 10px; border-radius:6px; cursor:grab; color:#fff; font-weight:700; font-size:12px;}
@@ -733,8 +734,59 @@ footer.note b{color:var(--ink-muted);}
   function attachBksAutocomplete(input, onSelect){
     attachAutocomplete(input, allBksList, bksNormOf, normBks, v => onSelect(v || null));
   }
-  function attachDriverAutocomplete(input, onSelect){
-    attachAutocomplete(input, DRIVER_NAME_POOL, driverNormOf, normName, onSelect);
+  // ô Lái 1/Lái 2: bấm vào là duyệt được cả danh sách lái xe (không cần gõ trước), luôn ghim lái định biên
+  // lên đầu, và đánh dấu rõ ai đang nghỉ phép (dựa theo dữ liệu từ trang xin nghỉ) để cân nhắc khi đổi tài
+  function attachDriverAutocomplete(input, bus, slot, dateStr, onSelect){
+    const wrap = input.parentElement;
+    const dinhBien = bus ? (bus[slot] || '') : '';
+    let box = null;
+    function closeBox(){ if (box){ box.remove(); box = null; } }
+    function buildList(query){
+      const q = normName(query);
+      const pool = DRIVER_NAME_POOL.filter(n => n !== dinhBien && (!q || driverNormOf[n].includes(q)));
+      const notOnLeave = pool.filter(n => !driverLeaveFor(n, dateStr));
+      const onLeave = pool.filter(n => driverLeaveFor(n, dateStr));
+      const items = [];
+      if (dinhBien && (!q || driverNormOf[dinhBien].includes(q))) items.push({name: dinhBien, dinhBien: true});
+      notOnLeave.forEach(name => items.push({name, dinhBien: false}));
+      onLeave.forEach(name => items.push({name, dinhBien: false}));
+      return q ? items.slice(0, 8) : items; // gõ tìm thì gọn 8, duyệt hết thì hiện đủ (cuộn được) để ai nghỉ cũng không bị khuất
+    }
+    function openBox(items){
+      closeBox();
+      if (!items.length) return;
+      box = document.createElement('div');
+      box.className = 'bks-suggest';
+      items.forEach(({name, dinhBien: isDB}) => {
+        const leave = driverLeaveFor(name, dateStr);
+        const opt = document.createElement('div');
+        opt.className = 'opt';
+        opt.innerHTML = `<span>${name}</span>` +
+          (isDB ? ' <span class="note">(định biên)</span>' : '') +
+          (leave ? ' <span style="color:var(--danger); font-weight:700;">🌴 đang nghỉ</span>' : '');
+        if (leave) opt.title = `Nghỉ ${leave.tungay === leave.denngay ? leave.tungay : leave.tungay + ' → ' + leave.denngay} (${leave.loai}${leave.ghichu ? ': ' + leave.ghichu : ''})`;
+        opt.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = name;
+          closeBox();
+          onSelect(name);
+        });
+        box.appendChild(opt);
+      });
+      wrap.appendChild(box);
+    }
+    input.addEventListener('input', () => openBox(buildList(input.value)));
+    input.addEventListener('focus', () => openBox(buildList('')));
+    input.addEventListener('blur', () => setTimeout(closeBox, 150));
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Escape'){ closeBox(); return; }
+      if (e.key === 'Enter'){
+        const q = normName(input.value);
+        if (!q){ closeBox(); onSelect(''); return; }
+        const exact = DRIVER_NAME_POOL.find(n => driverNormOf[n] === q);
+        if (exact){ input.value = exact; closeBox(); onSelect(exact); }
+      }
+    });
   }
 
   function assignBksToTrip(date, tripId, bks){
@@ -858,7 +910,7 @@ footer.note b{color:var(--ink-muted);}
             dInput.value = drv[slot] || '';
             dInput.title = ph;
             dWrap.appendChild(dInput);
-            attachDriverAutocomplete(dInput, selected => setTripDriver(day.date, id, slot, selected));
+            attachDriverAutocomplete(dInput, busByBks[bks], slot, day.date, selected => setTripDriver(day.date, id, slot, selected));
             dInput.addEventListener('blur', () => setTripDriver(day.date, id, slot, dInput.value));
             dzWrap.appendChild(dWrap);
           });
