@@ -40,6 +40,7 @@ body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-
 h1{font-size:19px; font-weight:600; margin:0;}
 .sub{font-size:13px; color:var(--ink-muted); margin-top:2px; max-width:76ch; line-height:1.5;}
 
+.weeklabel{font-size:16px; font-weight:700; white-space:nowrap;}
 .tabbar{display:flex; gap:8px; margin-top:16px;}
 .tabbtn{padding:8px 16px; border-radius:var(--radius); border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:13px; font-weight:600;}
 .tabbtn.active{background:var(--ink); color:var(--page); border-color:var(--ink);}
@@ -142,6 +143,10 @@ tr.warnrow{background:var(--danger-fill);}
           <label for="f-denngay">Đến ngày</label>
           <input type="date" id="f-denngay" required>
         </div>
+        <div class="field">
+          <label for="f-ngaynop">Ngày nộp đơn</label>
+          <input type="date" id="f-ngaynop">
+        </div>
 
         <div class="field full">
           <label for="f-ghichu">Ghi chú</label>
@@ -216,9 +221,14 @@ tr.warnrow{background:var(--danger-fill);}
       <h2>Nghỉ theo tuần — toàn bộ lái xe</h2>
       <div class="cardsub">Liệt kê đủ tất cả lái xe (giống danh sách bên xếp xe), mỗi người hiện số ngày nghỉ trong tuần
       đang chọn để kiểm soát — dựa thẳng trên dữ liệu ở tab "Nhập &amp; theo dõi", không cần nhập lại.</div>
-      <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px; margin-bottom:12px;">Chọn tuần
-        <select id="w-weekQuick" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);"></select>
-      </label>
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+        <button type="button" class="ghost" id="w-weekPrevBtn">‹ Tuần trước</button>
+        <div class="weeklabel" id="w-weekLabel">Tuần —</div>
+        <button type="button" class="ghost" id="w-weekNextBtn">Tuần sau ›</button>
+        <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Hoặc chọn đúng ngày
+          <input type="date" id="w-dateJump" style="font-size:12px; padding:4px 6px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
+        </label>
+      </div>
       <div id="weeklyWrap" style="overflow-x:auto;"></div>
     </div>
   </div>
@@ -399,6 +409,7 @@ tr.warnrow{background:var(--danger-fill);}
   const iso = d => d.toISOString().slice(0,10);
   document.getElementById('f-tungay').value = iso(today);
   document.getElementById('f-denngay').value = iso(today);
+  document.getElementById('f-ngaynop').value = iso(today);
 
   function todayISO(){
     const d = new Date();
@@ -432,22 +443,23 @@ tr.warnrow{background:var(--danger-fill);}
   document.getElementById('tabNhap').addEventListener('click', () => setTab('nhap'));
   document.getElementById('tabTuan').addEventListener('click', () => setTab('tuan'));
 
-  // chọn nhanh tuần cho bảng "Nghỉ theo tuần" — ±12 tuần quanh tuần hiện tại
-  const wWeekSel = document.getElementById('w-weekQuick');
-  (function buildWeekQuick(){
-    const thisMonday = mondayOfISO(todayISO());
-    for (let w = -4; w <= 12; w++){
-      const start = addDaysISO(thisMonday, w * 7);
-      const end = addDaysISO(start, 6);
-      const opt = document.createElement('option');
-      opt.value = start;
-      const label = w === 0 ? 'Tuần này' : w === 1 ? 'Tuần sau' : w === -1 ? 'Tuần trước' : (w > 0 ? `Tuần +${w}` : `Tuần ${w}`);
-      opt.textContent = `${label} (${fmtDM(start)} - ${fmtDM(end)})`;
-      wWeekSel.appendChild(opt);
-    }
-    wWeekSel.value = thisMonday;
-  })();
-  wWeekSel.addEventListener('change', renderWeeklyTable);
+  // điều hướng tuần cho bảng "Nghỉ theo tuần" — nút ‹/› + nhãn tuần in đậm + lịch chọn đúng ngày
+  let weeklyStart = mondayOfISO(todayISO());
+  function fmtDMY(isoStr){ const [y,m,d] = isoStr.split('-'); return `${d}/${m}/${y}`; }
+  function updateWeekLabel(){
+    const end = addDaysISO(weeklyStart, 6);
+    document.getElementById('w-weekLabel').textContent = `Tuần ${fmtDM(weeklyStart)} – ${fmtDMY(end)}`;
+    document.getElementById('w-dateJump').value = weeklyStart;
+  }
+  function setWeeklyStart(dateStr){
+    weeklyStart = mondayOfISO(dateStr);
+    updateWeekLabel();
+    renderWeeklyTable();
+  }
+  document.getElementById('w-weekPrevBtn').addEventListener('click', () => setWeeklyStart(addDaysISO(weeklyStart, -7)));
+  document.getElementById('w-weekNextBtn').addEventListener('click', () => setWeeklyStart(addDaysISO(weeklyStart, 7)));
+  document.getElementById('w-dateJump').addEventListener('change', e => { if (e.target.value) setWeeklyStart(e.target.value); });
+  updateWeekLabel();
 
   // đếm số ngày nghỉ trong tuần cho 1 lái xe, tách theo loại — dựa thẳng trên "entries" đã nhập
   function daysOffInWeek(name, weekStart){
@@ -499,11 +511,12 @@ tr.warnrow{background:var(--danger-fill);}
           <td style="font-weight:700;">${e.ten}</td>
           <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
           <td class="tabular">${fmtRange(e)}</td>
+          <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
           <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
           <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
         </tr>`).join('');
       wrap.innerHTML = `<table>
-        <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ghi chú</th><th></th></tr></thead>
+        <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
       wrap.querySelectorAll('[data-del]').forEach(btn => {
@@ -564,6 +577,7 @@ tr.warnrow{background:var(--danger-fill);}
       loai: document.getElementById('f-loai').value,
       tungay: document.getElementById('f-tungay').value,
       denngay: document.getElementById('f-denngay').value,
+      ngaynop: document.getElementById('f-ngaynop').value,
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
     if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
