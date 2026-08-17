@@ -163,11 +163,10 @@ tr:last-child td{border-bottom:0;}
   </div>
 
   <div class="card">
-    <h2>Đồng bộ với bảng xếp xe (qua GitHub)</h2>
-    <div class="note" id="ghStatus">Chưa lưu lên GitHub lần nào trong phiên này.</div>
+    <h2>Đồng bộ với bảng xếp xe</h2>
+    <div class="note" id="ghStatus">Chưa lưu lần nào trong phiên này.</div>
     <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
-      <button type="button" class="primary" id="ghSaveBtn">💾 Lưu lên GitHub (để bên xếp xe thấy)</button>
-      <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
+      <button type="button" class="primary" id="ghSaveBtn">💾 Lưu (để bên xếp xe thấy)</button>
     </div>
   </div>
 </div>
@@ -180,83 +179,42 @@ tr:last-child td{border-bottom:0;}
   const REPO = 'hkbuslines/bang_gia_hk_vp';
   const DATA_PATH = 'bao_duong_data.json';
   const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
-  const API_URL = `https://api.github.com/repos/${REPO}/contents/${DATA_PATH}`;
-  const TOKEN_KEY = 'hkbl_gh_token';
+  // server nhỏ giữ token GitHub 1 chỗ duy nhất — trang này không cần token gì cả
+  const WORKER_URL = 'https://hkbl-api.YOUR-SUBDOMAIN.workers.dev';
   let entries = [];
   let counter = 1;
-
-  function b64EncodeUtf8(str){
-    return btoa(unescape(encodeURIComponent(str)));
-  }
-  function getToken(forcePrompt){
-    let t = localStorage.getItem(TOKEN_KEY);
-    if (!t || forcePrompt){
-      t = prompt(
-        'Dán Personal Access Token GitHub (fine-grained, chỉ cần quyền "Contents: Read and write" cho repo ' + REPO + ').\n' +
-        'Token chỉ lưu trong trình duyệt máy này, không gửi đi đâu khác ngoài GitHub.',
-        ''
-      );
-      if (t) localStorage.setItem(TOKEN_KEY, t.trim());
-    }
-    return t ? t.trim() : null;
-  }
-  document.getElementById('ghTokenBtn').addEventListener('click', () => {
-    localStorage.removeItem(TOKEN_KEY);
-    getToken(true);
-  });
 
   async function loadFromGithub(){
     const statusEl = document.getElementById('ghStatus');
     try {
       const res = await fetch(RAW_URL, {cache: 'no-store'});
       if (res.status === 404){
-        statusEl.textContent = 'Chưa có dữ liệu nào trên GitHub — đây sẽ là lần lưu đầu tiên.';
+        statusEl.textContent = 'Chưa có dữ liệu nào — đây sẽ là lần lưu đầu tiên.';
         return;
       }
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       entries = data.entries || [];
       counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
-      statusEl.textContent = `Đã tải ${entries.length} mục từ GitHub (cập nhật lần cuối: ${data.updated_at || '—'}).`;
+      statusEl.textContent = `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}).`;
       render();
     } catch(err){
-      statusEl.textContent = 'Không tải được dữ liệu cũ từ GitHub (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+      statusEl.textContent = 'Không tải được dữ liệu cũ (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
     }
   }
 
   async function saveToGithub(){
     const statusEl = document.getElementById('ghStatus');
-    const token = getToken(false);
-    if (!token){ statusEl.textContent = 'Chưa nhập mã kết nối GitHub, chưa lưu được.'; return; }
-    statusEl.textContent = 'Đang lưu lên GitHub...';
+    statusEl.textContent = 'Đang lưu...';
     try {
-      let sha = null;
-      const cur = await fetch(API_URL, {headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json'}});
-      if (cur.ok){ const curJson = await cur.json(); sha = curJson.sha; }
-      else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
-
-      const payload = { entries, updated_at: new Date().toISOString() };
-      const body = {
-        message: 'Cập nhật bảo dưỡng/xe hỏng — ' + new Date().toLocaleString('vi-VN'),
-        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
-      };
-      if (sha) body.sha = sha;
-
-      const put = await fetch(API_URL, {
-        method: 'PUT',
-        headers: {Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'Content-Type':'application/json'},
-        body: JSON.stringify(body),
+      const res = await fetch(`${WORKER_URL}/save`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: DATA_PATH, payload: { entries } }),
       });
-      if (!put.ok){
-        const errJson = await put.json().catch(()=>({}));
-        if (put.status === 401){
-          statusEl.textContent = 'Mã kết nối GitHub sai hoặc hết hạn — bấm "Đổi mã kết nối GitHub" để nhập lại.';
-        } else {
-          statusEl.textContent = 'Lưu lỗi: ' + (errJson.message || ('HTTP ' + put.status));
-        }
-        return;
-      }
-      statusEl.textContent = `Đã lưu ${entries.length} mục lên GitHub lúc ${new Date().toLocaleTimeString('vi-VN')}. Bên xếp xe sẽ thấy khi tải lại trang.`;
+      const result = await res.json();
+      if (!result.ok){ statusEl.textContent = 'Lưu lỗi: ' + result.error; return; }
+      statusEl.textContent = `Đã lưu ${entries.length} mục lúc ${new Date().toLocaleTimeString('vi-VN')}. Bên xếp xe sẽ thấy khi tải lại trang.`;
     } catch(err){
       statusEl.textContent = 'Lưu lỗi: ' + err.message;
     }

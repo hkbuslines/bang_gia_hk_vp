@@ -19,3 +19,5 @@
 !scripts/**
 !.github
 !.github/**
+!worker
+!worker/**

@@ -260,7 +260,6 @@ footer.note b{color:var(--ink-muted);}
     <span id="ghStatus">Đang tải dữ liệu Gara…</span>
     <div style="display:flex; gap:8px; flex-shrink:0;">
       <button type="button" class="ghost" id="refreshOdooBtn">🔄 Làm mới từ Odoo</button>
-      <button type="button" class="ghost" id="ghTokenBtn">Đổi mã kết nối GitHub</button>
     </div>
   </div>
 
@@ -410,8 +409,8 @@ footer.note b{color:var(--ink-muted);}
   const REPO = 'hkbuslines/bang_gia_hk_vp';
   const DATA_PATH = 'bao_duong_data.json';
   const RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/${DATA_PATH}?t=${Date.now()}`;
-  const API_URL = `https://api.github.com/repos/${REPO}/contents/${DATA_PATH}`;
-  const TOKEN_KEY = 'hkbl_gh_token';
+  // server nhỏ giữ token GitHub 1 chỗ duy nhất — trang này không cần token gì cả
+  const WORKER_URL = 'https://hkbl-api.YOUR-SUBDOMAIN.workers.dev';
   let garaEntries = [];
   let gaSavedAt = null;
 
@@ -452,20 +451,6 @@ footer.note b{color:var(--ink-muted);}
     return `⚠ Lái 1 (${b.lai1}) nghỉ ${range} (${leave1.loai}${leave1.ghichu ? ': ' + leave1.ghichu : ''}). ${relief}`;
   }
 
-  function b64EncodeUtf8(str){ return btoa(unescape(encodeURIComponent(str))); }
-  function getToken(forcePrompt){
-    let t = localStorage.getItem(TOKEN_KEY);
-    if (!t || forcePrompt){
-      t = prompt(
-        'Dán Personal Access Token GitHub (fine-grained, cho repo ' + REPO + ', cần 2 quyền: "Contents: Read and write" và "Actions: Read and write" — quyền Actions để nút "Làm mới từ Odoo" chạy được).\n' +
-        'Token chỉ lưu trong trình duyệt máy này. Nếu đã nhập bên trang Gara/xin nghỉ trên cùng trình duyệt này rồi mà thiếu quyền Actions thì bấm "Đổi mã kết nối GitHub" để nhập token mới.',
-        ''
-      );
-      if (t) localStorage.setItem(TOKEN_KEY, t.trim());
-    }
-    return t ? t.trim() : null;
-  }
-
   function ghStatusEl(){ return document.getElementById('ghStatus'); }
 
   async function loadGaraData(){
@@ -486,33 +471,16 @@ footer.note b{color:var(--ink-muted);}
 
   async function saveGaraEntries(successMsg){
     const el = ghStatusEl();
-    const token = getToken(false);
-    if (!token){ if (el) el.textContent = 'Chưa có mã kết nối GitHub — bấm "Đổi mã kết nối GitHub" để nhập.'; return false; }
-    if (el) el.textContent = 'Đang lưu lên GitHub...';
+    if (el) el.textContent = 'Đang lưu...';
     try{
-      let sha = null;
-      const cur = await fetch(API_URL, {headers:{Authorization:'Bearer '+token, Accept:'application/vnd.github+json'}});
-      if (cur.ok){ sha = (await cur.json()).sha; }
-      else if (cur.status !== 404){ throw new Error('Không đọc được file hiện tại (HTTP ' + cur.status + ')'); }
-      const payload = { entries: garaEntries, updated_at: new Date().toISOString() };
-      const body = {
-        message: 'Xếp xe cập nhật lịch bảo dưỡng — ' + new Date().toLocaleString('vi-VN'),
-        content: b64EncodeUtf8(JSON.stringify(payload, null, 2)),
-      };
-      if (sha) body.sha = sha;
-      const put = await fetch(API_URL, {
-        method: 'PUT',
-        headers: {Authorization:'Bearer '+token, Accept:'application/vnd.github+json', 'Content-Type':'application/json'},
-        body: JSON.stringify(body),
+      const res = await fetch(`${WORKER_URL}/save`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ path: DATA_PATH, payload: { entries: garaEntries } }),
       });
-      if (!put.ok){
-        const errJson = await put.json().catch(()=>({}));
-        if (el) el.textContent = put.status === 401
-          ? 'Mã kết nối GitHub sai/hết hạn — bấm "Đổi mã kết nối GitHub".'
-          : 'Lưu lỗi: ' + (errJson.message || ('HTTP ' + put.status));
-        return false;
-      }
-      if (el) el.textContent = successMsg || `Đã lưu lên GitHub lúc ${new Date().toLocaleTimeString('vi-VN')}.`;
+      const result = await res.json();
+      if (!result.ok){ if (el) el.textContent = 'Lưu lỗi: ' + result.error; return false; }
+      if (el) el.textContent = successMsg || `Đã lưu lúc ${new Date().toLocaleTimeString('vi-VN')}.`;
       return true;
     } catch(err){
       if (el) el.textContent = 'Lưu lỗi: ' + err.message;
@@ -1325,34 +1293,21 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('dateJump').addEventListener('change', e => { if (e.target.value) setDate(e.target.value); });
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
-  document.getElementById('ghTokenBtn').addEventListener('click', () => { localStorage.removeItem(TOKEN_KEY); getToken(true); });
-
-  // nút bấm chạy lại Action lấy dữ liệu Odoo — chỉ gửi lệnh "chạy ngay" qua GitHub, mật khẩu Odoo vẫn nằm trong
-  // GitHub Secrets phía server, trình duyệt không bao giờ thấy — không lộ thông tin đăng nhập Odoo
-  const DISPATCH_URL = `https://api.github.com/repos/${REPO}/actions/workflows/refresh-odoo.yml/dispatches`;
+  // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua server nhỏ (Worker) giữ token,
+  // trình duyệt không cần token gì cả, mật khẩu Odoo vẫn nằm trong GitHub Secrets phía server
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
     const btn = document.getElementById('refreshOdooBtn');
     const oldText = btn.textContent;
-    const token = getToken(false);
-    if (!token){ alert('Chưa có mã kết nối GitHub — bấm "Đổi mã kết nối GitHub" để nhập trước.'); return; }
     btn.disabled = true;
     btn.textContent = 'Đang yêu cầu...';
     try{
-      const res = await fetch(DISPATCH_URL, {
-        method: 'POST',
-        headers: {Authorization: 'Bearer ' + token, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json'},
-        body: JSON.stringify({ref: 'main'}),
-      });
-      if (res.status === 204){
+      const res = await fetch(`${WORKER_URL}/trigger-refresh`, { method: 'POST' });
+      const result = await res.json();
+      if (result.ok){
         btn.textContent = 'Đã yêu cầu ✓ — đợi ~20-30s rồi tải lại trang';
         setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 25000);
       } else {
-        const errJson = await res.json().catch(() => ({}));
-        if (res.status === 401 || res.status === 403 || res.status === 404){
-          alert('Mã kết nối GitHub chưa đủ quyền chạy Action (cần thêm quyền "Actions: Read and write" cho repo ' + REPO + '). Bấm "Đổi mã kết nối GitHub" để nhập token mới có đủ quyền.');
-        } else {
-          alert('Lỗi: ' + (errJson.message || ('HTTP ' + res.status)));
-        }
+        alert('Lỗi: ' + result.error);
         btn.textContent = oldText; btn.disabled = false;
       }
     } catch(err){
