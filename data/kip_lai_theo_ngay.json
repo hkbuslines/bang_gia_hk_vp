@@ -5,9 +5,9 @@
     "refDate": null
   },
   "2026-08-19": {
-    "kip": 103,
-    "real": false,
-    "refDate": "2026-08-12"
+    "kip": 95,
+    "real": true,
+    "refDate": null
   },
   "2026-08-20": {
     "kip": 105,
