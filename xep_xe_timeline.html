@@ -211,8 +211,11 @@ table.dotable td{padding:9px 12px; border-bottom:0.5px solid var(--line); vertic
 table.dotable tr:last-child td{border-bottom:0;}
 .doreason{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--ink-muted);}
 .doreason.leave{background:var(--danger-fill); color:var(--danger);}
+.doreason.working{background:var(--ok-fill); color:var(--ok);}
 #tabDriversOffCount{font-weight:700;}
 .dotable .note{color:var(--ink-muted); font-size:12px;}
+.rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
+.rowbtn:hover{background:var(--surface-2); color:var(--danger);}
 .track{position:relative; flex:1; height:34px; border-radius:var(--radius);
   background-color:var(--surface-2);
   background-image:repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent calc(100%/10));}
@@ -280,7 +283,7 @@ footer.note b{color:var(--ink-muted);}
   <div class="tabbar">
     <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
     <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
-    <button class="tabbtn" id="tabDriversOff" type="button">Lái chưa xếp <span id="tabDriversOffCount"></span></button>
+    <button class="tabbtn" id="tabDriversOff" type="button">Lái xe <span id="tabDriversOffCount"></span></button>
   </div>
 
   <div style="display:flex; gap:8px; margin-bottom:12px;">
@@ -337,7 +340,7 @@ footer.note b{color:var(--ink-muted);}
   <!-- ============ TAB 3: lái chưa xếp ============ -->
   <div class="tabpane" id="paneDriversOff">
     <div class="card">
-      <div class="tray-head">Lái xe chưa được xếp chuyến hôm nay — kèm lý do</div>
+      <div class="tray-head">Danh sách lái xe — trạng thái hôm nay & lý do chưa xếp</div>
       <div id="driversOffWrap" style="overflow-x:auto;"></div>
     </div>
   </div>
@@ -1758,49 +1761,92 @@ footer.note b{color:var(--ink-muted);}
     });
   }
 
-  // tính danh sách lái xe hôm nay không chạy + lý do: đang nghỉ phép (đủ loại P/DX/KB/D) hoặc chỉ
-  // đơn giản là chưa được xếp chuyến nào — không tính người đã nghỉ việc hẳn (không còn thuộc biên chế)
-  function computeOffDrivers(){
+  // tính trạng thái từng lái xe hôm nay: đang chạy (kèm xe) hoặc lý do không chạy — đang nghỉ phép
+  // (đủ loại P/DX/KB/D) hoặc chỉ đơn giản chưa được xếp chuyến nào; không tính người đã nghỉ việc
+  // hẳn (không còn thuộc biên chế); người chưa xếp/đang nghỉ được ghim lên đầu để dễ thấy
+  function computeDriverStatuses(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
-    const driversWorking = new Set();
-    Object.values(st.drivers).forEach(d => { if (d.lai1) driversWorking.add(d.lai1); if (d.lai2) driversWorking.add(d.lai2); });
+    const workingBks = {};
+    Object.entries(st.assignments).forEach(([bks, ids]) => {
+      ids.forEach(id => {
+        const d = st.drivers[id];
+        if (!d) return;
+        if (d.lai1) workingBks[d.lai1] = bks;
+        if (d.lai2) workingBks[d.lai2] = bks;
+      });
+    });
     return DRIVERS_FULL
-      .filter(d => d.trang_thai !== 'Đã nghỉ' && !driversWorking.has(d.ten))
-      .map(d => ({ name: d.ten, ma_nv: d.ma_nv, leave: driverLeaveFor(d.ten, day.date) }))
+      .filter(d => d.trang_thai !== 'Đã nghỉ')
+      .map(d => {
+        const bks = workingBks[d.ten] || null;
+        const leave = bks ? null : driverLeaveFor(d.ten, day.date);
+        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave };
+      })
       .sort((a, b) => {
-        if (!!a.leave !== !!b.leave) return a.leave ? -1 : 1;
+        const rank = x => x.leave ? 0 : (!x.working ? 1 : 2);
+        const ra = rank(a), rb = rank(b);
+        if (ra !== rb) return ra - rb;
         return a.name.localeCompare(b.name, 'vi');
       });
   }
-  // số lượng trên nhãn tab — tính nhẹ, chạy mỗi lần renderAll() bất kể tab nào đang mở
+  // số lượng chưa xếp trên nhãn tab — tính nhẹ, chạy mỗi lần renderAll() bất kể tab nào đang mở
   function updateDriversOffCount(){
-    document.getElementById('tabDriversOffCount').textContent = `(${computeOffDrivers().length})`;
+    const notWorking = computeDriverStatuses().filter(d => !d.working).length;
+    document.getElementById('tabDriversOffCount').textContent = `(${notWorking})`;
   }
-  // bảng đầy đủ — chỉ vẽ khi tab "Lái chưa xếp" đang mở
+  // xoá 1 lái xe khỏi danh sách chung — lưu ngay qua Sheet key 'drivers' để bên Xin nghỉ (tab Quản lý
+  // lái xe) và trang này luôn khớp nhau
+  async function deleteDriver(name){
+    DRIVERS_FULL = DRIVERS_FULL.filter(d => d.ten !== name);
+    rebuildDriverPool();
+    renderAll();
+    try{
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', key: DRIVERS_SHEET_KEY, payload: { list: DRIVERS_FULL } }),
+      });
+      const result = await res.json();
+      if (!result.ok) alert('Lưu lỗi: ' + result.error);
+    } catch(err){
+      alert('Lưu lỗi (mạng): ' + err.message);
+    }
+  }
+  // bảng đầy đủ — chỉ vẽ khi tab "Lái xe" đang mở
   function renderDriversOffTab(){
     const wrap = document.getElementById('driversOffWrap');
-    const offDrivers = computeOffDrivers();
-    if (!offDrivers.length){
-      wrap.innerHTML = '<div class="doempty">Tất cả lái xe đang làm việc đều đã được xếp chạy hôm nay.</div>';
+    const list = computeDriverStatuses();
+    if (!list.length){
+      wrap.innerHTML = '<div class="doempty">Chưa có lái xe nào.</div>';
       return;
     }
-    const rows = offDrivers.map(({name, ma_nv, leave}, i) => {
-      const reasonText = leave ? (LOAI_LABEL[leave.loai] || leave.loai) : 'Chưa xếp';
-      const range = leave ? (leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`) : '';
-      const ghichu = leave && leave.ghichu ? leave.ghichu : '';
+    const rows = list.map(({name, ma_nv, working, bks, leave}, i) => {
+      let statusHtml;
+      if (leave){
+        const reasonText = LOAI_LABEL[leave.loai] || leave.loai;
+        const range = leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`;
+        const ghichu = leave.ghichu ? ' — ' + leave.ghichu : '';
+        statusHtml = `<span class="doreason leave">${reasonText}</span><div class="note" style="margin-top:2px;">${range}${ghichu}</div>`;
+      } else if (working){
+        statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>`;
+      } else {
+        statusHtml = `<span class="doreason">Chưa xếp</span>`;
+      }
       return `<tr>
         <td class="tabular note">${i + 1}</td>
         <td style="font-weight:700;">${name}</td>
         <td class="tabular note">${ma_nv || ''}</td>
-        <td><span class="doreason${leave ? ' leave' : ''}">${reasonText}</span></td>
-        <td class="note">${range}${ghichu ? ' — ' + ghichu : ''}</td>
+        <td>${statusHtml}</td>
+        <td><button type="button" class="rowbtn" data-deldriver="${name.replace(/"/g, '&quot;')}" title="Xoá lái xe này khỏi danh sách">×</button></td>
       </tr>`;
     }).join('');
     wrap.innerHTML = `<table class="dotable">
-      <thead><tr><th>STT</th><th>Tên lái xe</th><th>Mã NV</th><th>Lý do</th><th>Chi tiết</th></tr></thead>
+      <thead><tr><th>STT</th><th>Tên lái xe</th><th>Mã NV</th><th>Trạng thái</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
+    wrap.querySelectorAll('[data-deldriver]').forEach(btn => {
+      btn.addEventListener('click', () => deleteDriver(btn.dataset.deldriver));
+    });
   }
 
   function updateStats(){
