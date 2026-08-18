@@ -136,7 +136,7 @@ button.ghost:hover{background:var(--page);}
 .bksType{width:98px; font-size:11.5px; padding:5px 7px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
 .bksType.driverType{width:150px;}
 .bksType:focus{outline:none; border-color:var(--ink);}
-.bks-suggest{position:absolute; top:100%; left:0; z-index:20; margin-top:2px; min-width:150px; max-height:220px; overflow-y:auto; background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
+.bks-suggest{position:fixed; z-index:9999; min-width:150px; max-height:220px; overflow-y:auto; background:var(--surface); border:0.5px solid var(--line-strong); border-radius:6px; box-shadow:0 6px 14px -6px rgba(0,0,0,0.3);}
 .bks-suggest .opt{padding:6px 10px; font-size:12px; cursor:pointer; white-space:nowrap;}
 .bks-suggest .opt:hover{background:var(--surface-2);}
 .bks-suggest .opt .note{color:var(--ok); font-weight:600; margin-left:4px;}
@@ -675,15 +675,27 @@ footer.note b{color:var(--ink-muted);}
   const DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.map(d => d.ten))].sort();
   const driverNormOf = {}; DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
 
+  // gắn box gợi ý vào <body> với position:fixed (thay vì absolute trong ô cha) để không bị
+  // .card{overflow:hidden} hoặc bất kỳ khung cuộn nào cắt mất phần cuối danh sách
+  function positionSuggestBox(box, input){
+    const r = input.getBoundingClientRect();
+    box.style.left = r.left + 'px';
+    box.style.top = (r.bottom + 2) + 'px';
+    box.style.minWidth = r.width + 'px';
+  }
   function attachAutocomplete(input, list, normOf, normFn, onSelect){
-    const wrap = input.parentElement;
     let box = null;
-    function closeBox(){ if (box){ box.remove(); box = null; } }
+    let reposition = null;
+    function closeBox(){
+      if (box){ box.remove(); box = null; }
+      if (reposition){ window.removeEventListener('scroll', reposition, true); window.removeEventListener('resize', reposition); reposition = null; }
+    }
     function openBox(items){
       closeBox();
       if (!items.length) return;
       box = document.createElement('div');
       box.className = 'bks-suggest';
+      box.style.position = 'fixed';
       items.forEach(val => {
         const opt = document.createElement('div');
         opt.className = 'opt tabular';
@@ -696,7 +708,11 @@ footer.note b{color:var(--ink-muted);}
         });
         box.appendChild(opt);
       });
-      wrap.appendChild(box);
+      document.body.appendChild(box);
+      reposition = () => positionSuggestBox(box, input);
+      reposition();
+      window.addEventListener('scroll', reposition, true);
+      window.addEventListener('resize', reposition);
     }
     input.addEventListener('input', () => {
       const q = normFn(input.value);
@@ -721,10 +737,13 @@ footer.note b{color:var(--ink-muted);}
   // ô Lái 1/Lái 2: bấm vào là duyệt được cả danh sách lái xe (không cần gõ trước), luôn ghim lái định biên
   // lên đầu, và đánh dấu rõ ai đang nghỉ phép (dựa theo dữ liệu từ trang xin nghỉ) để cân nhắc khi đổi tài
   function attachDriverAutocomplete(input, bus, slot, dateStr, onSelect){
-    const wrap = input.parentElement;
     const dinhBien = bus ? (bus[slot] || '') : '';
     let box = null;
-    function closeBox(){ if (box){ box.remove(); box = null; } }
+    let reposition = null;
+    function closeBox(){
+      if (box){ box.remove(); box = null; }
+      if (reposition){ window.removeEventListener('scroll', reposition, true); window.removeEventListener('resize', reposition); reposition = null; }
+    }
     function buildList(query){
       const q = normName(query);
       const pool = DRIVER_NAME_POOL.filter(n => n !== dinhBien && (!q || driverNormOf[n].includes(q)));
@@ -741,6 +760,7 @@ footer.note b{color:var(--ink-muted);}
       if (!items.length) return;
       box = document.createElement('div');
       box.className = 'bks-suggest';
+      box.style.position = 'fixed';
       items.forEach(({name, dinhBien: isDB}) => {
         const leave = driverLeaveFor(name, dateStr);
         const opt = document.createElement('div');
@@ -757,7 +777,11 @@ footer.note b{color:var(--ink-muted);}
         });
         box.appendChild(opt);
       });
-      wrap.appendChild(box);
+      document.body.appendChild(box);
+      reposition = () => positionSuggestBox(box, input);
+      reposition();
+      window.addEventListener('scroll', reposition, true);
+      window.addEventListener('resize', reposition);
     }
     input.addEventListener('input', () => openBox(buildList(input.value)));
     input.addEventListener('focus', () => openBox(buildList('')));
