@@ -266,6 +266,7 @@ footer.note b{color:var(--ink-muted);}
   <div style="display:flex; gap:8px; margin-bottom:12px;">
     <button type="button" class="ghost" id="exportPdfBtn">🖨 Xuất PDF (lịch ngày này)</button>
     <button type="button" class="ghost" id="exportCsvBtn">📊 Xuất Excel (lịch ngày này)</button>
+    <button type="button" class="ghost" id="exportCsvByBksBtn">📊 Xuất Excel (gộp theo BKS)</button>
   </div>
 
   <div class="legend" id="legend"></div>
@@ -827,6 +828,23 @@ footer.note b{color:var(--ink-muted);}
     });
     return rows;
   }
+  function buildScheduleRowsByBks(){
+    const rows = buildScheduleRows();
+    const groups = {};
+    const order = [];
+    rows.forEach(r => {
+      const key = r.bks || '__NONE__';
+      if (!groups[key]) { groups[key] = []; order.push(key); }
+      groups[key].push(r);
+    });
+    order.sort((a, b) => {
+      if (a === '__NONE__') return 1;
+      if (b === '__NONE__') return -1;
+      return a.localeCompare(b, 'vi');
+    });
+    order.forEach(key => groups[key].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
+    return { order, groups };
+  }
   function downloadBlob(blob, filename){
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -842,6 +860,21 @@ footer.note b{color:var(--ink-muted);}
     const csv = csvRows.map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\r\n');
     // thêm BOM để Excel đọc đúng tiếng Việt có dấu
     downloadBlob(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'}), `lich_xep_xe_${day.date}.csv`);
+  }
+  function exportScheduleCSVByBks(){
+    const day = dayFor(currentDate);
+    const { order, groups } = buildScheduleRowsByBks();
+    const header = ['BKS', 'Số chuyến', 'Giờ', 'Tuyến', 'Lái 1', 'Lái 2'];
+    const csvRows = [header];
+    order.forEach(key => {
+      const list = groups[key];
+      const label = key === '__NONE__' ? 'Chưa xếp xe' : key;
+      list.forEach((r, i) => {
+        csvRows.push([i === 0 ? label : '', i === 0 ? list.length : '', r.time, r.route, r.lai1, r.lai2]);
+      });
+    });
+    const csv = csvRows.map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    downloadBlob(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'}), `lich_xep_xe_theo_bks_${day.date}.csv`);
   }
   function exportSchedulePDF(){
     const day = dayFor(currentDate);
@@ -1355,6 +1388,7 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
+  document.getElementById('exportCsvByBksBtn').addEventListener('click', exportScheduleCSVByBks);
   // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
   // GitHub trong Script Properties), trình duyệt không cần token gì cả
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
