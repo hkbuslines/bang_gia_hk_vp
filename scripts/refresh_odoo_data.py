@@ -69,6 +69,10 @@ def build_trip(t):
         "depStr": t["departure_time"], "arrStr": t["arrival_time"],
         "from": f, "to": to,
         "assignedBks": t["vehicle_id"][1] if t.get("vehicle_id") else None,
+        # tài xế thật đã lắp trong Odoo cho đúng chuyến này (driver_id/driver2_id trên vexere.trip) —
+        # dùng để ưu tiên thay cho định biên tĩnh khi đã có
+        "odooLai1": t["driver_id"][1] if t.get("driver_id") else None,
+        "odooLai2": t["driver2_id"][1] if t.get("driver2_id") else None,
     }
 
 
@@ -80,7 +84,8 @@ def main():
 
     rows = call("vexere.trip", "search_read",
                 [["date", ">=", lookback_start.isoformat()], ["date", "<=", window_end.isoformat()]],
-                ["id", "date", "departure_time", "arrival_date", "arrival_time", "route_id", "vehicle_id"])
+                ["id", "date", "departure_time", "arrival_date", "arrival_time", "route_id", "vehicle_id",
+                 "driver_id", "driver2_id"])
 
     by_date = {}
     for r in rows:
@@ -124,6 +129,8 @@ def main():
                 trips = sorted((build_trip(t) for t in ref_rows), key=lambda x: x["dep"])
                 for t in trips:
                     t["assignedBks"] = None
+                    t["odooLai1"] = None
+                    t["odooLai2"] = None
             days_out.append({"date": ds, "weekday": wd, "dd": f"{d.day:02d}/{d.month:02d}",
                               "trips": trips, "real": False, "refDate": ref_date})
         d += datetime.timedelta(days=1)
