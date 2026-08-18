@@ -278,6 +278,13 @@ footer.note b{color:var(--ink-muted);}
     </div>
   </div>
 
+  <div class="ghbar">
+    <span id="xepxeStatus">Đang tải dữ liệu xếp xe đã lưu…</span>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+      <button type="button" class="ghost" id="saveXepXeBtn" style="background:var(--ink); color:var(--page); border-color:var(--ink); font-weight:600;">💾 Lưu & đồng bộ</button>
+    </div>
+  </div>
+
   <div class="brokenzone" id="brokenZone">
     <div class="bzhead">🚫 Xe hỏng — không xếp hôm nay<span class="sub2">Kéo BKS từ khay thả vào đây</span></div>
     <div class="bzchips" id="brokenChips"></div>
@@ -428,8 +435,96 @@ footer.note b{color:var(--ink-muted);}
   const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
   const GARA_SHEET_KEY = 'gara';
   const LEAVE_SHEET_KEY = 'leave';
+  const XEPXE_SHEET_KEY = 'xepxe';
   let garaEntries = [];
   let gaSavedAt = null;
+  let xepxeSavedAt = null;
+
+  // ---------------- lưu & đồng bộ xếp xe (assignments/lái/xe hỏng thủ công) qua Google Sheet ----------------
+  function xepxeStatusEl(){ return document.getElementById('xepxeStatus'); }
+  function serializeXepXeState(){
+    const days = {};
+    Object.keys(stateByDay).forEach(dateStr => {
+      const st = stateByDay[dateStr];
+      const assignments = {};
+      Object.entries(st.assignments).forEach(([bks, ids]) => { if (ids.length) assignments[bks] = ids; });
+      const drivers = {};
+      Object.entries(st.drivers).forEach(([id, d]) => { if (d && (d.lai1 || d.lai2)) drivers[id] = d; });
+      const broken = Array.from(st.broken);
+      if (Object.keys(assignments).length || Object.keys(drivers).length || broken.length){
+        days[dateStr] = { assignments, drivers, broken };
+      }
+    });
+    return days;
+  }
+  // ưu tiên xe/lái đã lưu cho từng chuyến; chuyến nào chưa từng được lưu (vd chuyến mới từ Odoo)
+  // thì vẫn rơi về mặc định (assignedBks/định biên) như bình thường
+  function applyXepXeOverride(dateStr, saved){
+    const trips = ensureTripMap(dateStr);
+    const assignments = {}; BUSES.forEach(b => assignments[b.bks] = []);
+    const unassigned = new Set();
+    const drivers = {};
+    const broken = new Set((saved.broken || []).filter(bks => assignments[bks] !== undefined));
+    const savedTripBks = {};
+    Object.entries(saved.assignments || {}).forEach(([bks, ids]) => {
+      if (!assignments[bks]) return;
+      (ids || []).forEach(id => { savedTripBks[id] = bks; });
+    });
+    Object.keys(trips).forEach(idStr => {
+      const id = Number(idStr);
+      const t = trips[id];
+      const bks = Object.prototype.hasOwnProperty.call(savedTripBks, id) ? savedTripBks[id] : (t.assignedBks || null);
+      if (bks && assignments[bks]){
+        assignments[bks].push(id);
+        drivers[id] = (saved.drivers || {})[id] || defaultDrivers(bks);
+      } else {
+        unassigned.add(id);
+      }
+    });
+    stateByDay[dateStr] = { assignments, unassigned, broken, drivers };
+  }
+  function updateXepXeStatus(){
+    const el = xepxeStatusEl();
+    if (el) el.textContent = xepxeSavedAt ? `Đã đồng bộ lần cuối: ${xepxeSavedAt}` : 'Chưa có dữ liệu xếp xe đã lưu.';
+  }
+  async function loadXepXeState(){
+    try{
+      const res = await fetch(`${SHEET_API_URL}?key=${XEPXE_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      const days = data.days || {};
+      xepxeSavedAt = data.updated_at || null;
+      Object.keys(days).forEach(dateStr => applyXepXeOverride(dateStr, days[dateStr]));
+      updateXepXeStatus();
+      renderAll();
+    } catch(err){
+      updateXepXeStatus();
+    }
+  }
+  async function saveXepXeState(){
+    const btn = document.getElementById('saveXepXeBtn');
+    const el = xepxeStatusEl();
+    if (btn) btn.disabled = true;
+    if (el) el.textContent = 'Đang lưu...';
+    try{
+      // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', key: XEPXE_SHEET_KEY, payload: { days: serializeXepXeState() } }),
+      });
+      const result = await res.json();
+      if (result.ok){
+        xepxeSavedAt = result.updated_at;
+        updateXepXeStatus();
+      } else if (el){
+        el.textContent = 'Lỗi khi lưu: ' + result.error;
+      }
+    } catch(err){
+      if (el) el.textContent = 'Lỗi mạng khi lưu.';
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
 
   function garaEntriesFor(bks, dateStr){
     return garaEntries.filter(e => e.bks === bks && e.ngaybd <= dateStr && dateStr <= e.ngaykt);
@@ -1437,10 +1532,15 @@ footer.note b{color:var(--ink-muted);}
     }
   });
 
+  document.getElementById('saveXepXeBtn').addEventListener('click', saveXepXeState);
+
   buildDayPills();
   renderAll();
   loadGaraData();
   loadDriverLeaves();
+  // xếp xe/lái đã lưu chỉ tải 1 lần lúc mở trang (không tự tải lại giữa chừng) để không ghi đè
+  // mất phần đang kéo-thả dở tay của người đang dùng — ai sửa xong thì tự bấm Lưu để mọi người khác thấy
+  loadXepXeState();
   // tự tải lại vài phút 1 lần để thấy dữ liệu mới từ Gara/xin nghỉ mà không cần bấm F5 tay
   setInterval(loadGaraData, 3 * 60 * 1000);
   setInterval(loadDriverLeaves, 3 * 60 * 1000);
