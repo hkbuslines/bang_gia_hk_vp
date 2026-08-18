@@ -454,7 +454,7 @@ tr.warnrow{background:var(--danger-fill);}
     }).sort((a, b) => b.count - a.count || a.d.ten.localeCompare(b.d.ten));
     const body = rows.map(({d, count, byType}) => {
       const chips = Object.entries(byType).filter(([,n]) => n > 0)
-        .map(([k,n]) => `<span class="tag ${k.toLowerCase()}">${k} ×${n}</span>`).join(' ');
+        .map(([k,n]) => `<span class="tag ${k.toLowerCase()}" title="${LOAI_LABEL[k] || k}">${k} ×${n}</span>`).join(' ');
       return `
         <tr${count > 0 ? '' : ' style="opacity:0.55;"'}>
           <td style="font-weight:700;">${d.ten}</td>
@@ -480,14 +480,183 @@ tr.warnrow{background:var(--danger-fill);}
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
-  function toCSV(header, rows){
-    return [header, ...rows].map(row => row.map(cell => '"' + String(cell).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  // ---------------- xuất Excel thật (.xlsx), không cần thư viện ngoài ----------------
+  function crc32(bytes){
+    if (!crc32.table){
+      const t = [];
+      for (let n = 0; n < 256; n++){
+        let c = n;
+        for (let k = 0; k < 8; k++) c = c & 1 ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+        t[n] = c >>> 0;
+      }
+      crc32.table = t;
+    }
+    let crc = 0xFFFFFFFF;
+    for (let i = 0; i < bytes.length; i++) crc = (crc >>> 8) ^ crc32.table[(crc ^ bytes[i]) & 0xFF];
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function zipStore(files){
+    const enc = new TextEncoder();
+    const parts = [];
+    const central = [];
+    let offset = 0;
+    files.forEach(f => {
+      const nameBytes = enc.encode(f.name);
+      const data = f.data instanceof Uint8Array ? f.data : enc.encode(f.data);
+      const crc = crc32(data);
+      const local = new Uint8Array(30 + nameBytes.length);
+      const dv = new DataView(local.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0, true);
+      dv.setUint16(8, 0, true);
+      dv.setUint16(10, 0, true);
+      dv.setUint16(12, 0, true);
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, data.length, true);
+      dv.setUint32(22, data.length, true);
+      dv.setUint16(26, nameBytes.length, true);
+      dv.setUint16(28, 0, true);
+      local.set(nameBytes, 30);
+      parts.push(local, data);
+      central.push({ nameBytes, crc, size: data.length, offset });
+      offset += local.length + data.length;
+    });
+    const centralStart = offset;
+    central.forEach(fr => {
+      const rec = new Uint8Array(46 + fr.nameBytes.length);
+      const dv = new DataView(rec.buffer);
+      dv.setUint32(0, 0x02014b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 20, true);
+      dv.setUint16(8, 0, true);
+      dv.setUint16(10, 0, true);
+      dv.setUint16(12, 0, true);
+      dv.setUint16(14, 0, true);
+      dv.setUint32(16, fr.crc, true);
+      dv.setUint32(20, fr.size, true);
+      dv.setUint32(24, fr.size, true);
+      dv.setUint16(28, fr.nameBytes.length, true);
+      dv.setUint16(30, 0, true);
+      dv.setUint16(32, 0, true);
+      dv.setUint16(34, 0, true);
+      dv.setUint16(36, 0, true);
+      dv.setUint32(38, 0, true);
+      dv.setUint32(42, fr.offset, true);
+      rec.set(fr.nameBytes, 46);
+      parts.push(rec);
+      offset += rec.length;
+    });
+    const centralSize = offset - centralStart;
+    const end = new Uint8Array(22);
+    const dv = new DataView(end.buffer);
+    dv.setUint32(0, 0x06054b50, true);
+    dv.setUint16(4, 0, true);
+    dv.setUint16(6, 0, true);
+    dv.setUint16(8, central.length, true);
+    dv.setUint16(10, central.length, true);
+    dv.setUint32(12, centralSize, true);
+    dv.setUint32(16, centralStart, true);
+    dv.setUint16(20, 0, true);
+    parts.push(end);
+    return new Blob(parts, { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  }
+  function xlsxEsc(s){
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+  }
+  function xlsxCol(n){
+    let s = '';
+    while (n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+    return s;
+  }
+  function xlsxSheetXml(header, rows, colWidths){
+    const cols = colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
+    const allRows = [header, ...rows];
+    let rowsXml = '';
+    allRows.forEach((row, ri) => {
+      const style = ri === 0 ? 1 : 2;
+      const cells = row.map((val, ci) => {
+        const ref = xlsxCol(ci + 1) + (ri + 1);
+        if (typeof val === 'number' && isFinite(val)){
+          return `<c r="${ref}" s="${style}"><v>${val}</v></c>`;
+        }
+        return `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xlsxEsc(val)}</t></is></c>`;
+      }).join('');
+      rowsXml += `<row r="${ri + 1}">${cells}</row>`;
+    });
+    const lastCol = xlsxCol(header.length);
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
+      `<cols>${cols}</cols><sheetData>${rowsXml}</sheetData>` +
+      `<autoFilter ref="A1:${lastCol}${allRows.length}"/></worksheet>`;
+  }
+  function xlsxContentTypesXml(n){
+    let overrides = '';
+    for (let i = 1; i <= n; i++) overrides += `<Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      '<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>' +
+      overrides + '</Types>';
+  }
+  const XLSX_RELS_ROOT = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+    '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+    '</Relationships>';
+  function xlsxWorkbookXml(sheets){
+    const sheetTags = sheets.map((sh, i) => `<sheet name="${xlsxEsc(sh.name)}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      `<sheets>${sheetTags}</sheets></workbook>`;
+  }
+  function xlsxWorkbookRelsXml(n){
+    let rels = '';
+    for (let i = 1; i <= n; i++) rels += `<Relationship Id="rId${i}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i}.xml"/>`;
+    rels += `<Relationship Id="rId${n + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`;
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels + '</Relationships>';
+  }
+  const XLSX_STYLES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
+    '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
+    '<fill><patternFill patternType="solid"><fgColor rgb="FF14201D"/><bgColor indexed="64"/></patternFill></fill></fills>' +
+    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left style="thin"><color rgb="FFD7DCD3"/></left><right style="thin"><color rgb="FFD7DCD3"/></right>' +
+    '<top style="thin"><color rgb="FFD7DCD3"/></top><bottom style="thin"><color rgb="FFD7DCD3"/></bottom><diagonal/></border></borders>' +
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
+    '<cellXfs count="3">' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
+    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>' +
+    '</cellXfs>' +
+    '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    '</styleSheet>';
+  function buildXlsxBlob(sheets){
+    const files = [];
+    files.push({ name: '[Content_Types].xml', data: xlsxContentTypesXml(sheets.length) });
+    files.push({ name: '_rels/.rels', data: XLSX_RELS_ROOT });
+    files.push({ name: 'xl/workbook.xml', data: xlsxWorkbookXml(sheets) });
+    files.push({ name: 'xl/_rels/workbook.xml.rels', data: xlsxWorkbookRelsXml(sheets.length) });
+    files.push({ name: 'xl/styles.xml', data: XLSX_STYLES_XML });
+    sheets.forEach((sh, i) => {
+      files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: xlsxSheetXml(sh.header, sh.rows, sh.colWidths) });
+    });
+    return zipStore(files);
+  }
+  function downloadXlsx(filename, sheets){
+    downloadBlob(buildXlsxBlob(sheets), filename);
   }
   function exportListCSV(){
     const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay))
       .map(e => [e.ten, e.loai, LOAI_LABEL[e.loai] || '', fmtRange(e), e.ngaynop || '', e.ghichu || '']);
-    const csv = toCSV(['Lái xe', 'Mã loại', 'Loại nghỉ', 'Thời gian', 'Ngày nộp đơn', 'Ghi chú'], rows);
-    downloadBlob(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'}), `xin_nghi_${todayISO()}.csv`);
+    const header = ['Lái xe', 'Mã loại', 'Loại nghỉ', 'Thời gian', 'Ngày nộp đơn', 'Ghi chú'];
+    downloadXlsx(`xin_nghi_${todayISO()}.xlsx`, [
+      { name: 'Xin nghỉ', header, rows, colWidths: [22, 10, 20, 22, 16, 30] },
+    ]);
   }
   function exportListPDF(){
     const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay));
@@ -506,10 +675,12 @@ tr.warnrow{background:var(--danger-fill);}
   function exportWeeklyCSV(){
     const rows = weeklyRows().map(({d, count, byType}) => [
       d.ten, d.ma_nv, count,
-      Object.entries(byType).filter(([,n]) => n > 0).map(([k,n]) => `${k}×${n}`).join(' '),
+      Object.entries(byType).filter(([,n]) => n > 0).map(([k,n]) => `${LOAI_LABEL[k] || k} ×${n}`).join(', '),
     ]);
-    const csv = toCSV(['Lái xe', 'Mã NV', 'Số ngày nghỉ', 'Chi tiết loại nghỉ'], rows);
-    downloadBlob(new Blob(['\uFEFF' + csv], {type: 'text/csv;charset=utf-8;'}), `nghi_theo_tuan_${weeklyStart}.csv`);
+    const header = ['Lái xe', 'Mã NV', 'Số ngày nghỉ', 'Chi tiết loại nghỉ'];
+    downloadXlsx(`nghi_theo_tuan_${weeklyStart}.xlsx`, [
+      { name: 'Nghỉ theo tuần', header, rows, colWidths: [22, 10, 14, 40] },
+    ]);
   }
   function exportWeeklyPDF(){
     const weekEnd = addDaysISO(weeklyStart, 6);
