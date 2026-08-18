@@ -794,8 +794,9 @@ footer.note b{color:var(--ink-muted);}
   function normName(s){ return (s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g,'d'); }
   const bksNormOf = {}; BUSES.forEach(b => { bksNormOf[b.bks] = normBks(b.bks); });
   const allBksList = BUSES.map(b => b.bks);
-  // dùng đúng danh sách lái xe đầy đủ (không chỉ những lái đang gắn sẵn 1 xe) để chọn khi cần thay/đổi lái
-  const DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.map(d => d.ten))].sort();
+  // dùng đúng danh sách lái xe đầy đủ (không chỉ những lái đang gắn sẵn 1 xe) để chọn khi cần thay/đổi lái —
+  // loại người đã nghỉ việc hẳn (trang_thai "Đã nghỉ") vì không còn thuộc biên chế để xếp chuyến
+  const DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.filter(d => d.trang_thai !== 'Đã nghỉ').map(d => d.ten))].sort();
   const driverNormOf = {}; DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
 
   // gắn box gợi ý vào <body> với position:fixed (thay vì absolute trong ô cha) để không bị
@@ -971,10 +972,16 @@ footer.note b{color:var(--ink-muted);}
         const t = tripById[id];
         const bks = bksOfTrip[id] || '';
         const drv = st.drivers[id] || {};
-        rows.push({ time: t.depStr, route, bks, lai1: drv.lai1 || '', lai2: drv.lai2 || '' });
+        rows.push({ time: t.depStr, arr: t.arrStr, dep: t.dep, arrMin: t.arr, route, bks, lai1: drv.lai1 || '', lai2: drv.lai2 || '' });
       });
     });
     return rows;
+  }
+  // Xh Ym giữa lúc xe về bến (giờ đến chuyến trước) và lúc xe chạy tiếp (giờ đi chuyến sau) — để biết xe quay đầu khi nào
+  function formatGapMinutes(mins){
+    if (mins == null || !isFinite(mins)) return '';
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return (h > 0 ? `${h}h` : '') + `${m}p`;
   }
   function buildScheduleRowsByBks(){
     const rows = buildScheduleRows();
@@ -990,7 +997,13 @@ footer.note b{color:var(--ink-muted);}
       if (b === '__NONE__') return -1;
       return a.localeCompare(b, 'vi');
     });
-    order.forEach(key => groups[key].sort((a, b) => (a.time || '').localeCompare(b.time || '')));
+    order.forEach(key => {
+      const list = groups[key];
+      list.sort((a, b) => (a.time || '').localeCompare(b.time || ''));
+      list.forEach((r, i) => {
+        r.turnGap = i === 0 ? '' : formatGapMinutes(r.dep - list[i - 1].arrMin);
+      });
+    });
     return { order, groups };
   }
   function downloadBlob(blob, filename){
@@ -1001,6 +1014,8 @@ footer.note b{color:var(--ink-muted);}
     URL.revokeObjectURL(url);
   }
   // ---------------- xuất Excel thật (.xlsx), không cần thư viện ngoài ----------------
+  // dùng Table thật của Excel (như bấm Ctrl+T) để chắc chắn có màu xen kẽ dòng + màu tiêu đề —
+  // Excel đôi khi không nhận style tô màu ô tự viết tay, nhưng Table thì luôn render đúng màu.
   function crc32(bytes){
     if (!crc32.table){
       const t = [];
@@ -1089,12 +1104,17 @@ footer.note b{color:var(--ink-muted);}
     while (n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
     return s;
   }
-  function xlsxSheetXml(header, rows, colWidths){
+  // groupStarts (tuỳ chọn): Set các chỉ số dòng dữ liệu (0-based, không tính header) bắt đầu 1 nhóm
+  // mới (vd 1 xe mới trong sheet "Theo BKS") — dòng đó được vẽ viền trên đậm hơn để nhìn rõ ranh giới
+  function xlsxSheetXml(header, rows, colWidths, groupStarts){
+    const gs = groupStarts || new Set();
     const cols = colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
     const allRows = [header, ...rows];
     let rowsXml = '';
     allRows.forEach((row, ri) => {
-      const style = ri === 0 ? 1 : 2;
+      let style;
+      if (ri === 0) style = 1;
+      else style = gs.has(ri - 1) ? 3 : 2;
       const cells = row.map((val, ci) => {
         const ref = xlsxCol(ci + 1) + (ri + 1);
         if (typeof val === 'number' && isFinite(val)){
@@ -1105,15 +1125,29 @@ footer.note b{color:var(--ink-muted);}
       rowsXml += `<row r="${ri + 1}">${cells}</row>`;
     });
     const lastCol = xlsxCol(header.length);
+    const dim = `A1:${lastCol}${allRows.length}`;
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' +
+      `<dimension ref="${dim}"/>` +
       '<sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>' +
       `<cols>${cols}</cols><sheetData>${rowsXml}</sheetData>` +
-      `<autoFilter ref="A1:${lastCol}${allRows.length}"/></worksheet>`;
+      `<tableParts count="1"><tablePart r:id="rId1"/></tableParts></worksheet>`;
+  }
+  function xlsxTableXml(id, name, ref, header){
+    const cols = header.map((h, i) => `<tableColumn id="${i + 1}" name="${xlsxEsc(h)}"/>`).join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      `<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${name}" displayName="${name}" ref="${ref}" totalsRowShown="0">` +
+      `<autoFilter ref="${ref}"/>` +
+      `<tableColumns count="${header.length}">${cols}</tableColumns>` +
+      '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>' +
+      '</table>';
   }
   function xlsxContentTypesXml(n){
     let overrides = '';
-    for (let i = 1; i <= n; i++) overrides += `<Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
+    for (let i = 1; i <= n; i++){
+      overrides += `<Override PartName="/xl/worksheets/sheet${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`;
+      overrides += `<Override PartName="/xl/tables/table${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.table+xml"/>`;
+    }
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
@@ -1139,19 +1173,34 @@ footer.note b{color:var(--ink-muted);}
     return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels + '</Relationships>';
   }
+  function xlsxSheetRelsXml(tableIdx){
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${tableIdx}.xml"/>` +
+      '</Relationships>';
+  }
+  // font Times New Roman theo yêu cầu; viền kẻ rõ ràng hơn (xám đậm) cho mọi ô; thêm 1 kiểu viền
+  // trên đậm (đen) riêng để đánh dấu ranh giới bắt đầu mỗi nhóm (vd mỗi xe trong sheet Theo BKS)
   const XLSX_STYLES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-    '<fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font></fonts>' +
-    '<fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill>' +
-    '<fill><patternFill patternType="solid"><fgColor rgb="FF14201D"/><bgColor indexed="64"/></patternFill></fill></fills>' +
-    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>' +
-    '<border><left style="thin"><color rgb="FFD7DCD3"/></left><right style="thin"><color rgb="FFD7DCD3"/></right>' +
-    '<top style="thin"><color rgb="FFD7DCD3"/></top><bottom style="thin"><color rgb="FFD7DCD3"/></bottom><diagonal/></border></borders>' +
+    '<fonts count="2">' +
+    '<font><sz val="11"/><name val="Times New Roman"/></font>' +
+    '<font><b/><sz val="11"/><name val="Times New Roman"/></font>' +
+    '</fonts>' +
+    '<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>' +
+    '<borders count="3">' +
+    '<border><left/><right/><top/><bottom/><diagonal/></border>' +
+    '<border><left style="thin"><color rgb="FF9A9A9A"/></left><right style="thin"><color rgb="FF9A9A9A"/></right>' +
+    '<top style="thin"><color rgb="FF9A9A9A"/></top><bottom style="thin"><color rgb="FF9A9A9A"/></bottom><diagonal/></border>' +
+    '<border><left style="thin"><color rgb="FF9A9A9A"/></left><right style="thin"><color rgb="FF9A9A9A"/></right>' +
+    '<top style="medium"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF9A9A9A"/></bottom><diagonal/></border>' +
+    '</borders>' +
     '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>' +
-    '<cellXfs count="3">' +
+    '<cellXfs count="4">' +
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>' +
-    '<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"><alignment vertical="center"/></xf>' +
-    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"><alignment vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>' +
+    '<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>' +
     '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
     '</styleSheet>';
@@ -1163,7 +1212,12 @@ footer.note b{color:var(--ink-muted);}
     files.push({ name: 'xl/_rels/workbook.xml.rels', data: xlsxWorkbookRelsXml(sheets.length) });
     files.push({ name: 'xl/styles.xml', data: XLSX_STYLES_XML });
     sheets.forEach((sh, i) => {
-      files.push({ name: `xl/worksheets/sheet${i + 1}.xml`, data: xlsxSheetXml(sh.header, sh.rows, sh.colWidths) });
+      const n = i + 1;
+      const lastCol = xlsxCol(sh.header.length);
+      const ref = `A1:${lastCol}${sh.rows.length + 1}`;
+      files.push({ name: `xl/worksheets/sheet${n}.xml`, data: xlsxSheetXml(sh.header, sh.rows, sh.colWidths, sh.groupStarts) });
+      files.push({ name: `xl/worksheets/_rels/sheet${n}.xml.rels`, data: xlsxSheetRelsXml(n) });
+      files.push({ name: `xl/tables/table${n}.xml`, data: xlsxTableXml(n, `Table${n}`, ref, sh.header) });
     });
     return zipStore(files);
   }
@@ -1173,26 +1227,28 @@ footer.note b{color:var(--ink-muted);}
   function exportScheduleCSV(){
     const day = dayFor(currentDate);
     const rows = buildScheduleRows();
-    const header = ['Giờ', 'Tuyến', 'BKS', 'Lái 1', 'Lái 2'];
-    const dataRows = rows.map(r => [r.time, r.route, r.bks, r.lai1, r.lai2]);
+    const header = ['Giờ đi', 'Giờ đến', 'Tuyến', 'BKS', 'Lái 1', 'Lái 2'];
+    const dataRows = rows.map(r => [r.time, r.arr, r.route, r.bks, r.lai1, r.lai2]);
     downloadXlsx(`lich_xep_xe_${day.date}.xlsx`, [
-      { name: 'Lịch xếp xe', header, rows: dataRows, colWidths: [10, 26, 14, 22, 22] },
+      { name: 'Lịch xếp xe', header, rows: dataRows, colWidths: [10, 10, 26, 14, 22, 22] },
     ]);
   }
   function exportScheduleCSVByBks(){
     const day = dayFor(currentDate);
     const { order, groups } = buildScheduleRowsByBks();
-    const header = ['BKS', 'Số chuyến', 'Giờ', 'Tuyến', 'Lái 1', 'Lái 2'];
+    const header = ['BKS', 'Số chuyến', 'Giờ đi', 'Giờ đến', 'Tuyến', 'Quay đầu', 'Lái 1', 'Lái 2'];
     const dataRows = [];
+    const groupStarts = new Set();
     order.forEach(key => {
       const list = groups[key];
       const label = key === '__NONE__' ? 'Chưa xếp xe' : key;
       list.forEach((r, i) => {
-        dataRows.push([i === 0 ? label : '', i === 0 ? list.length : '', r.time, r.route, r.lai1, r.lai2]);
+        if (i === 0) groupStarts.add(dataRows.length);
+        dataRows.push([i === 0 ? label : '', i === 0 ? list.length : '', r.time, r.arr, r.route, r.turnGap, r.lai1, r.lai2]);
       });
     });
     downloadXlsx(`lich_xep_xe_theo_bks_${day.date}.xlsx`, [
-      { name: 'Theo BKS', header, rows: dataRows, colWidths: [14, 12, 10, 26, 22, 22] },
+      { name: 'Theo BKS', header, rows: dataRows, colWidths: [14, 12, 10, 10, 26, 12, 22, 22], groupStarts },
     ]);
   }
   function exportSchedulePDF(){
