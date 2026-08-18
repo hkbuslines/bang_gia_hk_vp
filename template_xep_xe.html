@@ -179,10 +179,14 @@ button.gicon:hover{transform:scale(1.15);}
 .block.maint.doing{background:repeating-linear-gradient(45deg, var(--warn), var(--warn) 6px, #cf9a52 6px, #cf9a52 12px);}
 .block.maint.done{background:var(--ok); opacity:0.55;}
 
-.brokenzone{border:1.5px dashed var(--danger); border-radius:var(--radius); background:var(--danger-fill); padding:10px 14px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px;}
-.brokenzone .bzhead{flex:0 0 220px; font-size:11.5px; font-weight:700; color:var(--danger); line-height:1.4;}
-.brokenzone .bzhead .sub2{font-weight:400; color:var(--ink-muted); display:block; margin-top:2px;}
-.brokenzone .bzchips{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px;}
+.brokenzone{border:1.5px dashed var(--danger); border-radius:var(--radius); background:var(--danger-fill); padding:8px 14px; margin-bottom:10px;}
+.brokenzone .bzhead{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:var(--danger); line-height:1.4; cursor:pointer; user-select:none;}
+.brokenzone .bzhead .arrow{display:inline-block; font-size:9px; transition:transform 0.15s;}
+.brokenzone.collapsed .bzhead .arrow{transform:rotate(-90deg);}
+.brokenzone .bzhead .sub2{font-weight:400; color:var(--ink-muted);}
+.brokenzone .bzhead .zonecount{font-weight:700;}
+.brokenzone .bzchips{display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px; margin-top:8px;}
+.brokenzone.collapsed .bzchips{display:none;}
 .brokenzone.dragover{background:var(--danger); }
 .brokenzone.dragover .bzhead, .brokenzone.dragover .bzempty{color:#fff;}
 .bzempty{color:var(--ink-faint); font-size:12px;}
@@ -190,16 +194,24 @@ button.gicon:hover{transform:scale(1.15);}
 .bkschip:active{cursor:grabbing;}
 .bkschip.dragging{opacity:0.35;}
 .bkschip.gara{cursor:default; border-style:dashed;}
-.idlezone{border:1.5px dashed var(--ok); border-radius:var(--radius); background:var(--ok-fill); padding:10px 14px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px;}
-.idlezone .izhead{flex:0 0 220px; font-size:11.5px; font-weight:700; color:var(--ok); line-height:1.4;}
-.idlezone .izhead .sub2{font-weight:400; color:var(--ink-muted); display:block; margin-top:2px;}
-.idlezone .izchips{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px;}
+.idlezone{border:1.5px dashed var(--ok); border-radius:var(--radius); background:var(--ok-fill); padding:8px 14px; margin-bottom:10px;}
+.idlezone .izhead{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:var(--ok); line-height:1.4; cursor:pointer; user-select:none;}
+.idlezone .izhead .arrow{display:inline-block; font-size:9px; transition:transform 0.15s;}
+.idlezone.collapsed .izhead .arrow{transform:rotate(-90deg);}
+.idlezone .izhead .sub2{font-weight:400; color:var(--ink-muted);}
+.idlezone .izhead .zonecount{font-weight:700;}
+.idlezone .izchips{display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px; margin-top:8px;}
+.idlezone.collapsed .izchips{display:none;}
 .izempty{color:var(--ink-faint); font-size:12px;}
 .izchip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--ok); color:var(--ok); font-size:12px; font-weight:700;}
-.driversoffzone{border:1.5px dashed var(--warn); border-radius:var(--radius); background:var(--warn-fill); padding:10px 14px; margin-bottom:14px; display:flex; align-items:flex-start; gap:12px;}
-.driversoffzone .dohead{flex:0 0 220px; font-size:11.5px; font-weight:700; color:var(--warn); line-height:1.4;}
-.driversoffzone .dohead .sub2{font-weight:400; color:var(--ink-muted); display:block; margin-top:2px;}
-.driversoffzone .dochips{flex:1; display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px;}
+.driversoffzone{border:1.5px dashed var(--warn); border-radius:var(--radius); background:var(--warn-fill); padding:8px 14px; margin-bottom:10px;}
+.driversoffzone .dohead{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:var(--warn); line-height:1.4; cursor:pointer; user-select:none;}
+.driversoffzone .dohead .arrow{display:inline-block; font-size:9px; transition:transform 0.15s;}
+.driversoffzone.collapsed .dohead .arrow{transform:rotate(-90deg);}
+.driversoffzone .dohead .sub2{font-weight:400; color:var(--ink-muted);}
+.driversoffzone .dohead .zonecount{font-weight:700;}
+.driversoffzone .dochips{display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-height:32px; margin-top:8px;}
+.driversoffzone.collapsed .dochips{display:none;}
 .doempty{color:var(--ink-faint); font-size:12px;}
 .dochip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--line-strong); font-size:12px; font-weight:600;}
 .dochip .reason{font-weight:400; color:var(--ink-muted); font-size:11px;}
@@ -296,18 +308,18 @@ footer.note b{color:var(--ink-muted);}
     </div>
   </div>
 
-  <div class="brokenzone" id="brokenZone">
-    <div class="bzhead">🚫 Xe hỏng — không xếp hôm nay<span class="sub2">Kéo BKS từ khay thả vào đây</span></div>
+  <div class="brokenzone collapsed" id="brokenZone">
+    <div class="bzhead" id="brokenZoneHead"><span class="arrow">▾</span> 🚫 Xe hỏng — không xếp hôm nay <span class="zonecount" id="brokenCount"></span><span class="sub2">Kéo BKS từ khay thả vào đây</span></div>
     <div class="bzchips" id="brokenChips"></div>
   </div>
 
-  <div class="idlezone" id="idleZone">
-    <div class="izhead">✓ Xe chưa dùng hôm nay<span class="sub2">Còn rảnh, có thể xếp thêm chuyến</span></div>
+  <div class="idlezone collapsed" id="idleZone">
+    <div class="izhead" id="idleZoneHead"><span class="arrow">▾</span> ✓ Xe chưa dùng hôm nay <span class="zonecount" id="idleCount"></span><span class="sub2">Còn rảnh, có thể xếp thêm chuyến</span></div>
     <div class="izchips" id="idleChips"></div>
   </div>
 
-  <div class="driversoffzone" id="driversOffZone">
-    <div class="dohead">🧑‍✈️ Lái không chạy hôm nay<span class="sub2">Kèm lý do: nghỉ phép/đột xuất hoặc chưa xếp</span></div>
+  <div class="driversoffzone collapsed" id="driversOffZone">
+    <div class="dohead" id="driversOffZoneHead"><span class="arrow">▾</span> 🧑‍✈️ Lái không chạy hôm nay <span class="zonecount" id="driversOffCount"></span><span class="sub2">Kèm lý do: nghỉ phép/đột xuất hoặc chưa xếp</span></div>
     <div class="dochips" id="driversOffChips"></div>
   </div>
 
@@ -1106,14 +1118,16 @@ footer.note b{color:var(--ink-muted);}
   }
   // groupStarts (tuỳ chọn): Set các chỉ số dòng dữ liệu (0-based, không tính header) bắt đầu 1 nhóm
   // mới (vd 1 xe mới trong sheet "Theo BKS") — dòng đó được vẽ viền trên đậm hơn để nhìn rõ ranh giới
-  function xlsxSheetXml(header, rows, colWidths, groupStarts){
+  function xlsxSheetXml(header, rows, colWidths, groupStarts, blankRows){
     const gs = groupStarts || new Set();
+    const br = blankRows || new Set();
     const cols = colWidths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('');
     const allRows = [header, ...rows];
     let rowsXml = '';
     allRows.forEach((row, ri) => {
       let style;
       if (ri === 0) style = 1;
+      else if (br.has(ri - 1)) style = 0;
       else style = gs.has(ri - 1) ? 3 : 2;
       const cells = row.map((val, ci) => {
         const ref = xlsxCol(ci + 1) + (ri + 1);
@@ -1139,7 +1153,7 @@ footer.note b{color:var(--ink-muted);}
       `<table xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" id="${id}" name="${name}" displayName="${name}" ref="${ref}" totalsRowShown="0">` +
       `<autoFilter ref="${ref}"/>` +
       `<tableColumns count="${header.length}">${cols}</tableColumns>` +
-      '<tableStyleInfo name="TableStyleMedium2" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>' +
+      '<tableStyleInfo name="XepXeGreen" showFirstColumn="0" showLastColumn="0" showRowStripes="1" showColumnStripes="0"/>' +
       '</table>';
   }
   function xlsxContentTypesXml(n){
@@ -1179,8 +1193,9 @@ footer.note b{color:var(--ink-muted);}
       `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/table" Target="../tables/table${tableIdx}.xml"/>` +
       '</Relationships>';
   }
-  // font Times New Roman theo yêu cầu; viền kẻ rõ ràng hơn (xám đậm) cho mọi ô; thêm 1 kiểu viền
-  // trên đậm (đen) riêng để đánh dấu ranh giới bắt đầu mỗi nhóm (vd mỗi xe trong sheet Theo BKS)
+  // font Times New Roman; viền kẻ rõ ràng hơn (xám đậm) cho mọi ô; thêm 1 kiểu viền trên đậm (đen)
+  // riêng để đánh dấu ranh giới bắt đầu mỗi nhóm; bảng màu xanh lá theo đúng theme trang web
+  // (--ok:#3F7D4A) thay vì màu có sẵn của Excel — định nghĩa qua dxfs + tableStyles riêng bên dưới
   const XLSX_STYLES_XML = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
     '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
     '<fonts count="2">' +
@@ -1203,6 +1218,16 @@ footer.note b{color:var(--ink-muted);}
     '<xf numFmtId="0" fontId="0" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"><alignment vertical="center"/></xf>' +
     '</cellXfs>' +
     '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>' +
+    '<dxfs count="2">' +
+    '<dxf><font><color rgb="FFFFFFFF"/><b/></font><fill><patternFill><bgColor rgb="FF3F7D4A"/></patternFill></fill></dxf>' +
+    '<dxf><fill><patternFill><bgColor rgb="FFE3F0E4"/></patternFill></fill></dxf>' +
+    '</dxfs>' +
+    '<tableStyles count="1" defaultTableStyle="XepXeGreen" defaultPivotStyle="PivotStyleLight16">' +
+    '<tableStyle name="XepXeGreen" pivot="0" count="2">' +
+    '<tableStyleElement type="headerRow" dxfId="0"/>' +
+    '<tableStyleElement type="firstRowStripe" dxfId="1"/>' +
+    '</tableStyle>' +
+    '</tableStyles>' +
     '</styleSheet>';
   function buildXlsxBlob(sheets){
     const files = [];
@@ -1215,7 +1240,7 @@ footer.note b{color:var(--ink-muted);}
       const n = i + 1;
       const lastCol = xlsxCol(sh.header.length);
       const ref = `A1:${lastCol}${sh.rows.length + 1}`;
-      files.push({ name: `xl/worksheets/sheet${n}.xml`, data: xlsxSheetXml(sh.header, sh.rows, sh.colWidths, sh.groupStarts) });
+      files.push({ name: `xl/worksheets/sheet${n}.xml`, data: xlsxSheetXml(sh.header, sh.rows, sh.colWidths, sh.groupStarts, sh.blankRows) });
       files.push({ name: `xl/worksheets/_rels/sheet${n}.xml.rels`, data: xlsxSheetRelsXml(n) });
       files.push({ name: `xl/tables/table${n}.xml`, data: xlsxTableXml(n, `Table${n}`, ref, sh.header) });
     });
@@ -1238,17 +1263,17 @@ footer.note b{color:var(--ink-muted);}
     const { order, groups } = buildScheduleRowsByBks();
     const header = ['BKS', 'Số chuyến', 'Giờ đi', 'Giờ đến', 'Tuyến', 'Quay đầu', 'Lái 1', 'Lái 2'];
     const dataRows = [];
-    const groupStarts = new Set();
-    order.forEach(key => {
+    const blankRows = new Set();
+    order.forEach((key, gi) => {
       const list = groups[key];
       const label = key === '__NONE__' ? 'Chưa xếp xe' : key;
+      if (gi > 0){ blankRows.add(dataRows.length); dataRows.push(header.map(() => '')); }
       list.forEach((r, i) => {
-        if (i === 0) groupStarts.add(dataRows.length);
         dataRows.push([i === 0 ? label : '', i === 0 ? list.length : '', r.time, r.arr, r.route, r.turnGap, r.lai1, r.lai2]);
       });
     });
     downloadXlsx(`lich_xep_xe_theo_bks_${day.date}.xlsx`, [
-      { name: 'Theo BKS', header, rows: dataRows, colWidths: [14, 12, 10, 10, 26, 12, 22, 22], groupStarts },
+      { name: 'Theo BKS', header, rows: dataRows, colWidths: [14, 12, 10, 10, 26, 12, 22, 22], blankRows },
     ]);
   }
   function exportSchedulePDF(){
@@ -1647,6 +1672,7 @@ footer.note b{color:var(--ink-muted);}
     const zone = document.getElementById('brokenZone');
     const chips = document.getElementById('brokenChips');
     chips.innerHTML = '';
+    document.getElementById('brokenCount').textContent = `(${st.broken.size + garaBroken.size})`;
     if (!st.broken.size && !garaBroken.size){
       const e = document.createElement('span');
       e.className = 'bzempty';
@@ -1691,6 +1717,7 @@ footer.note b{color:var(--ink-muted);}
     const chips = document.getElementById('idleChips');
     chips.innerHTML = '';
     const idleBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks) && !st.assignments[b.bks].length);
+    document.getElementById('idleCount').textContent = `(${idleBuses.length})`;
     if (!idleBuses.length){
       const e = document.createElement('span');
       e.className = 'izempty';
@@ -1718,6 +1745,7 @@ footer.note b{color:var(--ink-muted);}
     const offDrivers = DRIVERS_FULL
       .filter(d => d.trang_thai !== 'Đã nghỉ' && !driversWorking.has(d.ten))
       .map(d => ({ name: d.ten, leave: driverLeaveFor(d.ten, day.date) }));
+    document.getElementById('driversOffCount').textContent = `(${offDrivers.length})`;
     if (!offDrivers.length){
       const e = document.createElement('span');
       e.className = 'doempty';
@@ -1828,6 +1856,13 @@ footer.note b{color:var(--ink-muted);}
   });
 
   document.getElementById('saveXepXeBtn').addEventListener('click', saveXepXeState);
+  // bấm vào tiêu đề để đóng/mở từng thẻ báo cáo (xe hỏng/xe chưa dùng/lái chưa xếp) — mặc định đóng
+  // để đỡ chiếm diện tích, số lượng vẫn hiện ngay cả khi đang đóng
+  ['brokenZoneHead', 'idleZoneHead', 'driversOffZoneHead'].forEach(id => {
+    document.getElementById(id).addEventListener('click', () => {
+      document.getElementById(id).parentElement.classList.toggle('collapsed');
+    });
+  });
 
   buildDayPills();
   renderAll();

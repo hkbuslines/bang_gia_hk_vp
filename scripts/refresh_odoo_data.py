@@ -6,7 +6,7 @@ trong quá khứ làm tạm), rồi ghi đè xep_xe_timeline.html ngay tại ch�
 
 Cần các biến môi trường: ODOO_URL, ODOO_DB, ODOO_USER, ODOO_PASSWORD (đặt trong GitHub Secrets).
 """
-import os, re, json, datetime, xmlrpc.client, sys
+import os, re, json, datetime, xmlrpc.client, sys, unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(HERE)  # script nằm ở scripts/, repo root là thư mục cha
@@ -51,6 +51,25 @@ def parse_from_to(route):
     r = re.sub(r"\s*\(Limousine\)\s*$", "", route or "").strip()
     parts = r.split(" - ")
     return (parts[0].strip(), parts[1].strip()) if len(parts) == 2 else (route, route)
+
+
+def strip_diacritics(s):
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
+    return s.replace("đ", "d").replace("Đ", "D").lower().strip()
+
+
+def normalize_driver_names(days_out, drivers_full):
+    # Odoo đôi khi trả tên tài xế không dấu (vd "NGUYEN THANH TUAN") — khớp lại đúng tên có dấu
+    # theo danh sách lái xe chính thức để các chỗ khác (đối chiếu nghỉ phép, đếm lái đang chạy...)
+    # nhận diện đúng người, không bị coi là người lạ chỉ vì thiếu dấu
+    canon_by_key = {strip_diacritics(d["ten"]): d["ten"] for d in drivers_full}
+    for day in days_out:
+        for t in day["trips"]:
+            for key in ("odooLai1", "odooLai2"):
+                name = t.get(key)
+                if name:
+                    t[key] = canon_by_key.get(strip_diacritics(name), name)
 
 
 def build_trip(t):
@@ -144,6 +163,8 @@ def main():
         drivers_full = json.load(f)
     with open(os.path.join(REPO_ROOT, "template_xep_xe.html"), encoding="utf-8") as f:
         template = f.read()
+
+    normalize_driver_names(days_out, drivers_full)
 
     html = template
     html = html.replace("__BUSES_JSON__", json.dumps(bus_groups["buses"], ensure_ascii=False))
