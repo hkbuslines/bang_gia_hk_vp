@@ -236,6 +236,7 @@ footer.note b{color:var(--ink-muted);}
       <div class="stat"><span>Xe chưa dùng</span><b id="statIdle">0</b></div>
       <div class="stat"><span>Xe khả dụng</span><b id="statBusesAvail">0</b></div>
       <div class="stat"><span>Lái khả dụng</span><b id="statDriversAvail">0</b></div>
+      <div class="stat"><span>Lái đang chạy</span><b id="statDriversWorking">0</b></div>
       <div class="stat warn"><span>Cảnh báo</span><b id="statConflicts">0</b></div>
       <div class="stat warn"><span>Xe hỏng</span><b id="statBroken">0</b></div>
     </div>
@@ -1481,6 +1482,9 @@ footer.note b{color:var(--ink-muted);}
     const driversOnLeave = new Set();
     driverLeaves.forEach(e => { if (e.tungay <= day.date && day.date <= e.denngay) driversOnLeave.add(e.ten); });
     document.getElementById('statDriversAvail').textContent = `${DRIVERS_FULL.length - driversOnLeave.size}/${DRIVERS_FULL.length}`;
+    const driversWorking = new Set();
+    Object.values(st.drivers).forEach(d => { if (d.lai1) driversWorking.add(d.lai1); if (d.lai2) driversWorking.add(d.lai2); });
+    document.getElementById('statDriversWorking').textContent = driversWorking.size;
   }
 
   function renderDayBanner(){
