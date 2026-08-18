@@ -367,7 +367,9 @@ footer.note b{color:var(--ink-muted);}
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
   const DAYS = JSON.parse(document.getElementById('day-data').textContent);
-  const DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
+  // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
+  // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
+  let DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
   const ROUTE_ORDER = ["Hà Nội - Sa Pa", "Sa Pa - Hà Nội", "Hà Nội - Sa Pa (Limousine)", "Sa Pa - Hà Nội (Limousine)", "Ninh Bình - Sa Pa", "Sa Pa - Ninh Bình", "Hạ Long - Sa Pa", "Sa Pa - Hạ Long", "Hà Nội - Huế", "Huế - Hà Nội", "Huế - Nha Trang", "Nha Trang - Huế", "Hà Nội - Hội An", "Hội An - Hà Nội", "Quảng Ninh - Hội An", "Hội An - Quảng Ninh", "Hà Nội - Nha Trang", "Nha Trang - Hà Nội"];
   const FALLBACK_IDX = 18;
   const AXIS_END = 1440;
@@ -471,6 +473,7 @@ footer.note b{color:var(--ink-muted);}
   const GARA_SHEET_KEY = 'gara';
   const LEAVE_SHEET_KEY = 'leave';
   const XEPXE_SHEET_KEY = 'xepxe';
+  const DRIVERS_SHEET_KEY = 'drivers';
   let garaEntries = [];
   let gaSavedAt = null;
   let xepxeSavedAt = null;
@@ -591,6 +594,20 @@ footer.note b{color:var(--ink-muted);}
       driverLeaves = data.entries || [];
       renderAll();
     } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua */ }
+  }
+  // danh sách lái xe: nếu bên trang Xin nghỉ (tab "Quản lý lái xe") đã lưu bản cập nhật thì dùng bản đó
+  // thay cho danh sách gốc nhúng sẵn, để 2 trang luôn thấy cùng 1 danh sách lái xe
+  async function loadDriversFromSheet(){
+    try{
+      const res = await fetch(`${SHEET_API_URL}?key=${DRIVERS_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.list && data.list.length){
+        DRIVERS_FULL = data.list;
+        rebuildDriverPool();
+        renderAll();
+      }
+    } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua, dùng danh sách gốc */ }
   }
   function leaveTooltip(b, leave1, dateStr){
     const leave2 = b.lai2 ? driverLeaveFor(b.lai2, dateStr) : null;
@@ -807,9 +824,15 @@ footer.note b{color:var(--ink-muted);}
   const bksNormOf = {}; BUSES.forEach(b => { bksNormOf[b.bks] = normBks(b.bks); });
   const allBksList = BUSES.map(b => b.bks);
   // dùng đúng danh sách lái xe đầy đủ (không chỉ những lái đang gắn sẵn 1 xe) để chọn khi cần thay/đổi lái —
-  // loại người đã nghỉ việc hẳn (trang_thai "Đã nghỉ") vì không còn thuộc biên chế để xếp chuyến
-  const DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.filter(d => d.trang_thai !== 'Đã nghỉ').map(d => d.ten))].sort();
-  const driverNormOf = {}; DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
+  // loại người đã nghỉ việc hẳn (trang_thai "Đã nghỉ") vì không còn thuộc biên chế để xếp chuyến; tính
+  // lại mỗi khi DRIVERS_FULL đổi (tải bản đã lưu từ tab "Quản lý lái xe" bên trang Xin nghỉ)
+  let DRIVER_NAME_POOL = [], driverNormOf = {};
+  function rebuildDriverPool(){
+    DRIVER_NAME_POOL = [...new Set(DRIVERS_FULL.filter(d => d.trang_thai !== 'Đã nghỉ').map(d => d.ten))].sort();
+    driverNormOf = {};
+    DRIVER_NAME_POOL.forEach(n => { driverNormOf[n] = normName(n); });
+  }
+  rebuildDriverPool();
 
   // gắn box gợi ý vào <body> với position:fixed (thay vì absolute trong ô cha) để không bị
   // .card{overflow:hidden} hoặc bất kỳ khung cuộn nào cắt mất phần cuối danh sách
@@ -1868,6 +1891,7 @@ footer.note b{color:var(--ink-muted);}
   renderAll();
   loadGaraData();
   loadDriverLeaves();
+  loadDriversFromSheet();
   // xếp xe/lái đã lưu chỉ tải 1 lần lúc mở trang (không tự tải lại giữa chừng) để không ghi đè
   // mất phần đang kéo-thả dở tay của người đang dùng — ai sửa xong thì tự bấm Lưu để mọi người khác thấy
   loadXepXeState();
