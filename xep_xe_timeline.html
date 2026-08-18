@@ -22,13 +22,14 @@
     --rt8:#9E502E; --rt8-soft:#F4E0D7;
     --rt9:#9E6D2E; --rt9-soft:#F4E7D7;
     --rt10:#9E8B2E; --rt10-soft:#F4EFD7;
-    --rt11:#2E629E; --rt11-soft:#D7E5F4;
-    --rt12:#2E449E; --rt12-soft:#D7DDF4;
-    --rt13:#352E9E; --rt13-soft:#D9D7F4;
-    --rt14:#2E7C9E; --rt14-soft:#D7EBF4;
-    --rt15:#822E9E; --rt15-soft:#EDD7F4;
-    --rt16:#9E2E82; --rt16-soft:#F4D7ED;
-    --rt17:#9E792E; --rt17-soft:#F4EAD7;
+    --rt11:#2E792E; --rt11-soft:#E1F4D7;
+    --rt12:#2E629E; --rt12-soft:#D7E5F4;
+    --rt13:#2E449E; --rt13-soft:#D7DDF4;
+    --rt14:#352E9E; --rt14-soft:#D9D7F4;
+    --rt15:#2E7C9E; --rt15-soft:#D7EBF4;
+    --rt16:#822E9E; --rt16-soft:#EDD7F4;
+    --rt17:#9E2E82; --rt17-soft:#F4D7ED;
+    --rt18:#9E792E; --rt18-soft:#F4EAD7;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
@@ -341,8 +342,8 @@ footer.note b{color:var(--ink-muted);}
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
   const DAYS = JSON.parse(document.getElementById('day-data').textContent);
   const DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
-  const ROUTE_ORDER = ["Hà Nội - Sa Pa", "Sa Pa - Hà Nội", "Hà Nội - Sa Pa (Limousine)", "Sa Pa - Hà Nội (Limousine)", "Ninh Bình - Sa Pa", "Sa Pa - Ninh Bình", "Hạ Long - Sa Pa", "Sa Pa - Hạ Long", "Hà Nội - Huế", "Huế - Hà Nội", "Huế - Nha Trang", "Hà Nội - Hội An", "Hội An - Hà Nội", "Quảng Ninh - Hội An", "Hội An - Quảng Ninh", "Hà Nội - Nha Trang", "Nha Trang - Hà Nội"];
-  const FALLBACK_IDX = 17;
+  const ROUTE_ORDER = ["Hà Nội - Sa Pa", "Sa Pa - Hà Nội", "Hà Nội - Sa Pa (Limousine)", "Sa Pa - Hà Nội (Limousine)", "Ninh Bình - Sa Pa", "Sa Pa - Ninh Bình", "Hạ Long - Sa Pa", "Sa Pa - Hạ Long", "Hà Nội - Huế", "Huế - Hà Nội", "Huế - Nha Trang", "Nha Trang - Huế", "Hà Nội - Hội An", "Hội An - Hà Nội", "Quảng Ninh - Hội An", "Hội An - Quảng Ninh", "Hà Nội - Nha Trang", "Nha Trang - Hà Nội"];
+  const FALLBACK_IDX = 18;
   const AXIS_END = 1440;
   const PX_PER_MIN = 0.60;
   const laneWidth = AXIS_END * PX_PER_MIN;
