@@ -545,7 +545,11 @@ footer.note b{color:var(--ink-muted);}
         : (Object.prototype.hasOwnProperty.call(savedTripBks, id) ? savedTripBks[id] : null);
       if (bks && assignments[bks]){
         assignments[bks].push(id);
-        drivers[id] = (saved.drivers || {})[id] || initialDriversFor(t, bks);
+        // cùng ưu tiên như xe: chuyến này đúng là xe Odoo đã gán thật (t.assignedBks === bks) và
+        // Odoo đã có lái thật (t.odooLai1) thì luôn lấy lái thật mới nhất, không dùng lái đã lưu cũ
+        // (có thể sai/thiếu lái 2 từ lần lưu trước) — chỉ dùng lái đã lưu khi Odoo chưa có lái thật
+        const useOdooDrivers = t.assignedBks === bks && t.odooLai1;
+        drivers[id] = useOdooDrivers ? initialDriversFor(t, bks) : ((saved.drivers || {})[id] || initialDriversFor(t, bks));
       } else {
         unassigned.add(id);
       }
