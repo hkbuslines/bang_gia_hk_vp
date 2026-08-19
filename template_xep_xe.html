@@ -216,6 +216,16 @@ table.dotable tr:last-child td{border-bottom:0;}
 .dotable .note{color:var(--ink-muted); font-size:12px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
 .rowbtn:hover{background:var(--surface-2); color:var(--danger);}
+.donotes-layout{display:flex; gap:14px; align-items:flex-start;}
+.donotes-panel{width:280px; flex-shrink:0; transition:background-color 0.12s, outline-color 0.12s; outline:2px dashed transparent; outline-offset:-2px;}
+.donotes-panel.dragover{background-color:var(--ok-fill); outline-color:var(--ok);}
+.notecard{border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; margin-bottom:8px; background:var(--surface);}
+.notecard-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px;}
+.notecard-driver{font-weight:700; font-size:12.5px;}
+.notecard-text{width:100%; resize:vertical; min-height:44px; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:inherit; font-size:12.5px; background:var(--surface-2); color:inherit;}
+.addnote-btn{width:100%; text-align:center; border:1px dashed var(--line-strong); border-radius:var(--radius); padding:7px; font-size:12.5px; margin-top:2px;}
+tr[draggable="true"]{cursor:grab;}
+tr[draggable="true"]:active{cursor:grabbing;}
 .track{position:relative; flex:1; height:34px; border-radius:var(--radius);
   background-color:var(--surface-2);
   background-image:repeating-linear-gradient(to right, var(--line) 0, var(--line) 1px, transparent 1px, transparent calc(100%/10));}
@@ -339,9 +349,16 @@ footer.note b{color:var(--ink-muted);}
 
   <!-- ============ TAB 3: lái chưa xếp ============ -->
   <div class="tabpane" id="paneDriversOff">
-    <div class="card">
-      <div class="tray-head">Danh sách lái xe — trạng thái hôm nay & lý do chưa xếp</div>
-      <div id="driversOffWrap" style="overflow-x:auto;"></div>
+    <div class="donotes-layout">
+      <div class="card donotes-panel" id="driverNotesPanel">
+        <div class="tray-head">📌 Cần trao đổi / Ghi chú</div>
+        <div id="driverNotesList"></div>
+        <button type="button" class="rowbtn addnote-btn" id="addNoteBtn">+ Thêm ghi chú</button>
+      </div>
+      <div class="card" style="flex:1; min-width:0;">
+        <div class="tray-head">Danh sách lái xe — trạng thái hôm nay & lý do chưa xếp</div>
+        <div id="driversOffWrap" style="overflow-x:auto;"></div>
+      </div>
     </div>
   </div>
 
@@ -477,6 +494,7 @@ footer.note b{color:var(--ink-muted);}
   const LEAVE_SHEET_KEY = 'leave';
   const XEPXE_SHEET_KEY = 'xepxe';
   const DRIVERS_SHEET_KEY = 'drivers';
+  const DRIVER_NOTES_KEY = 'driver_notes';
   let garaEntries = [];
   let gaSavedAt = null;
   let xepxeSavedAt = null;
@@ -611,6 +629,77 @@ footer.note b{color:var(--ink-muted);}
         renderAll();
       }
     } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua, dùng danh sách gốc */ }
+  }
+
+  // ---------------- khung "Cần trao đổi / Ghi chú" — kéo lái xe từ bảng thả vào, hoặc gõ tay ----------------
+  let DRIVER_NOTES = [];
+  function escHtml(s){
+    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function noteUid(){ return 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+  async function loadDriverNotes(){
+    try{
+      const res = await fetch(`${SHEET_API_URL}?key=${DRIVER_NOTES_KEY}&t=${Date.now()}`, {cache:'no-store'});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.list)) DRIVER_NOTES = data.list;
+      renderDriverNotesPanel();
+    } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua */ }
+  }
+  async function saveDriverNotes(){
+    try{
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', key: DRIVER_NOTES_KEY, payload: { list: DRIVER_NOTES } }),
+      });
+      const result = await res.json();
+      if (!result.ok) console.error('Lưu ghi chú lỗi:', result.error);
+    } catch(err){ console.error('Lưu ghi chú lỗi (mạng):', err.message); }
+  }
+  function addNoteFromDriver(name){
+    DRIVER_NOTES.push({ id: noteUid(), driver: name, text: '' });
+    renderDriverNotesPanel();
+    saveDriverNotes();
+  }
+  function addNoteManual(){
+    const n = { id: noteUid(), driver: null, text: '' };
+    DRIVER_NOTES.push(n);
+    renderDriverNotesPanel();
+    saveDriverNotes();
+    const ta = document.querySelector(`textarea[data-noteid="${n.id}"]`);
+    if (ta) ta.focus();
+  }
+  function deleteNote(id){
+    DRIVER_NOTES = DRIVER_NOTES.filter(n => n.id !== id);
+    renderDriverNotesPanel();
+    saveDriverNotes();
+  }
+  function updateNoteText(id, text){
+    const n = DRIVER_NOTES.find(x => x.id === id);
+    if (n) n.text = text;
+  }
+  function renderDriverNotesPanel(){
+    const wrap = document.getElementById('driverNotesList');
+    if (!wrap) return;
+    if (!DRIVER_NOTES.length){
+      wrap.innerHTML = '<div class="doempty" style="padding:0 0 10px;">Kéo 1 lái xe từ bảng bên cạnh thả vào đây, hoặc bấm "+ Thêm ghi chú" bên dưới.</div>';
+    } else {
+      wrap.innerHTML = DRIVER_NOTES.map(n => `
+        <div class="notecard">
+          <div class="notecard-head">
+            ${n.driver ? `<span class="notecard-driver">${escHtml(n.driver)}</span>` : '<span></span>'}
+            <button type="button" class="rowbtn" data-delnote="${n.id}" title="Xoá ghi chú">×</button>
+          </div>
+          <textarea class="notecard-text" data-noteid="${n.id}" placeholder="Ghi chú...">${escHtml(n.text)}</textarea>
+        </div>`).join('');
+    }
+    wrap.querySelectorAll('[data-delnote]').forEach(btn => {
+      btn.addEventListener('click', () => deleteNote(btn.dataset.delnote));
+    });
+    wrap.querySelectorAll('textarea[data-noteid]').forEach(ta => {
+      ta.addEventListener('input', () => updateNoteText(ta.dataset.noteid, ta.value));
+      ta.addEventListener('blur', () => saveDriverNotes());
+    });
   }
   function leaveTooltip(b, leave1, dateStr){
     const leave2 = b.lai2 ? driverLeaveFor(b.lai2, dateStr) : null;
@@ -1832,7 +1921,7 @@ footer.note b{color:var(--ink-muted);}
       } else {
         statusHtml = `<span class="doreason">Chưa xếp</span>`;
       }
-      return `<tr>
+      return `<tr draggable="true" data-drivername="${name.replace(/"/g, '&quot;')}" title="Kéo thả để thêm vào khung 'Cần trao đổi'">
         <td class="tabular note">${i + 1}</td>
         <td style="font-weight:700;">${name}</td>
         <td class="tabular note">${ma_nv || ''}</td>
@@ -1846,6 +1935,12 @@ footer.note b{color:var(--ink-muted);}
     </table>`;
     wrap.querySelectorAll('[data-deldriver]').forEach(btn => {
       btn.addEventListener('click', () => deleteDriver(btn.dataset.deldriver));
+    });
+    wrap.querySelectorAll('tr[draggable="true"]').forEach(tr => {
+      tr.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('text/plain', tr.dataset.drivername);
+        e.dataTransfer.effectAllowed = 'copy';
+      });
     });
   }
 
@@ -1902,6 +1997,19 @@ footer.note b{color:var(--ink-muted);}
     updateStats();
   }
 
+  (function setupDriverNotesDrop(){
+    const panel = document.getElementById('driverNotesPanel');
+    panel.addEventListener('dragover', e => { e.preventDefault(); panel.classList.add('dragover'); });
+    panel.addEventListener('dragleave', () => panel.classList.remove('dragover'));
+    panel.addEventListener('drop', e => {
+      e.preventDefault();
+      panel.classList.remove('dragover');
+      const name = e.dataTransfer.getData('text/plain');
+      if (name) addNoteFromDriver(name);
+    });
+  })();
+  document.getElementById('addNoteBtn').addEventListener('click', addNoteManual);
+
   document.getElementById('dayPrev').addEventListener('click', () => setDate(addDays(currentDate, -1)));
   document.getElementById('dayNext').addEventListener('click', () => setDate(addDays(currentDate, 1)));
   document.getElementById('weekPrevBtn').addEventListener('click', () => setDate(addDays(currentDate, -7)));
@@ -1951,6 +2059,7 @@ footer.note b{color:var(--ink-muted);}
   loadGaraData();
   loadDriverLeaves();
   loadDriversFromSheet();
+  loadDriverNotes();
   // xếp xe/lái đã lưu chỉ tải 1 lần lúc mở trang (không tự tải lại giữa chừng) để không ghi đè
   // mất phần đang kéo-thả dở tay của người đang dùng — ai sửa xong thì tự bấm Lưu để mọi người khác thấy
   loadXepXeState();
