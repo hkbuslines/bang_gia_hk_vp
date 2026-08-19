@@ -216,7 +216,7 @@ table.dotable tr:last-child td{border-bottom:0;}
 .dotable .note{color:var(--ink-muted); font-size:12px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
 .rowbtn:hover{background:var(--surface-2); color:var(--danger);}
-.donotes-layout{display:flex; gap:14px; align-items:flex-start;}
+.donotes-layout{display:flex; gap:14px; align-items:stretch;}
 .donotes-panel{width:280px; flex-shrink:0; position:sticky; top:14px; max-height:calc(100vh - 28px);
   display:flex; flex-direction:column;
   transition:background-color 0.12s, outline-color 0.12s; outline:2px dashed transparent; outline-offset:-2px;}
@@ -224,7 +224,9 @@ table.dotable tr:last-child td{border-bottom:0;}
 .donotes-list{flex:1; min-height:90px; overflow-y:auto; padding:12px 14px 4px;}
 .notecard{border:1px solid var(--line); border-radius:var(--radius); padding:8px 10px; margin-bottom:8px; background:var(--surface);}
 .notecard-head{display:flex; align-items:center; justify-content:space-between; gap:6px; margin-bottom:4px;}
-.notecard-driver{font-weight:700; font-size:12.5px;}
+.notecard-driver{font-weight:700; font-size:12.5px; flex:1; min-width:0; border:1px solid transparent; border-radius:6px; padding:3px 6px; background:transparent; font:inherit; color:inherit;}
+.notecard-driver:hover, .notecard-driver:focus{border-color:var(--line); background:var(--surface-2);}
+.notecard-driver::placeholder{font-weight:400; color:var(--ink-faint);}
 .notecard-text{width:100%; resize:vertical; min-height:44px; border:1px solid var(--line); border-radius:6px; padding:6px 8px; font:inherit; font-size:12.5px; background:var(--surface-2); color:inherit;}
 .addnote-btn{flex-shrink:0; width:calc(100% - 28px); margin:0 14px 14px; text-align:center; border:1px dashed var(--line-strong); border-radius:var(--radius); padding:7px; font-size:12.5px;}
 tr[draggable="true"]{cursor:grab;}
@@ -356,6 +358,7 @@ footer.note b{color:var(--ink-muted);}
       <div class="card donotes-panel" id="driverNotesPanel">
         <div class="tray-head">📌 Cần trao đổi / Ghi chú</div>
         <div id="driverNotesList" class="donotes-list"></div>
+        <datalist id="driverNamesDatalist"></datalist>
         <button type="button" class="rowbtn addnote-btn" id="addNoteBtn">+ Thêm ghi chú</button>
       </div>
       <div class="card" style="flex:1; min-width:0;">
@@ -681,16 +684,22 @@ footer.note b{color:var(--ink-muted);}
     const n = DRIVER_NOTES.find(x => x.id === id);
     if (n) n.text = text;
   }
+  function updateNoteDriver(id, driver){
+    const n = DRIVER_NOTES.find(x => x.id === id);
+    if (n) n.driver = driver.trim() || null;
+  }
   function renderDriverNotesPanel(){
     const wrap = document.getElementById('driverNotesList');
     if (!wrap) return;
+    const dl = document.getElementById('driverNamesDatalist');
+    if (dl) dl.innerHTML = DRIVER_NAME_POOL.map(n => `<option value="${escHtml(n)}">`).join('');
     if (!DRIVER_NOTES.length){
       wrap.innerHTML = '<div class="doempty" style="padding:0;">Kéo 1 lái xe từ bảng bên cạnh thả vào đây, hoặc bấm "+ Thêm ghi chú" bên dưới.</div>';
     } else {
       wrap.innerHTML = DRIVER_NOTES.map(n => `
         <div class="notecard">
           <div class="notecard-head">
-            ${n.driver ? `<span class="notecard-driver">${escHtml(n.driver)}</span>` : '<span></span>'}
+            <input type="text" class="notecard-driver" data-noteid="${n.id}" list="driverNamesDatalist" placeholder="Tên lái xe (không bắt buộc)" value="${escHtml(n.driver || '')}">
             <button type="button" class="rowbtn" data-delnote="${n.id}" title="Xoá ghi chú">×</button>
           </div>
           <textarea class="notecard-text" data-noteid="${n.id}" placeholder="Ghi chú...">${escHtml(n.text)}</textarea>
@@ -698,6 +707,10 @@ footer.note b{color:var(--ink-muted);}
     }
     wrap.querySelectorAll('[data-delnote]').forEach(btn => {
       btn.addEventListener('click', () => deleteNote(btn.dataset.delnote));
+    });
+    wrap.querySelectorAll('input.notecard-driver[data-noteid]').forEach(inp => {
+      inp.addEventListener('input', () => updateNoteDriver(inp.dataset.noteid, inp.value));
+      inp.addEventListener('blur', () => saveDriverNotes());
     });
     wrap.querySelectorAll('textarea[data-noteid]').forEach(ta => {
       ta.addEventListener('input', () => updateNoteText(ta.dataset.noteid, ta.value));
