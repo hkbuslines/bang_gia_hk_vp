@@ -650,6 +650,7 @@ footer.note b{color:var(--ink-muted);}
       const data = await res.json();
       if (Array.isArray(data.list)) DRIVER_NOTES = data.list;
       renderDriverNotesPanel();
+      refreshDriversOffTab();
     } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua */ }
   }
   async function saveDriverNotes(){
@@ -662,9 +663,16 @@ footer.note b{color:var(--ink-muted);}
       if (!result.ok) console.error('Lưu ghi chú lỗi:', result.error);
     } catch(err){ console.error('Lưu ghi chú lỗi (mạng):', err.message); }
   }
+  // lái xe vừa vào khung ghi chú thì ẩn ngay khỏi bảng bên cạnh (renderDriversOffTab đọc lại
+  // noteDriverNames() mỗi lần vẽ) — 1 tên chỉ hiện 1 chỗ
+  function refreshDriversOffTab(){
+    if (typeof renderDriversOffTab === 'function') renderDriversOffTab();
+    if (typeof updateDriversOffCount === 'function') updateDriversOffCount();
+  }
   function addNoteFromDriver(name){
     DRIVER_NOTES.push({ id: noteUid(), driver: name, text: '' });
     renderDriverNotesPanel();
+    refreshDriversOffTab();
     saveDriverNotes();
   }
   function addNoteManual(){
@@ -678,6 +686,7 @@ footer.note b{color:var(--ink-muted);}
   function deleteNote(id){
     DRIVER_NOTES = DRIVER_NOTES.filter(n => n.id !== id);
     renderDriverNotesPanel();
+    refreshDriversOffTab();
     saveDriverNotes();
   }
   function updateNoteText(id, text){
@@ -710,7 +719,7 @@ footer.note b{color:var(--ink-muted);}
     });
     wrap.querySelectorAll('input.notecard-driver[data-noteid]').forEach(inp => {
       inp.addEventListener('input', () => updateNoteDriver(inp.dataset.noteid, inp.value));
-      inp.addEventListener('blur', () => saveDriverNotes());
+      inp.addEventListener('blur', () => { refreshDriversOffTab(); saveDriverNotes(); });
     });
     wrap.querySelectorAll('textarea[data-noteid]').forEach(ta => {
       ta.addEventListener('input', () => updateNoteText(ta.dataset.noteid, ta.value));
@@ -1869,6 +1878,10 @@ footer.note b{color:var(--ink-muted);}
   // tính trạng thái từng lái xe hôm nay: đang chạy (kèm xe) hoặc lý do không chạy — đang nghỉ phép
   // (đủ loại P/DX/KB/D) hoặc chỉ đơn giản chưa được xếp chuyến nào; không tính người đã nghỉ việc
   // hẳn (không còn thuộc biên chế); người chưa xếp/đang nghỉ được ghim lên đầu để dễ thấy
+  // tên đã có mặt bên khung "Cần trao đổi" thì ẩn khỏi bảng danh sách bên cạnh — 1 tên chỉ hiện 1 chỗ
+  function noteDriverNames(){
+    return new Set(DRIVER_NOTES.filter(n => n.driver).map(n => n.driver));
+  }
   function computeDriverStatuses(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -1881,8 +1894,9 @@ footer.note b{color:var(--ink-muted);}
         if (d.lai2) workingBks[d.lai2] = bks;
       });
     });
+    const inNotes = noteDriverNames();
     return DRIVERS_FULL
-      .filter(d => d.trang_thai !== 'Đã nghỉ')
+      .filter(d => d.trang_thai !== 'Đã nghỉ' && !inNotes.has(d.ten))
       .map(d => {
         const bks = workingBks[d.ten] || null;
         const leave = bks ? null : driverLeaveFor(d.ten, day.date);
