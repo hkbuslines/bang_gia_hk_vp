@@ -993,15 +993,15 @@ tr.warnrow{background:var(--danger-fill);}
     </table>`;
   }
 
-  // KB (đột xuất KHÔNG báo trước) là nghỉ phát sinh ngay trong ngày — không cần khai "từ ngày/đến
-  // ngày" trước, chỉ cần đúng ngày nộp đơn (chính là ngày nghỉ luôn); các loại còn lại vẫn cần đủ
-  // khoảng ngày như trước
+  // KB (đột xuất KHÔNG báo trước) và D (nghỉ dài ngày) không cần khai "từ ngày/đến ngày" trước —
+  // chỉ cần đúng ngày nộp đơn (chính là ngày nghỉ luôn); P/DX vẫn cần đủ khoảng ngày như trước
+  const NO_RANGE_TYPES = ['KB', 'D'];
   function toggleDateRangeFields(){
-    const isKb = document.getElementById('f-loai').value === 'KB';
-    document.getElementById('fieldTungay').style.display = isKb ? 'none' : '';
-    document.getElementById('fieldDenngay').style.display = isKb ? 'none' : '';
-    document.getElementById('f-tungay').required = !isKb;
-    document.getElementById('f-denngay').required = !isKb;
+    const noRange = NO_RANGE_TYPES.includes(document.getElementById('f-loai').value);
+    document.getElementById('fieldTungay').style.display = noRange ? 'none' : '';
+    document.getElementById('fieldDenngay').style.display = noRange ? 'none' : '';
+    document.getElementById('f-tungay').required = !noRange;
+    document.getElementById('f-denngay').required = !noRange;
   }
   document.getElementById('f-loai').addEventListener('change', toggleDateRangeFields);
   toggleDateRangeFields();
@@ -1009,20 +1009,20 @@ tr.warnrow{background:var(--danger-fill);}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.getElementById('f-loai').value;
-    const isKb = loai === 'KB';
+    const noRange = NO_RANGE_TYPES.includes(loai);
     const ngaynop = document.getElementById('f-ngaynop').value;
     const entry = {
       id: counter++,
       ten: tenInput.value.trim(),
       loai,
-      tungay: isKb ? ngaynop : document.getElementById('f-tungay').value,
-      denngay: isKb ? ngaynop : document.getElementById('f-denngay').value,
+      tungay: noRange ? ngaynop : document.getElementById('f-tungay').value,
+      denngay: noRange ? ngaynop : document.getElementById('f-denngay').value,
       ngaynop,
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
     if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
-    if (isKb){
-      if (!entry.ngaynop){ alert('Chọn "Ngày nộp đơn" (chính là ngày nghỉ đột xuất).'); return; }
+    if (noRange){
+      if (!entry.ngaynop){ alert('Chọn "Ngày nộp đơn".'); return; }
     } else if (!entry.tungay || !entry.denngay || entry.denngay < entry.tungay){
       alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
     }
