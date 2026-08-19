@@ -614,28 +614,36 @@ tr.warnrow{background:var(--danger-fill);}
     }
     return { count, byType };
   }
+  // lưới theo ngày trong tuần — mỗi cột 1 ngày, ô nào có nghỉ thì tô màu theo loại nghỉ, để nhìn
+  // ngay lái nào nghỉ đúng ngày nào trong tuần, không chỉ tổng số ngày
   function renderWeeklyTable(){
     const weekStart = weeklyStart;
     const weekEnd = addDaysISO(weekStart, 6);
+    const days = Array.from({length: 7}, (_, i) => addDaysISO(weekStart, i));
     const rows = DRIVERS.map(d => {
       const { count, byType } = daysOffInWeek(d.ten, weekStart);
       return { d, count, byType };
     }).sort((a, b) => b.count - a.count || a.d.ten.localeCompare(b.d.ten));
-    const body = rows.map(({d, count, byType}) => {
-      const chips = Object.entries(byType).filter(([,n]) => n > 0)
-        .map(([k,n]) => `<span class="tag ${k.toLowerCase()}" title="${LOAI_LABEL[k] || k}">${k} ×${n}</span>`).join(' ');
+    const dayHeaders = days.map(d => `<th class="tabular" style="text-align:center;">${weekdayOf(d)}<br>${fmtDM(d)}</th>`).join('');
+    const body = rows.map(({d, count}) => {
+      const dayCells = days.map(dateStr => {
+        const e = entries.find(x => x.ten === d.ten && x.tungay <= dateStr && dateStr <= x.denngay);
+        if (!e) return '<td class="tabular" style="text-align:center;"><span class="note">·</span></td>';
+        const title = `${LOAI_LABEL[e.loai] || e.loai}${e.ghichu ? ' — ' + e.ghichu : ''}`;
+        return `<td class="tabular" style="text-align:center;"><span class="tag ${e.loai.toLowerCase()}" title="${title.replace(/"/g,'&quot;')}">${e.loai}</span></td>`;
+      }).join('');
       return `
         <tr${count > 0 ? '' : ' style="opacity:0.55;"'}>
           <td style="font-weight:700;">${d.ten}</td>
           <td class="note tabular">${d.ma_nv}</td>
           <td class="tabular" style="font-weight:700;">${count} ngày</td>
-          <td>${chips || '<span class="note">—</span>'}</td>
+          ${dayCells}
         </tr>`;
     }).join('');
-    document.getElementById('weeklyWrap').innerHTML = `<div class="note" style="margin-bottom:8px;">Tuần ${fmtDM(weekStart)} - ${fmtDM(weekEnd)} · ${DRIVERS.length} lái xe</div><table>
-      <thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th><th>Chi tiết loại nghỉ</th></tr></thead>
+    document.getElementById('weeklyWrap').innerHTML = `<div class="note" style="margin-bottom:8px;">Tuần ${fmtDM(weekStart)} - ${fmtDM(weekEnd)} · ${DRIVERS.length} lái xe</div><div style="overflow-x:auto;"><table>
+      <thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th>${dayHeaders}</tr></thead>
       <tbody>${body}</tbody>
-    </table>`;
+    </table></div>`;
   }
 
   function fmtRange(e){
