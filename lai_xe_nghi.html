@@ -487,7 +487,9 @@ tr.warnrow{background:var(--danger-fill);}
     }));
     wrap.querySelectorAll('[data-del]').forEach(btn => {
       btn.addEventListener('click', () => {
-        DRIVERS.splice(Number(btn.dataset.del), 1);
+        const i = Number(btn.dataset.del);
+        if (!confirm(`Xoá lái xe "${DRIVERS[i].ten}" khỏi danh sách?`)) return;
+        DRIVERS.splice(i, 1);
         rebuildDriverIndexes();
         renderDriverMgmt();
         renderWeeklyTable();
@@ -941,6 +943,8 @@ tr.warnrow{background:var(--danger-fill);}
       </table>`;
       wrap.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', () => {
+          const entry = entries.find(e => e.id === Number(btn.dataset.del));
+          if (!confirm(`Xoá đơn nghỉ của "${entry ? entry.ten : ''}"?`)) return;
           entries = entries.filter(e => e.id !== Number(btn.dataset.del));
           render();
           renderAvailability();

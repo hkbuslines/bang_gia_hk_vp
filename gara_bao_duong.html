@@ -577,6 +577,8 @@ tr:last-child td{border-bottom:0;}
       </table>`;
       wrap.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', () => {
+          const entry = entries.find(e => e.id === Number(btn.dataset.del));
+          if (!confirm(`Xoá mục "${entry ? entry.bks : ''}" này?`)) return;
           entries = entries.filter(e => e.id !== Number(btn.dataset.del));
           render();
         });

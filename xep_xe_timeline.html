@@ -1934,7 +1934,9 @@ footer.note b{color:var(--ink-muted);}
       <tbody>${rows}</tbody>
     </table>`;
     wrap.querySelectorAll('[data-deldriver]').forEach(btn => {
-      btn.addEventListener('click', () => deleteDriver(btn.dataset.deldriver));
+      btn.addEventListener('click', () => {
+        if (confirm(`Xoá lái xe "${btn.dataset.deldriver}" khỏi danh sách?`)) deleteDriver(btn.dataset.deldriver);
+      });
     });
     wrap.querySelectorAll('tr[draggable="true"]').forEach(tr => {
       tr.addEventListener('dragstart', e => {
