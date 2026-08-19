@@ -212,7 +212,7 @@ table.dotable tr:last-child td{border-bottom:0;}
 .doreason{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--ink-muted);}
 .doreason.leave{background:var(--danger-fill); color:var(--danger);}
 .doreason.working{background:var(--ok-fill); color:var(--ok);}
-#tabDriversOffCount{font-weight:700;}
+#tabDriversOffCount, #driverNotesCount{font-weight:700;}
 .dotable .note{color:var(--ink-muted); font-size:12px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
 .rowbtn:hover{background:var(--surface-2); color:var(--danger);}
@@ -356,7 +356,7 @@ footer.note b{color:var(--ink-muted);}
   <div class="tabpane" id="paneDriversOff">
     <div class="donotes-layout">
       <div class="card donotes-panel" id="driverNotesPanel">
-        <div class="tray-head">📌 Cần trao đổi / Ghi chú</div>
+        <div class="tray-head">📌 Cần trao đổi / Ghi chú <span id="driverNotesCount"></span></div>
         <div id="driverNotesList" class="donotes-list"></div>
         <datalist id="driverNamesDatalist"></datalist>
         <button type="button" class="rowbtn addnote-btn" id="addNoteBtn">+ Thêm ghi chú</button>
@@ -700,6 +700,8 @@ footer.note b{color:var(--ink-muted);}
   function renderDriverNotesPanel(){
     const wrap = document.getElementById('driverNotesList');
     if (!wrap) return;
+    const countEl = document.getElementById('driverNotesCount');
+    if (countEl) countEl.textContent = `(${noteDriverNames().size})`;
     const dl = document.getElementById('driverNamesDatalist');
     if (dl) dl.innerHTML = DRIVER_NAME_POOL.map(n => `<option value="${escHtml(n)}">`).join('');
     if (!DRIVER_NOTES.length){
