@@ -299,6 +299,7 @@ footer.note b{color:var(--ink-muted);}
     <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
     <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
     <button class="tabbtn" id="tabDriversOff" type="button">Lái xe <span id="tabDriversOffCount"></span></button>
+    <button class="tabbtn" id="tabBusCrew" type="button">Định biên xe</button>
   </div>
 
   <div style="display:flex; gap:8px; margin-bottom:12px;">
@@ -365,6 +366,15 @@ footer.note b{color:var(--ink-muted);}
         <div class="tray-head">Danh sách lái xe — trạng thái hôm nay & lý do chưa xếp</div>
         <div id="driversOffWrap" style="overflow-x:auto;"></div>
       </div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 4: định biên xe ============ -->
+  <div class="tabpane" id="paneBusCrew">
+    <div class="card">
+      <div class="tray-head">Định biên xe — lái 1/lái 2 mặc định của từng xe, sửa khi cần, tự lưu &amp; đồng bộ</div>
+      <div class="sub" style="padding:8px 14px 0;">Đây là lái "gốc" gán sẵn cho xe — dùng khi xếp xe vào chuyến chưa có lái Odoo thật. Sửa ô Lái 1/Lái 2 rồi bấm ra ngoài ô là tự lưu ngay, áp dụng cho các chuyến xếp mới từ giờ (không đổi lái của chuyến đã xếp sẵn).</div>
+      <div id="busCrewWrap" style="overflow-x:auto;"></div>
     </div>
   </div>
 
@@ -501,6 +511,7 @@ footer.note b{color:var(--ink-muted);}
   const XEPXE_SHEET_KEY = 'xepxe';
   const DRIVERS_SHEET_KEY = 'drivers';
   const DRIVER_NOTES_KEY = 'driver_notes';
+  const BUS_CREW_SHEET_KEY = 'bus_crew';
   let garaEntries = [];
   let gaSavedAt = null;
   let xepxeSavedAt = null;
@@ -737,6 +748,59 @@ footer.note b{color:var(--ink-muted);}
       ta.addEventListener('blur', () => saveDriverNotes());
     });
   }
+
+  // ---------------- tab "Định biên xe" — lái 1/lái 2 mặc định của từng xe, sửa tại đây tự lưu &
+  // đồng bộ; sửa xong áp dụng ngay cho các chuyến xếp mới (đọc busByBks[bks].lai1/lai2 trực tiếp,
+  // không cache), không đổi lái của những chuyến đã xếp sẵn từ trước
+  async function loadBusCrewFromSheet(){
+    try{
+      const res = await fetch(`${SHEET_API_URL}?key=${BUS_CREW_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.list)){
+        data.list.forEach(c => {
+          const b = busByBks[c.bks];
+          if (b){ b.lai1 = c.lai1 || ''; b.lai2 = c.lai2 || ''; }
+        });
+        if (activeTab === 'buscrew') renderBusCrewTab();
+      }
+    } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua, dùng định biên gốc */ }
+  }
+  async function saveBusCrew(){
+    try{
+      const list = BUSES.map(b => ({ bks: b.bks, lai1: b.lai1 || '', lai2: b.lai2 || '' }));
+      const res = await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', key: BUS_CREW_SHEET_KEY, payload: { list } }),
+      });
+      const result = await res.json();
+      if (!result.ok) console.error('Lưu định biên lỗi:', result.error);
+    } catch(err){ console.error('Lưu định biên lỗi (mạng):', err.message); }
+  }
+  function renderBusCrewTab(){
+    const wrap = document.getElementById('busCrewWrap');
+    if (!wrap) return;
+    const sorted = BUSES.slice().sort((a, b) => a.bks.localeCompare(b.bks, 'vi'));
+    const rows = sorted.map(b => `
+      <tr>
+        <td class="tabular" style="font-weight:700;">${escHtml(b.bks)}</td>
+        <td class="note">${escHtml(b.group_name || b.tuyen_chinh || '')}</td>
+        <td><input type="text" class="notecard-driver" style="width:100%;" data-bks="${escHtml(b.bks)}" data-slot="lai1" list="driverNamesDatalist" placeholder="Lái 1" value="${escHtml(b.lai1 || '')}"></td>
+        <td><input type="text" class="notecard-driver" style="width:100%;" data-bks="${escHtml(b.bks)}" data-slot="lai2" list="driverNamesDatalist" placeholder="Lái 2 (nếu có)" value="${escHtml(b.lai2 || '')}"></td>
+      </tr>`).join('');
+    wrap.innerHTML = `<table class="dotable">
+      <thead><tr><th>BKS</th><th>Tuyến</th><th>Lái 1</th><th>Lái 2</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    wrap.querySelectorAll('input[data-bks]').forEach(inp => {
+      inp.addEventListener('blur', () => {
+        const b = busByBks[inp.dataset.bks];
+        if (!b) return;
+        b[inp.dataset.slot] = inp.value.trim();
+        saveBusCrew();
+      });
+    });
+  }
   function leaveTooltip(b, leave1, dateStr){
     const leave2 = b.lai2 ? driverLeaveFor(b.lai2, dateStr) : null;
     const relief = !b.lai2 ? 'Xe này không có Lái 2 dự phòng.'
@@ -887,9 +951,11 @@ footer.note b{color:var(--ink-muted);}
     document.getElementById('tabSlots').classList.toggle('active', t === 'slots');
     document.getElementById('tabBoard').classList.toggle('active', t === 'board');
     document.getElementById('tabDriversOff').classList.toggle('active', t === 'driversoff');
+    document.getElementById('tabBusCrew').classList.toggle('active', t === 'buscrew');
     document.getElementById('paneSlots').classList.toggle('active', t === 'slots');
     document.getElementById('paneBoard').classList.toggle('active', t === 'board');
     document.getElementById('paneDriversOff').classList.toggle('active', t === 'driversoff');
+    document.getElementById('paneBusCrew').classList.toggle('active', t === 'buscrew');
     renderAll();
   }
 
@@ -2036,6 +2102,7 @@ footer.note b{color:var(--ink-muted);}
     renderBusTray();
     if (activeTab === 'slots') renderSlotList();
     else if (activeTab === 'board') renderBoard();
+    else if (activeTab === 'buscrew') renderBusCrewTab();
     else renderDriversOffTab();
     updateStats();
   }
@@ -2061,6 +2128,7 @@ footer.note b{color:var(--ink-muted);}
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('tabDriversOff').addEventListener('click', () => setTab('driversoff'));
+  document.getElementById('tabBusCrew').addEventListener('click', () => setTab('buscrew'));
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
   document.getElementById('exportCsvByBksBtn').addEventListener('click', exportScheduleCSVByBks);
@@ -2103,6 +2171,7 @@ footer.note b{color:var(--ink-muted);}
   loadDriverLeaves();
   loadDriversFromSheet();
   loadDriverNotes();
+  loadBusCrewFromSheet();
   // xếp xe/lái đã lưu chỉ tải 1 lần lúc mở trang (không tự tải lại giữa chừng) để không ghi đè
   // mất phần đang kéo-thả dở tay của người đang dùng — ai sửa xong thì tự bấm Lưu để mọi người khác thấy
   loadXepXeState();
