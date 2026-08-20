@@ -512,6 +512,7 @@ footer.note b{color:var(--ink-muted);}
   const DRIVERS_SHEET_KEY = 'drivers';
   const DRIVER_NOTES_KEY = 'driver_notes';
   const BUS_CREW_SHEET_KEY = 'bus_crew';
+  const BUS_CREW_LAI2_TYPES = ['', 'Lái đẩy Miền Trung', 'Lái đẩy Miền Bắc', 'Lái đẩy Hỗn hợp'];
   let garaEntries = [];
   let gaSavedAt = null;
   let xepxeSavedAt = null;
@@ -760,7 +761,7 @@ footer.note b{color:var(--ink-muted);}
       if (Array.isArray(data.list)){
         data.list.forEach(c => {
           const b = busByBks[c.bks];
-          if (b){ b.lai1 = c.lai1 || ''; b.lai2 = c.lai2 || ''; }
+          if (b){ b.lai1 = c.lai1 || ''; b.lai2 = c.lai2 || ''; b.lai2_type = c.lai2_type || ''; }
         });
         if (activeTab === 'buscrew') renderBusCrewTab();
       }
@@ -768,7 +769,7 @@ footer.note b{color:var(--ink-muted);}
   }
   async function saveBusCrew(){
     try{
-      const list = BUSES.map(b => ({ bks: b.bks, lai1: b.lai1 || '', lai2: b.lai2 || '' }));
+      const list = BUSES.map(b => ({ bks: b.bks, lai1: b.lai1 || '', lai2: b.lai2 || '', lai2_type: b.lai2_type || '' }));
       const res = await fetch(SHEET_API_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'save', key: BUS_CREW_SHEET_KEY, payload: { list } }),
@@ -787,9 +788,12 @@ footer.note b{color:var(--ink-muted);}
         <td class="note">${escHtml(b.group_name || b.tuyen_chinh || '')}</td>
         <td><input type="text" class="notecard-driver" style="width:100%;" data-bks="${escHtml(b.bks)}" data-slot="lai1" list="driverNamesDatalist" placeholder="Lái 1" value="${escHtml(b.lai1 || '')}"></td>
         <td><input type="text" class="notecard-driver" style="width:100%;" data-bks="${escHtml(b.bks)}" data-slot="lai2" list="driverNamesDatalist" placeholder="Lái 2 (nếu có)" value="${escHtml(b.lai2 || '')}"></td>
+        <td><select data-bks="${escHtml(b.bks)}" data-slot="lai2_type" style="width:100%;">
+          ${BUS_CREW_LAI2_TYPES.map(opt => `<option value="${escHtml(opt)}"${(b.lai2_type || '') === opt ? ' selected' : ''}>${opt ? escHtml(opt) : '— Chưa phân loại —'}</option>`).join('')}
+        </select></td>
       </tr>`).join('');
     wrap.innerHTML = `<table class="dotable">
-      <thead><tr><th>BKS</th><th>Tuyến</th><th>Lái 1</th><th>Lái 2</th></tr></thead>
+      <thead><tr><th>BKS</th><th>Tuyến</th><th>Lái 1</th><th>Lái 2</th><th>Phân loại lái 2</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
     wrap.querySelectorAll('input[data-bks]').forEach(inp => {
@@ -797,6 +801,14 @@ footer.note b{color:var(--ink-muted);}
         const b = busByBks[inp.dataset.bks];
         if (!b) return;
         b[inp.dataset.slot] = inp.value.trim();
+        saveBusCrew();
+      });
+    });
+    wrap.querySelectorAll('select[data-bks]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const b = busByBks[sel.dataset.bks];
+        if (!b) return;
+        b[sel.dataset.slot] = sel.value;
         saveBusCrew();
       });
     });
