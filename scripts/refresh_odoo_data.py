@@ -62,13 +62,21 @@ def strip_diacritics(s):
 def normalize_driver_names(days_out, drivers_full):
     # Odoo đôi khi trả tên tài xế không dấu (vd "NGUYEN THANH TUAN") — khớp lại đúng tên có dấu
     # theo danh sách lái xe chính thức để các chỗ khác (đối chiếu nghỉ phép, đếm lái đang chạy...)
-    # nhận diện đúng người, không bị coi là người lạ chỉ vì thiếu dấu
-    canon_by_key = {strip_diacritics(d["ten"]): d["ten"] for d in drivers_full}
+    # nhận diện đúng người, không bị coi là người lạ chỉ vì thiếu dấu.
+    # LUÔN ưu tiên khớp ĐÚNG NGUYÊN VĂN (có dấu đầy đủ) trước khi bỏ dấu so khớp mờ — bỏ hết dấu
+    # (kể cả ơ/ư/ă/â/ê/ô, không chỉ thanh điệu) khiến 2 người khác nhau thật trùng cùng 1 khoá (vd
+    # "Nguyễn Văn Cương" và "Nguyễn Văn Cường" đều thành "nguyen van cuong"); nếu chỉ dùng khớp mờ,
+    # tên ĐÃ ĐÚNG do Odoo trả về có thể bị ghi đè nhầm thành tên người trùng khoá kia. Khớp mờ chỉ
+    # dùng làm phương án cuối cho tên Odoo trả về thật sự không dấu / không khớp nguyên văn ai cả.
+    exact_names = {d["ten"] for d in drivers_full}
+    canon_by_key = {}
+    for d in drivers_full:
+        canon_by_key.setdefault(strip_diacritics(d["ten"]), d["ten"])
     for day in days_out:
         for t in day["trips"]:
             for key in ("odooLai1", "odooLai2"):
                 name = t.get(key)
-                if name:
+                if name and name not in exact_names:
                     t[key] = canon_by_key.get(strip_diacritics(name), name)
 
 
