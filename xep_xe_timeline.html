@@ -1987,9 +1987,11 @@ footer.note b{color:var(--ink-muted);}
       });
   }
   // số lượng chưa xếp trên nhãn tab — tính nhẹ, chạy mỗi lần renderAll() bất kể tab nào đang mở
+  // số trên tab chỉ đếm lái KHẢ DỤNG thật sự (chưa xếp nhưng có thể xếp được) — không tính người
+  // đang nghỉ phép (họ "chưa xếp" nhưng không thể gọi đi làm được nên không tính là khả dụng)
   function updateDriversOffCount(){
-    const notWorking = computeDriverStatuses().filter(d => !d.working).length;
-    document.getElementById('tabDriversOffCount').textContent = `(${notWorking})`;
+    const available = computeDriverStatuses().filter(d => !d.working && !d.leave).length;
+    document.getElementById('tabDriversOffCount').textContent = `(${available})`;
   }
   // xoá 1 lái xe khỏi danh sách chung — lưu ngay qua Sheet key 'drivers' để bên Xin nghỉ (tab Quản lý
   // lái xe) và trang này luôn khớp nhau

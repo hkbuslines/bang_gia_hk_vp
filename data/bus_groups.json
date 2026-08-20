@@ -3,15 +3,15 @@
     {
       "bks": "29K-079.90",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Quốc Thắng + Nguyễn Văn Dương",
+      "cap_lai_nha": "Nguyễn Văn Dương + Lương Văn Trường",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "CD_HNSP",
       "group_label": "Cố Định SP",
       "group_name": "Cố định Hà Nội - Sa Pa",
       "group_color": "#1976d2",
-      "lai1": "Nguyễn Quốc Thắng",
-      "lai2": "Nguyễn Văn Dương"
+      "lai1": "Nguyễn Văn Dương",
+      "lai2": "Lương Văn Trường"
     },
     {
       "bks": "29K-067.82",
@@ -55,7 +55,7 @@
     {
       "bks": "29K-026.00",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Tạ Văn Binh + Lê Ngọc Sơn",
+      "cap_lai_nha": "Tạ Văn Binh",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "CD_HNSP",
@@ -63,7 +63,7 @@
       "group_name": "Cố định Hà Nội - Sa Pa",
       "group_color": "#1976d2",
       "lai1": "Tạ Văn Binh",
-      "lai2": "Lê Ngọc Sơn"
+      "lai2": ""
     },
     {
       "bks": "29H-953.83",
@@ -81,67 +81,67 @@
     {
       "bks": "61H-203.51",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Đỗ Văn Kim + Đặng Văn Hùng",
+      "cap_lai_nha": "Đặng Văn Hùng + Đỗ Văn Kim",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "CD_HL",
       "group_label": "HL",
       "group_name": "Cố định Hạ Long - Sa Pa",
       "group_color": "#7b1fa2",
-      "lai1": "Đỗ Văn Kim",
-      "lai2": "Đặng Văn Hùng"
+      "lai1": "Đặng Văn Hùng",
+      "lai2": "Đỗ Văn Kim"
     },
     {
       "bks": "29H-878.44",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Ninh Văn Tuệ + Hoàng Anh Niên",
+      "cap_lai_nha": "Hoàng Anh Niên + Nguyễn Văn Huyên",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "HD_MB",
       "group_label": "HĐ MB",
       "group_name": "Hợp đồng Miền Bắc (lấp chuyến HN-SP)",
       "group_color": "#607d8b",
-      "lai1": "Ninh Văn Tuệ",
-      "lai2": "Hoàng Anh Niên"
+      "lai1": "Hoàng Anh Niên",
+      "lai2": "Nguyễn Văn Huyên"
     },
     {
       "bks": "29E-133.14",
       "tuyen_chinh": "HỘI AN",
-      "cap_lai_nha": "Vũ Đình Đông + Nguyễn Đình Tú",
+      "cap_lai_nha": "Nguyễn Đình Tú + Vũ Đình Đông",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "CD_MT",
       "group_label": "Cố Định MT",
       "group_name": "Cố định Miền Trung (Huế/Hội An)",
       "group_color": "#e64a19",
-      "lai1": "Vũ Đình Đông",
-      "lai2": "Nguyễn Đình Tú"
+      "lai1": "Nguyễn Đình Tú",
+      "lai2": "Vũ Đình Đông"
     },
     {
       "bks": "29E-133.71",
       "tuyen_chinh": "HỘI AN",
-      "cap_lai_nha": "Lê Thanh Hải + Trương Công Dương",
+      "cap_lai_nha": "Trương Công Dương + Lê Thanh Hải",
       "phan_loai": "CỐ ĐỊNH",
       "limo": false,
       "group_key": "CD_MT",
       "group_label": "Cố Định MT",
       "group_name": "Cố định Miền Trung (Huế/Hội An)",
       "group_color": "#e64a19",
-      "lai1": "Lê Thanh Hải",
-      "lai2": "Trương Công Dương"
+      "lai1": "Trương Công Dương",
+      "lai2": "Lê Thanh Hải"
     },
     {
       "bks": "29E-342.14",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Lê Văn Thu + Trần Xuân Thụ",
+      "cap_lai_nha": "Trần Xuân Thụ + Nguyễn Thanh Tuấn",
       "phan_loai": "BÁN ỔN ĐỊNH",
       "limo": false,
       "group_key": "CD_HNSP",
       "group_label": "Cố Định SP",
       "group_name": "Cố định Hà Nội - Sa Pa",
       "group_color": "#1976d2",
-      "lai1": "Lê Văn Thu",
-      "lai2": "Trần Xuân Thụ"
+      "lai1": "Trần Xuân Thụ",
+      "lai2": "Nguyễn Thanh Tuấn"
     },
     {
       "bks": "29H-952.86",
@@ -172,7 +172,7 @@
     {
       "bks": "29H-993.00",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Hoàng Văn Thế + Trần Khắc Thanh",
+      "cap_lai_nha": "Hoàng Văn Thế + Nguyễn Văn Thêm",
       "phan_loai": "BÁN ỔN ĐỊNH",
       "limo": false,
       "group_key": "CD_NB",
@@ -180,7 +180,7 @@
       "group_name": "Cố định Ninh Bình - Sa Pa",
       "group_color": "#388e3c",
       "lai1": "Hoàng Văn Thế",
-      "lai2": "Trần Khắc Thanh"
+      "lai2": "Nguyễn Văn Thêm"
     },
     {
       "bks": "29K-019.50",
@@ -211,7 +211,7 @@
     {
       "bks": "29H-953.15",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Đặng Thế Huy + Nguyễn Văn Thêm",
+      "cap_lai_nha": "Đặng Thế Huy + Lê Ngọc Sơn",
       "phan_loai": "BÁN ỔN ĐỊNH",
       "limo": false,
       "group_key": "HD_MB",
@@ -219,25 +219,25 @@
       "group_name": "Hợp đồng Miền Bắc (lấp chuyến HN-SP)",
       "group_color": "#607d8b",
       "lai1": "Đặng Thế Huy",
-      "lai2": "Nguyễn Văn Thêm"
+      "lai2": "Lê Ngọc Sơn"
     },
     {
       "bks": "29E-133.31",
       "tuyen_chinh": "HỘI AN",
-      "cap_lai_nha": "Nguyễn Văn Cường + Nguyễn Duy Linh",
+      "cap_lai_nha": "Nguyễn Duy Linh + Nguyễn Văn Cương",
       "phan_loai": "BÁN ỔN ĐỊNH",
       "limo": false,
       "group_key": "CD_MT",
       "group_label": "Cố Định MT",
       "group_name": "Cố định Miền Trung (Huế/Hội An)",
       "group_color": "#e64a19",
-      "lai1": "Nguyễn Văn Cường",
-      "lai2": "Nguyễn Duy Linh"
+      "lai1": "Nguyễn Duy Linh",
+      "lai2": "Nguyễn Văn Cương"
     },
     {
       "bks": "29K-074.57",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Đinh Hà Ly + Nguyễn Văn Mạnh",
+      "cap_lai_nha": "Đinh Hà Ly + Hoàng Anh Niên",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_MB",
@@ -245,7 +245,7 @@
       "group_name": "Hợp đồng Miền Bắc (lấp chuyến HN-SP)",
       "group_color": "#607d8b",
       "lai1": "Đinh Hà Ly",
-      "lai2": "Nguyễn Văn Mạnh"
+      "lai2": "Hoàng Anh Niên"
     },
     {
       "bks": "29E-333.75",
@@ -276,7 +276,7 @@
     {
       "bks": "29E-361.84",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Trần Tiến Trung + Đinh Văn Chuyên",
+      "cap_lai_nha": "Trần Tiến Trung + Nguyễn Ngọc Toàn",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "KLOOK",
@@ -284,51 +284,51 @@
       "group_name": "Xe hợp đồng Klook (KLA slot)",
       "group_color": "#3949ab",
       "lai1": "Trần Tiến Trung",
-      "lai2": "Đinh Văn Chuyên"
+      "lai2": "Nguyễn Ngọc Toàn"
     },
     {
       "bks": "29E-336.70",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Bá Sơn + Phạm Đức Duy",
+      "cap_lai_nha": "Phạm Đức Duy",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "KLOOK",
       "group_label": "Klook",
       "group_name": "Xe hợp đồng Klook (KLA slot)",
       "group_color": "#3949ab",
-      "lai1": "Nguyễn Bá Sơn",
+      "lai1": "",
       "lai2": "Phạm Đức Duy"
     },
     {
       "bks": "29E-328.67",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Bùi Văn Tâm + Bùi Thanh Sang",
+      "cap_lai_nha": "Bùi Thanh Sang",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "KLOOK",
       "group_label": "Klook",
       "group_name": "Xe hợp đồng Klook (KLA slot)",
       "group_color": "#3949ab",
-      "lai1": "Bùi Văn Tâm",
-      "lai2": "Bùi Thanh Sang"
+      "lai1": "Bùi Thanh Sang",
+      "lai2": ""
     },
     {
       "bks": "29K-014.98",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Sĩ Tân + Vương Văn Quân",
+      "cap_lai_nha": "Nguyễn Văn Thạo",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_MB",
       "group_label": "HĐ MB",
       "group_name": "Hợp đồng Miền Bắc (lấp chuyến HN-SP)",
       "group_color": "#607d8b",
-      "lai1": "Nguyễn Sĩ Tân",
-      "lai2": "Vương Văn Quân"
+      "lai1": "Nguyễn Văn Thạo",
+      "lai2": ""
     },
     {
       "bks": "29E-387.18",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Lương Đình Thể + Phạm Ngọc Dương",
+      "cap_lai_nha": "Lương Đình Thể + Thi Văn Nam",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
@@ -336,20 +336,20 @@
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
       "lai1": "Lương Đình Thể",
-      "lai2": "Phạm Ngọc Dương"
+      "lai2": "Thi Văn Nam"
     },
     {
       "bks": "29K-012.26",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Mạnh Hoàng + Bùi Quang Tuyến",
+      "cap_lai_nha": "Ninh Văn Tuệ",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "KLOOK",
       "group_label": "Klook",
       "group_name": "Xe hợp đồng Klook (KLA slot)",
       "group_color": "#3949ab",
-      "lai1": "Nguyễn Mạnh Hoàng",
-      "lai2": "Bùi Quang Tuyến"
+      "lai1": "Ninh Văn Tuệ",
+      "lai2": ""
     },
     {
       "bks": "29E-192.51",
@@ -380,15 +380,15 @@
     {
       "bks": "29E-192.54",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Huy Hoàng",
+      "cap_lai_nha": "Đỗ Đình Mừng + Trần Văn Long",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
       "group_label": "HĐ NVS",
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
-      "lai1": "Nguyễn Huy Hoàng",
-      "lai2": null
+      "lai1": "Đỗ Đình Mừng",
+      "lai2": "Trần Văn Long"
     },
     {
       "bks": "29E-192.71",
@@ -406,28 +406,28 @@
     {
       "bks": "29E-106.07",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Phạm Văn Hưng",
+      "cap_lai_nha": "Đinh Văn Chuyên",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
       "group_label": "HĐ NVS",
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
-      "lai1": "Phạm Văn Hưng",
-      "lai2": null
+      "lai1": "Đinh Văn Chuyên",
+      "lai2": ""
     },
     {
       "bks": "29E-326.06",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyẽn Minh Tuấn + Lê Văn Huê",
+      "cap_lai_nha": "Nguyễn Minh Tuấn + Lê Ngọc Lân",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
       "group_label": "HĐ NVS",
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
-      "lai1": "Nguyẽn Minh Tuấn",
-      "lai2": "Lê Văn Huê"
+      "lai1": "Nguyễn Minh Tuấn",
+      "lai2": "Lê Ngọc Lân"
     },
     {
       "bks": "29E-489.31",
@@ -440,7 +440,7 @@
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
       "lai1": "Đinh Văn Giang",
-      "lai2": null
+      "lai2": ""
     },
     {
       "bks": "29E-109.65",
@@ -458,7 +458,7 @@
     {
       "bks": "29E-360.82",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Phạm Tiến Dũng",
+      "cap_lai_nha": "Phạm Tiến Dũng + Nguyễn Đình Thành",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
@@ -466,7 +466,7 @@
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
       "lai1": "Phạm Tiến Dũng",
-      "lai2": null
+      "lai2": "Nguyễn Đình Thành"
     },
     {
       "bks": "29E-342.96",
@@ -484,15 +484,15 @@
     {
       "bks": "29E-151.10",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Đình Văn + Nguyễn Văn Thạo",
+      "cap_lai_nha": "Bùi Quang Tuyến + Vương Văn Quân",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
       "group_label": "HĐ NVS",
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
-      "lai1": "Nguyễn Đình Văn",
-      "lai2": "Nguyễn Văn Thạo"
+      "lai1": "Bùi Quang Tuyến",
+      "lai2": "Vương Văn Quân"
     },
     {
       "bks": "29E-361.26",
@@ -510,7 +510,7 @@
     {
       "bks": "29E-192.60",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Trần Văn Sơn + Nguyễn Chí Công",
+      "cap_lai_nha": "Trần Văn Sơn",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
@@ -518,7 +518,7 @@
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
       "lai1": "Trần Văn Sơn",
-      "lai2": "Nguyễn Chí Công"
+      "lai2": ""
     },
     {
       "bks": "29E-340.17",
@@ -544,7 +544,7 @@
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
       "lai1": "Phan Văn Tuân",
-      "lai2": null
+      "lai2": ""
     },
     {
       "bks": "29E-360.50",
@@ -570,7 +570,7 @@
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
       "lai1": "Phạm Đình Hải",
-      "lai2": null
+      "lai2": ""
     },
     {
       "bks": "29E-446.42",
@@ -583,7 +583,7 @@
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
       "lai1": "Đỗ Văn Quỳnh",
-      "lai2": null
+      "lai2": ""
     },
     {
       "bks": "29E-593.80",
@@ -601,14 +601,14 @@
     {
       "bks": "29E-582.70",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Lương Văn Trường + Nguyễn Văn Cường",
+      "cap_lai_nha": "Nguyễn Văn Sơn + Nguyễn Văn Cường",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NT",
       "group_label": "HĐ NT",
       "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
       "group_color": "#00897b",
-      "lai1": "Lương Văn Trường",
+      "lai1": "Nguyễn Văn Sơn",
       "lai2": "Nguyễn Văn Cường"
     },
     {
@@ -627,7 +627,7 @@
     {
       "bks": "50E-702.24",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Trần Đình Chiến + Đỗ Đình Mừng",
+      "cap_lai_nha": "Trần Đình Chiến + Phạm Ngọc Dương",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NT",
@@ -635,7 +635,7 @@
       "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
       "group_color": "#00897b",
       "lai1": "Trần Đình Chiến",
-      "lai2": "Đỗ Đình Mừng"
+      "lai2": "Phạm Ngọc Dương"
     },
     {
       "bks": "29E-610.46",
@@ -653,28 +653,28 @@
     {
       "bks": "29E-597.40",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Thanh Tuấn + Bùi Ngọc Hưng",
+      "cap_lai_nha": "",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NT",
       "group_label": "HĐ NT",
       "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
       "group_color": "#00897b",
-      "lai1": "Nguyễn Thanh Tuấn",
-      "lai2": "Bùi Ngọc Hưng"
+      "lai1": "",
+      "lai2": ""
     },
     {
       "bks": "29E-482.80",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Hoàng Mạnh Hùng",
+      "cap_lai_nha": "",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": true,
       "group_key": "LIMO",
       "group_label": "Limo",
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
-      "lai1": "Hoàng Mạnh Hùng",
-      "lai2": null
+      "lai1": "",
+      "lai2": ""
     },
     {
       "bks": "29E-528.94",
@@ -687,12 +687,12 @@
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
       "lai1": "Nguyễn Ngọc Cửu",
-      "lai2": null
+      "lai2": ""
     },
     {
       "bks": "29E-133.26",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Văn Ban + Thi Văn Nam",
+      "cap_lai_nha": "Nguyễn Văn Ban",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NVS",
@@ -700,7 +700,7 @@
       "group_name": "Hợp đồng NVS (Hội An-Sa Pa, cuốn chiếu)",
       "group_color": "#7e57c2",
       "lai1": "Nguyễn Văn Ban",
-      "lai2": "Thi Văn Nam"
+      "lai2": ""
     },
     {
       "bks": "29E-809.11",
@@ -731,7 +731,7 @@
     {
       "bks": "29E-809.53",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Phạm Đình Phơn + Vũ Văn Cảnh",
+      "cap_lai_nha": "Phạm Đình Phơn + Nguyễn Mạnh Hùng",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NT",
@@ -739,20 +739,20 @@
       "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
       "group_color": "#00897b",
       "lai1": "Phạm Đình Phơn",
-      "lai2": "Vũ Văn Cảnh"
+      "lai2": "Nguyễn Mạnh Hùng"
     },
     {
       "bks": "29E-805.37",
       "tuyen_chinh": "NHA TRANG",
-      "cap_lai_nha": "Nguyễn Văn Sơn",
+      "cap_lai_nha": "Phạm Văn Hưng + Lê Văn Huê",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "HD_NT",
       "group_label": "HĐ NT",
       "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
       "group_color": "#00897b",
-      "lai1": "Nguyễn Văn Sơn",
-      "lai2": null
+      "lai1": "Phạm Văn Hưng",
+      "lai2": "Lê Văn Huê"
     },
     {
       "bks": "29E-807.30",
@@ -770,15 +770,15 @@
     {
       "bks": "29E-483.14",
       "tuyen_chinh": "SAPA",
-      "cap_lai_nha": "Nguyễn Sĩ Tân",
+      "cap_lai_nha": "",
       "phan_loai": "LUÂN CHUYỂN",
       "limo": true,
       "group_key": "LIMO",
       "group_label": "Limo",
       "group_name": "HN-Sa Pa Limousine",
       "group_color": "#f57c00",
-      "lai1": "Nguyễn Sĩ Tân",
-      "lai2": null
+      "lai1": "",
+      "lai2": ""
     }
   ],
   "group_order": [
