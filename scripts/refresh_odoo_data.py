@@ -11,8 +11,9 @@ import os, re, json, datetime, xmlrpc.client, sys, unicodedata
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(HERE)  # script nằm ở scripts/, repo root là thư mục cha
 
-WINDOW_DAYS = 14       # tổng số ngày hiển thị, tính từ hôm nay
-LOOKBACK_DAYS = 28      # phạm vi quét quá khứ để tìm ngày tham chiếu cùng thứ
+WINDOW_DAYS = 14       # tổng số ngày hiển thị về tương lai, tính từ hôm nay
+HISTORY_DAYS = 14      # số ngày quá khứ vẫn giữ lại lịch thật trong trang (không bị mất khi qua ngày)
+LOOKBACK_DAYS = 28      # phạm vi quét quá khứ để tìm ngày tham chiếu cùng thứ (phải >= HISTORY_DAYS)
 MIN_REF_TRIPS = 50      # 1 ngày quá khứ được coi là "đủ dữ liệu" để làm mẫu nếu có >= số chuyến này
 
 WEEKDAY_VN = {0: "T2", 1: "T3", 2: "T4", 3: "T5", 4: "T6", 5: "T7", 6: "CN"}
@@ -106,6 +107,7 @@ def build_trip(t):
 def main():
     call = odoo_call()
     today = vn_today()
+    window_start = today - datetime.timedelta(days=HISTORY_DAYS)
     window_end = today + datetime.timedelta(days=WINDOW_DAYS - 1)
     lookback_start = today - datetime.timedelta(days=LOOKBACK_DAYS)
 
@@ -119,12 +121,15 @@ def main():
         by_date.setdefault(r["date"], []).append(r)
 
     days_out = []
-    d = today
+    d = window_start
     while d <= window_end:
         ds = d.isoformat()
         wd = WEEKDAY_VN[d.weekday()]
         raw = by_date.get(ds, [])
-        if raw:
+        # ngày đã qua (d < today) chỉ giữ đúng lịch thật đã chạy, không cần "dự kiến" cho quá khứ —
+        # giữ lại HISTORY_DAYS ngày gần nhất để không mất dữ liệu mỗi khi trang tự build lại theo
+        # ngày mới; ngày tương lai có dữ liệu Odoo thật (raw) cũng xử lý y hệt
+        if d < today or raw:
             trips = sorted((build_trip(t) for t in raw), key=lambda x: x["dep"])
             days_out.append({"date": ds, "weekday": wd, "dd": f"{d.day:02d}/{d.month:02d}",
                               "trips": trips, "real": True})

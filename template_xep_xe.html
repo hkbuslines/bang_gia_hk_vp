@@ -871,7 +871,22 @@ footer.note b{color:var(--ink-muted);}
     await saveGaraEntries(`Đã gỡ lịch bảo dưỡng ${entry.bks} — đã lưu lên GitHub.`);
   }
 
-  let currentDate = DAYS[0].date;
+  // DAYS giờ có thể bắt đầu từ vài ngày trong quá khứ (giữ lại lịch sử) — nên KHÔNG mặc định mở
+  // DAYS[0] (đó là ngày cũ nhất) mà phải tìm đúng "hôm nay" trong danh sách; nếu vì lý do gì đó
+  // không thấy đúng hôm nay (vd trang cache lâu ngày) thì lấy ngày gần hôm nay nhất còn có trong DAYS
+  function todayISO(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function initialDate(){
+    const t = todayISO();
+    const exact = DAYS.find(d => d.date === t);
+    if (exact) return exact.date;
+    const upcoming = DAYS.find(d => d.date >= t);
+    if (upcoming) return upcoming.date;
+    return DAYS[DAYS.length - 1].date;
+  }
+  let currentDate = initialDate();
   let activeTab = 'slots';
 
   function overlaps(a, b){ return a.dep < effArr(b) && b.dep < effArr(a); }
