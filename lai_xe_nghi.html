@@ -96,6 +96,8 @@ tr:last-child td{border-bottom:0;}
 .empty{color:var(--ink-faint); font-size:13px; padding:16px 4px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
 .rowbtn:hover{background:var(--surface-2); color:var(--ink);}
+.backbtn{font-size:11.5px; font-weight:700; padding:4px 9px; border-radius:999px; background:var(--ok-fill); color:var(--ok); white-space:nowrap;}
+.backbtn:hover{background:var(--ok); color:#fff;}
 tr.warnrow{background:var(--danger-fill);}
 
 ::-webkit-scrollbar{height:10px; width:10px;}
@@ -323,6 +325,9 @@ tr.warnrow{background:var(--danger-fill);}
   // Google Sheet (qua Apps Script Web App) giữ dữ liệu dùng chung — không trang nào cần token
   const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
   const SHEET_KEY = 'leave';
+  // nghỉ dài (loại D) chưa biết ngày về thì denngay được gán ngày rất xa này — coi như đang nghỉ vô
+  // thời hạn cho tới khi bấm "✓ Đã đi làm lại" điền đúng ngày về thật
+  const OPEN_ENDED_DATE = '9999-12-31';
   let entries = [];
   let counter = 1;
   let kipLaiTheoNgay = {}; // {date: {kip, real, refDate}} — số nốt giờ thật lấy từ bên xếp xe/Odoo, tự cập nhật mỗi giờ
@@ -647,6 +652,7 @@ tr.warnrow{background:var(--danger-fill);}
   }
 
   function fmtRange(e){
+    if (e.denngay === OPEN_ENDED_DATE) return `${e.tungay} → chưa xác định`;
     return e.tungay === e.denngay ? e.tungay : `${e.tungay} → ${e.denngay}`;
   }
 
@@ -943,12 +949,23 @@ tr.warnrow{background:var(--danger-fill);}
           <td class="tabular">${fmtRange(e)}</td>
           <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
           <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
+          <td>${e.denngay === OPEN_ENDED_DATE ? `<button type="button" class="rowbtn backbtn" data-back="${e.id}" title="Điền ngày hôm nay làm ngày đi làm lại">✓ Đã đi làm lại</button>` : ''}</td>
           <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
         </tr>`).join('');
       wrap.innerHTML = `<table>
-        <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th><th></th></tr></thead>
+        <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th><th></th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+      wrap.querySelectorAll('[data-back]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const entry = entries.find(e => e.id === Number(btn.dataset.back));
+          if (!entry) return;
+          entry.denngay = todayISO();
+          render();
+          renderAvailability();
+          renderWeeklyTable();
+        });
+      });
       wrap.querySelectorAll('[data-del]').forEach(btn => {
         btn.addEventListener('click', () => {
           const entry = entries.find(e => e.id === Number(btn.dataset.del));
@@ -1001,15 +1018,19 @@ tr.warnrow{background:var(--danger-fill);}
     </table>`;
   }
 
-  // KB (đột xuất KHÔNG báo trước) và D (nghỉ dài ngày) không cần khai "từ ngày/đến ngày" trước —
-  // chỉ cần đúng ngày nộp đơn (chính là ngày nghỉ luôn); P/DX vẫn cần đủ khoảng ngày như trước
-  const NO_RANGE_TYPES = ['KB', 'D'];
+  // KB (đột xuất KHÔNG báo trước) nghỉ đúng 1 ngày — không cần khai "từ ngày/đến ngày", chỉ cần
+  // ngày nộp đơn (chính là ngày nghỉ luôn). D (nghỉ dài ngày) thì có ngày bắt đầu rõ ràng nhưng
+  // thường CHƯA biết ngày về — để trống "đến ngày", tự coi là đang nghỉ vô thời hạn (OPEN_ENDED_DATE,
+  // một ngày rất xa trong tương lai để mọi so sánh tungay<=d<=denngay vẫn đúng) cho tới khi ai đó bấm
+  // "✓ Đã đi làm lại" trên dòng đó điền đúng ngày về thực tế. P/DX vẫn cần đủ khoảng ngày như trước.
   function toggleDateRangeFields(){
-    const noRange = NO_RANGE_TYPES.includes(document.getElementById('f-loai').value);
-    document.getElementById('fieldTungay').style.display = noRange ? 'none' : '';
-    document.getElementById('fieldDenngay').style.display = noRange ? 'none' : '';
-    document.getElementById('f-tungay').required = !noRange;
-    document.getElementById('f-denngay').required = !noRange;
+    const loai = document.getElementById('f-loai').value;
+    const hideTungay = loai === 'KB';
+    const hideDenngay = loai === 'KB' || loai === 'D';
+    document.getElementById('fieldTungay').style.display = hideTungay ? 'none' : '';
+    document.getElementById('fieldDenngay').style.display = hideDenngay ? 'none' : '';
+    document.getElementById('f-tungay').required = !hideTungay;
+    document.getElementById('f-denngay').required = !hideDenngay;
   }
   document.getElementById('f-loai').addEventListener('change', toggleDateRangeFields);
   toggleDateRangeFields();
@@ -1017,20 +1038,23 @@ tr.warnrow{background:var(--danger-fill);}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.getElementById('f-loai').value;
-    const noRange = NO_RANGE_TYPES.includes(loai);
+    const isKb = loai === 'KB';
+    const isD = loai === 'D';
     const ngaynop = document.getElementById('f-ngaynop').value;
     const entry = {
       id: counter++,
       ten: tenInput.value.trim(),
       loai,
-      tungay: noRange ? ngaynop : document.getElementById('f-tungay').value,
-      denngay: noRange ? ngaynop : document.getElementById('f-denngay').value,
+      tungay: isKb ? ngaynop : document.getElementById('f-tungay').value,
+      denngay: isKb ? ngaynop : (isD ? OPEN_ENDED_DATE : document.getElementById('f-denngay').value),
       ngaynop,
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
     if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
-    if (noRange){
+    if (isKb){
       if (!entry.ngaynop){ alert('Chọn "Ngày nộp đơn".'); return; }
+    } else if (isD){
+      if (!entry.tungay){ alert('Chọn "Từ ngày" (ngày bắt đầu nghỉ dài).'); return; }
     } else if (!entry.tungay || !entry.denngay || entry.denngay < entry.tungay){
       alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
     }

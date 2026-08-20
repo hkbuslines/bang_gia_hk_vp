@@ -613,9 +613,14 @@ footer.note b{color:var(--ink-muted);}
 
   // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua Google Sheet
   let driverLeaves = [];
+  const OPEN_ENDED_DATE = '9999-12-31';
   function driverLeaveFor(name, dateStr){
     if (!name) return null;
     return driverLeaves.find(e => e.ten === name && e.tungay <= dateStr && dateStr <= e.denngay) || null;
+  }
+  function fmtLeaveRange(leave){
+    if (leave.denngay === OPEN_ENDED_DATE) return `${leave.tungay} → chưa xác định`;
+    return leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`;
   }
   async function loadDriverLeaves(){
     try{
@@ -737,7 +742,7 @@ footer.note b{color:var(--ink-muted);}
     const relief = !b.lai2 ? 'Xe này không có Lái 2 dự phòng.'
       : leave2 ? `Lái 2 (${b.lai2}) cũng đang nghỉ.`
       : `Lái 2 (${b.lai2}) đang rảnh — có thể thay thế.`;
-    const range = leave1.tungay === leave1.denngay ? leave1.tungay : `${leave1.tungay} → ${leave1.denngay}`;
+    const range = fmtLeaveRange(leave1);
     return `⚠ Lái 1 (${b.lai1}) nghỉ ${range} (${leave1.loai}${leave1.ghichu ? ': ' + leave1.ghichu : ''}). ${relief}`;
   }
 
@@ -1052,7 +1057,7 @@ footer.note b{color:var(--ink-muted);}
         opt.innerHTML = `<span>${name}</span>` +
           (isDB ? ' <span class="note">(định biên)</span>' : '') +
           (leave ? ' <span style="color:var(--danger); font-weight:700;">🌴 đang nghỉ</span>' : '');
-        if (leave) opt.title = `Nghỉ ${leave.tungay === leave.denngay ? leave.tungay : leave.tungay + ' → ' + leave.denngay} (${leave.loai}${leave.ghichu ? ': ' + leave.ghichu : ''})`;
+        if (leave) opt.title = `Nghỉ ${fmtLeaveRange(leave)} (${leave.loai}${leave.ghichu ? ': ' + leave.ghichu : ''})`;
         opt.addEventListener('mousedown', e => {
           e.preventDefault();
           input.value = name;
@@ -1949,7 +1954,7 @@ footer.note b{color:var(--ink-muted);}
       let statusHtml;
       if (leave){
         const reasonText = LOAI_LABEL[leave.loai] || leave.loai;
-        const range = leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`;
+        const range = fmtLeaveRange(leave);
         const ghichu = leave.ghichu ? ' — ' + leave.ghichu : '';
         statusHtml = `<span class="doreason leave">${reasonText}</span><div class="note" style="margin-top:2px;">${range}${ghichu}</div>`;
       } else if (working){
