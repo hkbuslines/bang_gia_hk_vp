@@ -1,5 +1,11 @@
 <meta charset="utf-8">
 <title>Bảng Xếp Xe</title>
+<script>
+  // khoá trang bằng mật khẩu đơn giản — chỉ chặn người lạ vô tình vào nhầm link, không phải bảo
+  // mật thật sự (đây là trang tĩnh không có server riêng, ai đọc được code đều thấy mật khẩu).
+  // Thêm class TRƯỚC khi phần còn lại của trang được parse để tránh hiện chớp nội dung ra ngoài.
+  if (localStorage.getItem('pwOkXepXe') !== '1') document.documentElement.classList.add('pw-locked');
+</script>
 <style>
 :root{
   --page:#EEF1EC; --surface:#FFFFFF; --surface-2:#F5F7F3;
@@ -263,7 +269,42 @@ footer.note b{color:var(--ink-muted);}
   #printArea, #printArea *{visibility:visible;}
   #printArea{display:block; position:absolute; left:0; top:0; width:100%;}
 }
+html.pw-locked .wrap{display:none !important;}
+#pwGate{display:none; position:fixed; inset:0; z-index:99999; background:var(--page); align-items:center; justify-content:center; padding:20px;}
+html.pw-locked #pwGate{display:flex;}
+#pwGate .card{width:100%; max-width:340px; padding:26px 24px; text-align:center;}
+#pwGate h2{font-size:16px; margin-bottom:6px;}
+#pwGate .sub{margin-bottom:16px;}
+#pwGate input{width:100%; box-sizing:border-box; padding:9px 12px; border:0.5px solid var(--line-strong); border-radius:8px; font-size:14px; font-family:inherit; margin-bottom:10px;}
+#pwGate button{width:100%; padding:9px 12px; border:0; border-radius:8px; background:var(--ink); color:#fff; font-weight:700; font-size:14px; cursor:pointer;}
+#pwGate .err{color:var(--danger); font-size:12.5px; margin-top:8px; min-height:16px;}
 </style>
+
+<div id="pwGate">
+  <div class="card">
+    <h2>🔒 Bảng xếp xe</h2>
+    <div class="sub">Nhập mật khẩu để vào trang</div>
+    <form id="pwForm">
+      <input type="password" id="pwInput" placeholder="Mật khẩu" autocomplete="off" autofocus>
+      <button type="submit">Vào trang</button>
+      <div class="err" id="pwErr"></div>
+    </form>
+  </div>
+</div>
+<script>
+  document.getElementById('pwForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    const val = document.getElementById('pwInput').value;
+    if (val === 'xepxehk'){
+      localStorage.setItem('pwOkXepXe', '1');
+      document.documentElement.classList.remove('pw-locked');
+    } else {
+      document.getElementById('pwErr').textContent = 'Sai mật khẩu, thử lại.';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwInput').focus();
+    }
+  });
+</script>
 
 <div class="wrap">
   <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap;">
