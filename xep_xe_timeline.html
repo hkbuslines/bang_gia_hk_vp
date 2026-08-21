@@ -254,6 +254,7 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
+.block.carryover{cursor:default; opacity:0.8; background-image:repeating-linear-gradient(45deg, rgba(255,255,255,0.4) 0 6px, transparent 6px 13px); border:1px dashed rgba(255,255,255,0.65);}
 
 footer.note{margin-top:16px; font-size:12px; color:var(--ink-faint); max-width:78ch; line-height:1.6;}
 footer.note b{color:var(--ink-muted);}
@@ -1853,17 +1854,23 @@ html.pw-locked #pwGate{display:flex;}
     return el;
   }
 
+  // xe chạy chuyến đêm hôm trước, chưa về kịp trước 0h — thay vì vẽ y hệt 1 khối chuyến bình
+  // thường (dễ nhầm là có chuyến mới xuất bến ngay 0h hôm nay), kẻ sọc chéo + không ghi giờ xuất
+  // bến cũ (giờ đó là của hôm qua, ghi lại dễ hiểu lầm) — chỉ ghi tuyến + giờ về để biết khi nào xe rảnh
   function carryoverBlockEl(trip, endMin){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
-    el.className = 'block';
-    el.style.background = `var(--rt${idx})`;
+    el.className = 'block carryover';
+    el.style.backgroundColor = `var(--rt${idx})`; // dùng backgroundColor (longhand), không phải
+    // background (shorthand) — shorthand sẽ tự xoá mất background-image (sọc chéo) khai báo trong CSS
     el.style.left = '0px';
     el.style.width = Math.max(8, Math.min(AXIS_END, endMin)) * PX_PER_MIN + 'px';
-    el.style.cursor = 'default';
+    const hh = String(Math.floor(endMin / 60) % 24).padStart(2, '0');
+    const mm = String(endMin % 60).padStart(2, '0');
     const label = document.createElement('span');
     label.className = 'chiptext';
-    label.textContent = `${trip.depStr} · ${trip.route}`;
+    label.textContent = `⇢ ${trip.route} — về ${hh}:${mm}`;
+    el.title = `Xe đang chạy nốt ${trip.depStr} (${trip.route}) từ đêm qua, về tới ${hh}:${mm} hôm nay mới rảnh — không phải chuyến mới, không cần ghi giờ xuất bến.`;
     el.appendChild(label);
     return el;
   }
