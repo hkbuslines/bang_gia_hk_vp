@@ -129,6 +129,12 @@ button.ghost:hover{background:var(--page);}
 .slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
+.addtriprow{padding:6px 12px;}
+.addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
+.addtriprow .addtrip-btn:hover{background:var(--surface-2); color:var(--ink);}
+.addtriprow.open{display:flex; align-items:center; gap:8px;}
+.addtriprow .addtrip-time{border:0.5px solid var(--line-strong); border-radius:6px; padding:4px 8px; font-size:12.5px; font-family:inherit; background:var(--surface);}
+.addtriprow .addtrip-ok{background:var(--ok-fill); color:var(--ok); border-radius:6px; padding:5px 10px; font-size:12px; font-weight:700;}
 .slotrow .time{flex:0 0 56px; font-weight:700;}
 .slotrow .route{flex:0 0 190px; font-size:12.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
 .slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center; gap:6px;}
@@ -528,11 +534,27 @@ footer.note b{color:var(--ink-muted);}
       const drivers = {};
       Object.entries(st.drivers).forEach(([id, d]) => { if (d && (d.lai1 || d.lai2)) drivers[id] = d; });
       const broken = Array.from(st.broken);
-      if (Object.keys(assignments).length || Object.keys(drivers).length || broken.length){
-        days[dateStr] = { assignments, drivers, broken };
+      const manualTrips = Object.values(ensureTripMap(dateStr)).filter(t => t.manual)
+        .map(t => ({ id: t.id, route: t.route, dep: t.dep, arr: t.arr, depStr: t.depStr, arrStr: t.arrStr, from: t.from, to: t.to }));
+      if (Object.keys(assignments).length || Object.keys(drivers).length || broken.length || manualTrips.length){
+        days[dateStr] = { assignments, drivers, broken, manualTrips };
       }
     });
     return days;
+  }
+  // chuyến thêm tay đã lưu — phải bơm lại vào day.trips/tripByIdByDay TRƯỚC khi applyXepXeOverride
+  // chạy (nó cần thấy chuyến này trong ensureTripMap để gán xe/lái đã lưu đúng vào đúng chuyến)
+  function injectManualTrips(dateStr, manualTrips){
+    if (!manualTrips || !manualTrips.length) return;
+    const day = DAYS.find(d => d.date === dateStr);
+    if (!day) return;
+    const tripMap = ensureTripMap(dateStr);
+    manualTrips.forEach(mt => {
+      if (tripMap[mt.id]) return;
+      const t = Object.assign({}, mt, { assignedBks: null, odooLai1: null, odooLai2: null, manual: true });
+      day.trips.push(t);
+      tripMap[mt.id] = t;
+    });
   }
   // ưu tiên xe/lái đã lưu cho từng chuyến; chuyến nào chưa từng được lưu (vd chuyến mới từ Odoo)
   // thì vẫn rơi về mặc định (assignedBks/định biên) như bình thường
@@ -579,7 +601,10 @@ footer.note b{color:var(--ink-muted);}
       const data = await res.json();
       const days = data.days || {};
       xepxeSavedAt = data.updated_at || null;
-      Object.keys(days).forEach(dateStr => applyXepXeOverride(dateStr, days[dateStr]));
+      Object.keys(days).forEach(dateStr => {
+        injectManualTrips(dateStr, days[dateStr].manualTrips);
+        applyXepXeOverride(dateStr, days[dateStr]);
+      });
       updateXepXeStatus();
       renderAll();
     } catch(err){
@@ -1654,6 +1679,7 @@ footer.note b{color:var(--ink-muted);}
 
         group.appendChild(row);
       });
+      group.appendChild(addTripRowEl(day.date, route));
       wrap.appendChild(group);
     });
 
@@ -1667,6 +1693,67 @@ footer.note b{color:var(--ink-muted);}
     };
   }
 
+  // ---------------- thêm chuyến (nốt giờ) thủ công vào 1 tuyến — cho chuyến tăng cường không có
+  // sẵn từ Odoo; chỉ cập nhật state cục bộ như xoá/gán xe, phải bấm "Lưu & đồng bộ" mới lên chung
+  const addTripFormOpen = new Set();
+  function hhmmToMin(s){
+    const m = /^(\d{1,2}):(\d{2})$/.exec((s || '').trim());
+    if (!m) return null;
+    const h = Number(m[1]), mi = Number(m[2]);
+    if (h > 23 || mi > 59) return null;
+    return h * 60 + mi;
+  }
+  function newManualTripId(){ return -(Date.now() * 1000 + Math.floor(Math.random() * 1000)); }
+  function addManualTrip(dateStr, route, depStr, arrStr, dep, arr){
+    const day = DAYS.find(d => d.date === dateStr);
+    if (!day) return;
+    const baseRoute = route.replace(/\s*\(Limousine\)\s*$/, '').trim();
+    const parts = baseRoute.split(' - ');
+    const from = (parts[0] || route).trim();
+    const to = (parts[1] || route).trim();
+    const arrAdj = arr < dep ? arr + 1440 : arr; // qua đêm — đến trước giờ đi thì cộng thêm 1 ngày
+    const id = newManualTripId();
+    const t = { id, route, dep, arr: arrAdj, depStr, arrStr, from, to, assignedBks: null, odooLai1: null, odooLai2: null, manual: true };
+    day.trips.push(t);
+    ensureTripMap(dateStr)[id] = t;
+    ensureState(dateStr).unassigned.add(id);
+    renderAll();
+  }
+  function addTripRowEl(dateStr, route){
+    const wrap = document.createElement('div');
+    wrap.className = 'addtriprow';
+    if (!addTripFormOpen.has(route)){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'addtrip-btn';
+      btn.textContent = '+ Thêm chuyến';
+      btn.addEventListener('click', () => { addTripFormOpen.add(route); renderAll(); });
+      wrap.appendChild(btn);
+      return wrap;
+    }
+    wrap.classList.add('open');
+    const depInput = document.createElement('input');
+    depInput.type = 'time'; depInput.className = 'addtrip-time'; depInput.title = 'Giờ đi';
+    const arrInput = document.createElement('input');
+    arrInput.type = 'time'; arrInput.className = 'addtrip-time'; arrInput.title = 'Giờ đến';
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button'; okBtn.className = 'addtrip-ok'; okBtn.textContent = '✓ Thêm';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button'; cancelBtn.className = 'rowbtn'; cancelBtn.textContent = 'Huỷ';
+    okBtn.addEventListener('click', () => {
+      const dep = hhmmToMin(depInput.value);
+      const arr = hhmmToMin(arrInput.value);
+      if (dep == null || arr == null){ alert('Nhập đủ giờ đi và giờ đến.'); return; }
+      addTripFormOpen.delete(route);
+      addManualTrip(dateStr, route, depInput.value, arrInput.value, dep, arr);
+    });
+    cancelBtn.addEventListener('click', () => { addTripFormOpen.delete(route); renderAll(); });
+    wrap.appendChild(depInput);
+    wrap.appendChild(arrInput);
+    wrap.appendChild(okBtn);
+    wrap.appendChild(cancelBtn);
+    return wrap;
+  }
   function deleteTrip(date, id){
     const st = ensureState(date);
     st.unassigned.delete(id);
