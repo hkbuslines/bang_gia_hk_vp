@@ -449,6 +449,7 @@ html.pw-locked #pwGate{display:flex;}
 <script id="bus-data" type="application/json">__BUSES_JSON__</script>
 <script id="day-data" type="application/json">__DAYS_JSON__</script>
 <script id="driver-data" type="application/json">__DRIVERS_JSON__</script>
+<script id="generated-at" type="application/json">__GENERATED_AT_JS__</script>
 <script>
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
@@ -456,6 +457,10 @@ html.pw-locked #pwGate{display:flex;}
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
   // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
   let DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
+  // thời điểm trang này được build lại từ Odoo thật (do bấm "Làm mới từ Odoo") — dùng để so sánh
+  // với thời điểm lưu tay gần nhất (xepxeSavedAt): lưu tay SAU lần build này thì ưu tiên bản đã lưu,
+  // đến khi bấm "Làm mới từ Odoo" lần nữa (sinh ra generated-at mới hơn) thì Odoo lại được ưu tiên
+  const ODOO_GENERATED_AT = JSON.parse(document.getElementById('generated-at').textContent);
   const ROUTE_ORDER = __ROUTE_ORDER_JS__;
   const FALLBACK_IDX = __FALLBACK_IDX__;
   const AXIS_END = 1440;
@@ -613,20 +618,28 @@ html.pw-locked #pwGate{display:flex;}
       if (!assignments[bks]) return;
       (ids || []).forEach(id => { savedTripBks[id] = bks; });
     });
+    // nếu lần lưu tay gần nhất (xepxeSavedAt) MỚI HƠN lần build Odoo hiện tại (ODOO_GENERATED_AT) —
+    // tức là mình đã sửa tay SAU khi trang đã lấy đúng dữ liệu Odoo này rồi — thì bản đã lưu được ưu
+    // tiên tuyệt đối, không bị Odoo (cũ hơn) đè lại nữa. Bấm "Làm mới từ Odoo" sẽ sinh ra bản build
+    // mới hơn mọi lần lưu trước đó, nên Odoo lại được ưu tiên như cũ cho tới lần lưu tay tiếp theo.
+    const odooIsStale = !!(xepxeSavedAt && ODOO_GENERATED_AT && xepxeSavedAt > ODOO_GENERATED_AT);
     Object.keys(trips).forEach(idStr => {
       const id = Number(idStr);
       const t = trips[id];
-      // ưu tiên xe Odoo đã thật sự gán cho đúng chuyến này; chỉ dùng lại xe mình tự xếp tay khi
-      // Odoo chưa có xe (đang chờ điều phối thật) — làm mới từ Odoo sẽ không xoá phần đã xếp cho
-      // các chuyến Odoo còn bỏ trống, nhưng sẽ cập nhật đúng xe thật ngay khi Odoo đã có
-      const bks = (t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
-        : (Object.prototype.hasOwnProperty.call(savedTripBks, id) ? savedTripBks[id] : null);
+      const hasSavedBks = Object.prototype.hasOwnProperty.call(savedTripBks, id);
+      // bình thường: ưu tiên xe Odoo đã thật sự gán cho đúng chuyến này; chỉ dùng lại xe mình tự xếp
+      // tay khi Odoo chưa có xe. Nhưng nếu bản lưu tay mới hơn lần build Odoo hiện tại (odooIsStale)
+      // thì xe đã lưu tay thắng luôn, kể cả khi Odoo (cũ hơn) đang có xe khác cho chuyến đó.
+      const bks = odooIsStale && hasSavedBks ? savedTripBks[id]
+        : (t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
+        : (hasSavedBks ? savedTripBks[id] : null);
       if (bks && assignments[bks]){
         assignments[bks].push(id);
         // cùng ưu tiên như xe: chuyến này đúng là xe Odoo đã gán thật (t.assignedBks === bks) và
         // Odoo đã có lái thật (t.odooLai1) thì luôn lấy lái thật mới nhất, không dùng lái đã lưu cũ
         // (có thể sai/thiếu lái 2 từ lần lưu trước) — chỉ dùng lái đã lưu khi Odoo chưa có lái thật
-        const useOdooDrivers = t.assignedBks === bks && t.odooLai1;
+        // hoặc khi odooIsStale (bản lưu tay mới hơn, Odoo hiện tại đã cũ)
+        const useOdooDrivers = !odooIsStale && t.assignedBks === bks && t.odooLai1;
         drivers[id] = useOdooDrivers ? initialDriversFor(t, bks) : ((saved.drivers || {})[id] || initialDriversFor(t, bks));
       } else {
         unassigned.add(id);

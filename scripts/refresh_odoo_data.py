@@ -179,6 +179,10 @@ def main():
 
     normalize_driver_names(days_out, drivers_full)
 
+    # định dạng khớp với updated_at bên Sheet (JS Date.toISOString(): hậu tố "Z", không phải "+00:00")
+    # để so sánh chuỗi ISO 8601 trực tiếp phía client cho đúng thứ tự thời gian
+    generated_at = datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
     html = template
     html = html.replace("__BUSES_JSON__", json.dumps(bus_groups["buses"], ensure_ascii=False))
     html = html.replace("__DAYS_JSON__", json.dumps(days_out, ensure_ascii=False))
@@ -187,6 +191,7 @@ def main():
     html = html.replace("__GROUP_ORDER_KEYS_JS__", json.dumps(bus_groups["group_order"], ensure_ascii=False))
     html = html.replace("__GROUP_META_JS__", json.dumps(bus_groups["group_meta"], ensure_ascii=False))
     html = html.replace("__DRIVERS_JSON__", json.dumps(drivers_full, ensure_ascii=False))
+    html = html.replace("__GENERATED_AT_JS__", json.dumps(generated_at, ensure_ascii=False))
 
     out_path = os.path.join(REPO_ROOT, "xep_xe_timeline.html")
     with open(out_path, "w", encoding="utf-8") as f:
