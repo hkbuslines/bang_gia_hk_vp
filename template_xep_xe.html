@@ -2177,17 +2177,24 @@ html.pw-locked #pwGate{display:flex;}
   function noteDriverNames(){
     return new Set(DRIVER_NOTES.filter(n => n.driver).map(n => n.driver));
   }
+  // tuyến miền Trung/xa (Huế, Hội An, Nha Trang) vốn chỉ chạy 1 lượt/ngày (không có lượt về cùng ngày
+  // như Sa Pa) — cảnh báo "chỉ 1 lượt" không áp dụng cho các tuyến này
+  function isMienTrungRoute(route){
+    return /Huế|Hội An|Nha Trang/.test(route || '');
+  }
   function computeDriverStatuses(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
+    const tripMap = ensureTripMap(day.date);
     const workingBks = {};
-    const tripCount = {};
+    const tripRoutes = {};
     Object.entries(st.assignments).forEach(([bks, ids]) => {
       ids.forEach(id => {
         const d = st.drivers[id];
         if (!d) return;
-        if (d.lai1) { workingBks[d.lai1] = bks; tripCount[d.lai1] = (tripCount[d.lai1] || 0) + 1; }
-        if (d.lai2) { workingBks[d.lai2] = bks; tripCount[d.lai2] = (tripCount[d.lai2] || 0) + 1; }
+        const route = tripMap[id] ? tripMap[id].route : '';
+        if (d.lai1) { workingBks[d.lai1] = bks; (tripRoutes[d.lai1] = tripRoutes[d.lai1] || []).push(route); }
+        if (d.lai2) { workingBks[d.lai2] = bks; (tripRoutes[d.lai2] = tripRoutes[d.lai2] || []).push(route); }
       });
     });
     const inNotes = noteDriverNames();
@@ -2196,7 +2203,9 @@ html.pw-locked #pwGate{display:flex;}
       .map(d => {
         const bks = workingBks[d.ten] || null;
         const leave = bks ? null : driverLeaveFor(d.ten, day.date);
-        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave, tripCount: tripCount[d.ten] || 0 };
+        const routes = tripRoutes[d.ten] || [];
+        const singleTripWarn = routes.length === 1 && !isMienTrungRoute(routes[0]);
+        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave, tripCount: routes.length, singleTripWarn };
       })
       .sort((a, b) => {
         const rank = x => x.leave ? 0 : (!x.working ? 1 : 2);
@@ -2237,7 +2246,7 @@ html.pw-locked #pwGate{display:flex;}
       wrap.innerHTML = '<div class="doempty">Chưa có lái xe nào.</div>';
       return;
     }
-    const rows = list.map(({name, ma_nv, working, bks, leave, tripCount}, i) => {
+    const rows = list.map(({name, ma_nv, working, bks, leave, singleTripWarn}, i) => {
       let statusHtml;
       if (leave){
         const reasonText = LOAI_LABEL[leave.loai] || leave.loai;
@@ -2245,7 +2254,7 @@ html.pw-locked #pwGate{display:flex;}
         const ghichu = leave.ghichu ? ' — ' + leave.ghichu : '';
         statusHtml = `<span class="doreason leave">${reasonText}</span><div class="note" style="margin-top:2px;">${range}${ghichu}</div>`;
       } else if (working){
-        const warn = tripCount === 1
+        const warn = singleTripWarn
           ? `<span class="dowarn" title="Lái xe này chỉ có 1 lượt trong ngày — kiểm tra lại có thiếu chuyến đi/về không">⚠ Chỉ 1 lượt</span>`
           : '';
         statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>${warn}`;
