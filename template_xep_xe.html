@@ -225,6 +225,7 @@ table.dotable tr:last-child td{border-bottom:0;}
 .doreason{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--ink-muted);}
 .doreason.leave{background:var(--danger-fill); color:var(--danger);}
 .doreason.working{background:var(--ok-fill); color:var(--ok);}
+.dowarn{display:inline-flex; align-items:center; margin-left:6px; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:700; background:var(--warn-fill); color:var(--warn);}
 #tabDriversOffCount, #driverNotesCount{font-weight:700;}
 .dotable .note{color:var(--ink-muted); font-size:12px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
@@ -2180,12 +2181,13 @@ html.pw-locked #pwGate{display:flex;}
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
     const workingBks = {};
+    const tripCount = {};
     Object.entries(st.assignments).forEach(([bks, ids]) => {
       ids.forEach(id => {
         const d = st.drivers[id];
         if (!d) return;
-        if (d.lai1) workingBks[d.lai1] = bks;
-        if (d.lai2) workingBks[d.lai2] = bks;
+        if (d.lai1) { workingBks[d.lai1] = bks; tripCount[d.lai1] = (tripCount[d.lai1] || 0) + 1; }
+        if (d.lai2) { workingBks[d.lai2] = bks; tripCount[d.lai2] = (tripCount[d.lai2] || 0) + 1; }
       });
     });
     const inNotes = noteDriverNames();
@@ -2194,7 +2196,7 @@ html.pw-locked #pwGate{display:flex;}
       .map(d => {
         const bks = workingBks[d.ten] || null;
         const leave = bks ? null : driverLeaveFor(d.ten, day.date);
-        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave };
+        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave, tripCount: tripCount[d.ten] || 0 };
       })
       .sort((a, b) => {
         const rank = x => x.leave ? 0 : (!x.working ? 1 : 2);
@@ -2235,7 +2237,7 @@ html.pw-locked #pwGate{display:flex;}
       wrap.innerHTML = '<div class="doempty">Chưa có lái xe nào.</div>';
       return;
     }
-    const rows = list.map(({name, ma_nv, working, bks, leave}, i) => {
+    const rows = list.map(({name, ma_nv, working, bks, leave, tripCount}, i) => {
       let statusHtml;
       if (leave){
         const reasonText = LOAI_LABEL[leave.loai] || leave.loai;
@@ -2243,7 +2245,10 @@ html.pw-locked #pwGate{display:flex;}
         const ghichu = leave.ghichu ? ' — ' + leave.ghichu : '';
         statusHtml = `<span class="doreason leave">${reasonText}</span><div class="note" style="margin-top:2px;">${range}${ghichu}</div>`;
       } else if (working){
-        statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>`;
+        const warn = tripCount === 1
+          ? `<span class="dowarn" title="Lái xe này chỉ có 1 lượt trong ngày — kiểm tra lại có thiếu chuyến đi/về không">⚠ Chỉ 1 lượt</span>`
+          : '';
+        statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>${warn}`;
       } else {
         statusHtml = `<span class="doreason">Chưa xếp</span>`;
       }
