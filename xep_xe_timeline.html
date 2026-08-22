@@ -182,6 +182,7 @@ button.ghost:hover{background:var(--page);}
 .lane .label .info{flex:1; min-width:0; display:flex; flex-direction:column;}
 .lane .label .bks{font-weight:700; font-size:12.5px;}
 .lane .label .crew{font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+.lane .label .lastloc{font-size:10px; color:var(--warn); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600;}
 .lane.has-gara .label{background:var(--warn-fill); box-shadow:inset 3px 0 0 var(--warn);}
 .lane.has-leave .label{background:var(--danger-fill); box-shadow:inset 3px 0 0 var(--danger);}
 .gicon{flex-shrink:0; font-size:14px; cursor:default; border:0; background:none; padding:0; line-height:1;}
@@ -1005,6 +1006,26 @@ html.pw-locked #pwGate{display:flex;}
     });
     if (!best) return null;
     return { trip: best, endMin: bestArr - 1440 };
+  }
+
+  // xe không có chuyến nào hôm nay (không tính chuyến qua đêm carryover) — dò ngược quá khứ tìm
+  // chuyến gần nhất của xe đó để biết nó đang thực tế nằm ở đâu, tiện điều xe khi cần
+  const LOCATION_LOOKBACK_DAYS = 14;
+  function lastKnownLocation(dateStr, bks){
+    for (let back = 1; back <= LOCATION_LOOKBACK_DAYS; back++){
+      const d = addDays(dateStr, -back);
+      const st = ensureState(d);
+      const tripMap = ensureTripMap(d);
+      const ids = st.assignments[bks] || [];
+      if (!ids.length) continue;
+      let best = null;
+      ids.forEach(id => {
+        const t = tripMap[id];
+        if (t && (!best || t.dep > best.dep)) best = t;
+      });
+      if (best) return { to: best.to, date: d, depStr: best.depStr, arrStr: best.arrStr, route: best.route };
+    }
+    return null;
   }
 
   // dải ngày chỉ hiện 1 cửa sổ 7 ngày quanh ngày đang chọn (3 trước + hôm nay + 3 sau), không giới hạn theo dữ liệu Odoo
@@ -1889,6 +1910,118 @@ html.pw-locked #pwGate{display:flex;}
     return ruler;
   }
 
+  // xây 1 dòng (lane) cho đúng 1 xe trong tab "Theo xe" — dùng chung cho cả nhóm tuyến bình thường
+  // và nhóm tổng hợp "Xe chưa dùng hôm nay" ở trên cùng, để 2 chỗ luôn hiện giống hệt nhau
+  function buildLaneEl(b, day, st, tripById, garaBroken){
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    const label = document.createElement('div');
+    label.className = 'label';
+    label.draggable = true;
+    label.title = 'Kéo vào khu "Xe hỏng" nếu xe này không chạy được';
+    label.innerHTML = `<span class="info"><span class="bks tabular">${b.bks}</span><span class="crew">${b.cap_lai_nha || ''}</span></span>`;
+    label.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('application/x-bks', b.bks);
+      label.style.opacity = '0.35';
+    });
+    label.addEventListener('dragend', () => { label.style.opacity = '1'; });
+
+    const garaBD = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong');
+    const pending = garaBD.filter(e => !e.scheduled);
+    const scheduledToday = garaBD.filter(e => e.scheduled && e.scheduled.date === day.date);
+    const scheduledElsewhere = garaBD.filter(e => e.scheduled && e.scheduled.date !== day.date);
+    if (garaBD.length) lane.classList.add('has-gara');
+
+    pending.forEach(e => {
+      const btn = document.createElement('button');
+      btn.className = 'gicon';
+      btn.type = 'button';
+      btn.style.cursor = 'pointer';
+      btn.textContent = '🔧';
+      btn.title = `Gara cần bảo dưỡng ~${e.sogio}h (trong ${e.ngaybd}→${e.ngaykt})${e.noidung ? ': ' + e.noidung : ''} — bấm để xếp giờ vào hôm nay (${day.date})`;
+      btn.addEventListener('mousedown', ev => ev.stopPropagation());
+      btn.addEventListener('click', () => {
+        const hStr = prompt(`Xếp bảo dưỡng ${e.sogio}h cho xe ${b.bks} vào ngày ${day.date} — giờ bắt đầu (0-23):`, '13');
+        if (hStr === null) return;
+        const h = Number(hStr);
+        if (!Number.isFinite(h) || h < 0 || h > 23){ alert('Giờ không hợp lệ (0-23).'); return; }
+        scheduleMaint(e, day.date, h);
+      });
+      label.appendChild(btn);
+    });
+    scheduledElsewhere.forEach(e => {
+      const icon = document.createElement('span');
+      icon.className = 'gicon';
+      icon.textContent = STATE_ICON[e.trangthai];
+      icon.title = `Đã xếp bảo dưỡng ${b.bks} vào ${e.scheduled.date} lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
+      label.appendChild(icon);
+    });
+    scheduledToday.forEach(e => {
+      const icon = document.createElement('span');
+      icon.className = 'gicon';
+      icon.textContent = STATE_ICON[e.trangthai];
+      icon.title = `Bảo dưỡng hôm nay lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})${e.noidung ? ': ' + e.noidung : ''}`;
+      label.appendChild(icon);
+    });
+
+    const leave1 = driverLeaveFor(b.lai1, day.date);
+    if (leave1){
+      lane.classList.add('has-leave');
+      label.title = leaveTooltip(b, leave1, day.date) + ' — ' + label.title;
+    }
+
+    // xe không có chuyến nào hôm nay và không phải đang chạy chuyến qua đêm từ hôm qua (carryover) —
+    // ghi rõ nó đang thực tế ở đâu theo chuyến gần nhất trong quá khứ, tiện điều xe khi cần
+    if (!st.assignments[b.bks].length && !getCarryover(day.date, b.bks)){
+      const loc = lastKnownLocation(day.date, b.bks);
+      if (loc){
+        const info = label.querySelector('.info');
+        const locEl = document.createElement('span');
+        locEl.className = 'lastloc';
+        locEl.textContent = `📍 Đang ở ${loc.to}`;
+        locEl.title = `Theo lịch ${loc.date}: chuyến gần nhất ${loc.depStr}-${loc.arrStr} (${loc.route}) — về tới ${loc.to}.`;
+        if (info) info.appendChild(locEl);
+      }
+    }
+    lane.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'track';
+    track.style.width = laneWidth + 'px';
+    scheduledToday.forEach(e => {
+      const dep = e.scheduled.startHour * 60, arr = dep + Math.round(e.sogio * 60);
+      const mb = document.createElement('div');
+      mb.className = 'block maint ' + e.trangthai;
+      mb.style.left = (dep * PX_PER_MIN) + 'px';
+      mb.style.width = Math.max(8, Math.min(AXIS_END, arr) - dep) * PX_PER_MIN + 'px';
+      const s = document.createElement('span');
+      s.className = 'chiptext';
+      s.textContent = `${STATE_ICON[e.trangthai]} Bảo dưỡng ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
+      mb.title = `Theo Gara: ${e.sogio} tiếng${e.noidung ? ' — ' + e.noidung : ''}. Bấm × để gỡ lịch (Gara vẫn còn nhu cầu, chỉ gỡ giờ đã xếp).`;
+      mb.appendChild(s);
+      const del = document.createElement('button');
+      del.className = 'del'; del.type = 'button'; del.textContent = '×';
+      del.addEventListener('mousedown', ev => ev.stopPropagation());
+      del.addEventListener('click', ev => { ev.stopPropagation(); unscheduleMaint(e); });
+      mb.appendChild(del);
+      track.appendChild(mb);
+    });
+    const carry = getCarryover(day.date, b.bks);
+    if (carry) track.appendChild(carryoverBlockEl(carry.trip, carry.endMin));
+    st.assignments[b.bks].forEach(id => track.appendChild(chipEl(tripById[id], day.date, b.bks)));
+    track.addEventListener('dragover', e => {
+      if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); track.classList.add('dragover'); }
+    });
+    track.addEventListener('dragleave', () => track.classList.remove('dragover'));
+    track.addEventListener('drop', e => {
+      e.preventDefault(); track.classList.remove('dragover');
+      const raw = e.dataTransfer.getData('application/x-slotmove');
+      if (raw){ const {tripId} = JSON.parse(raw); assignBksToTrip(day.date, tripId, b.bks); }
+    });
+    lane.appendChild(track);
+    return lane;
+  }
+
   function renderBoard(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -1910,6 +2043,22 @@ html.pw-locked #pwGate{display:flex;}
     const present = new Set(activeBuses.map(corridorOf));
     const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
 
+    // xe chưa có chuyến nào hôm nay — gom riêng thành 1 nhóm trên cùng để nhìn phát biết ngay,
+    // đỡ phải dò từng nhóm tuyến tìm dòng nào track trống. Xe này vẫn hiện lại đúng vị trí cũ ở
+    // nhóm tuyến của nó bên dưới như thường lệ, đây chỉ là 1 chỗ tổng hợp nhanh, không phải thay thế
+    const idleBuses = activeBuses.filter(b => !st.assignments[b.bks].length)
+      .sort((a, b) => a.bks.localeCompare(b.bks));
+    if (idleBuses.length){
+      const gh = document.createElement('div');
+      gh.className = 'grouphead';
+      gh.innerHTML = `<div class="label" style="color:var(--ok);">✓ Xe chưa dùng hôm nay (${idleBuses.length})</div><div class="rest"></div>`;
+      board.appendChild(gh);
+      const lanes = document.createElement('div');
+      lanes.className = 'lanes';
+      idleBuses.forEach(b => lanes.appendChild(buildLaneEl(b, day, st, tripById, garaBroken)));
+      board.appendChild(lanes);
+    }
+
     groups.forEach(g => {
       const gh = document.createElement('div');
       gh.className = 'grouphead';
@@ -1920,101 +2069,7 @@ html.pw-locked #pwGate{display:flex;}
 
       const lanes = document.createElement('div');
       lanes.className = 'lanes';
-      activeBuses.filter(b => corridorOf(b) === g).forEach(b => {
-        const lane = document.createElement('div');
-        lane.className = 'lane';
-        const label = document.createElement('div');
-        label.className = 'label';
-        label.draggable = true;
-        label.title = 'Kéo vào khu "Xe hỏng" nếu xe này không chạy được';
-        label.innerHTML = `<span class="info"><span class="bks tabular">${b.bks}</span><span class="crew">${b.cap_lai_nha || ''}</span></span>`;
-        label.addEventListener('dragstart', e => {
-          e.dataTransfer.setData('application/x-bks', b.bks);
-          label.style.opacity = '0.35';
-        });
-        label.addEventListener('dragend', () => { label.style.opacity = '1'; });
-
-        const garaBD = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong');
-        const pending = garaBD.filter(e => !e.scheduled);
-        const scheduledToday = garaBD.filter(e => e.scheduled && e.scheduled.date === day.date);
-        const scheduledElsewhere = garaBD.filter(e => e.scheduled && e.scheduled.date !== day.date);
-        if (garaBD.length) lane.classList.add('has-gara');
-
-        pending.forEach(e => {
-          const btn = document.createElement('button');
-          btn.className = 'gicon';
-          btn.type = 'button';
-          btn.style.cursor = 'pointer';
-          btn.textContent = '🔧';
-          btn.title = `Gara cần bảo dưỡng ~${e.sogio}h (trong ${e.ngaybd}→${e.ngaykt})${e.noidung ? ': ' + e.noidung : ''} — bấm để xếp giờ vào hôm nay (${day.date})`;
-          btn.addEventListener('mousedown', ev => ev.stopPropagation());
-          btn.addEventListener('click', () => {
-            const hStr = prompt(`Xếp bảo dưỡng ${e.sogio}h cho xe ${b.bks} vào ngày ${day.date} — giờ bắt đầu (0-23):`, '13');
-            if (hStr === null) return;
-            const h = Number(hStr);
-            if (!Number.isFinite(h) || h < 0 || h > 23){ alert('Giờ không hợp lệ (0-23).'); return; }
-            scheduleMaint(e, day.date, h);
-          });
-          label.appendChild(btn);
-        });
-        scheduledElsewhere.forEach(e => {
-          const icon = document.createElement('span');
-          icon.className = 'gicon';
-          icon.textContent = STATE_ICON[e.trangthai];
-          icon.title = `Đã xếp bảo dưỡng ${b.bks} vào ${e.scheduled.date} lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
-          label.appendChild(icon);
-        });
-        scheduledToday.forEach(e => {
-          const icon = document.createElement('span');
-          icon.className = 'gicon';
-          icon.textContent = STATE_ICON[e.trangthai];
-          icon.title = `Bảo dưỡng hôm nay lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})${e.noidung ? ': ' + e.noidung : ''}`;
-          label.appendChild(icon);
-        });
-
-        const leave1 = driverLeaveFor(b.lai1, day.date);
-        if (leave1){
-          lane.classList.add('has-leave');
-          label.title = leaveTooltip(b, leave1, day.date) + ' — ' + label.title;
-        }
-        lane.appendChild(label);
-
-        const track = document.createElement('div');
-        track.className = 'track';
-        track.style.width = laneWidth + 'px';
-        scheduledToday.forEach(e => {
-          const dep = e.scheduled.startHour * 60, arr = dep + Math.round(e.sogio * 60);
-          const mb = document.createElement('div');
-          mb.className = 'block maint ' + e.trangthai;
-          mb.style.left = (dep * PX_PER_MIN) + 'px';
-          mb.style.width = Math.max(8, Math.min(AXIS_END, arr) - dep) * PX_PER_MIN + 'px';
-          const s = document.createElement('span');
-          s.className = 'chiptext';
-          s.textContent = `${STATE_ICON[e.trangthai]} Bảo dưỡng ${String(e.scheduled.startHour).padStart(2,'0')}:00 (~${e.sogio}h, ${STATE_LABEL_VN[e.trangthai]})`;
-          mb.title = `Theo Gara: ${e.sogio} tiếng${e.noidung ? ' — ' + e.noidung : ''}. Bấm × để gỡ lịch (Gara vẫn còn nhu cầu, chỉ gỡ giờ đã xếp).`;
-          mb.appendChild(s);
-          const del = document.createElement('button');
-          del.className = 'del'; del.type = 'button'; del.textContent = '×';
-          del.addEventListener('mousedown', ev => ev.stopPropagation());
-          del.addEventListener('click', ev => { ev.stopPropagation(); unscheduleMaint(e); });
-          mb.appendChild(del);
-          track.appendChild(mb);
-        });
-        const carry = getCarryover(day.date, b.bks);
-        if (carry) track.appendChild(carryoverBlockEl(carry.trip, carry.endMin));
-        st.assignments[b.bks].forEach(id => track.appendChild(chipEl(tripById[id], day.date, b.bks)));
-        track.addEventListener('dragover', e => {
-          if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); track.classList.add('dragover'); }
-        });
-        track.addEventListener('dragleave', () => track.classList.remove('dragover'));
-        track.addEventListener('drop', e => {
-          e.preventDefault(); track.classList.remove('dragover');
-          const raw = e.dataTransfer.getData('application/x-slotmove');
-          if (raw){ const {tripId} = JSON.parse(raw); assignBksToTrip(day.date, tripId, b.bks); }
-        });
-        lane.appendChild(track);
-        lanes.appendChild(lane);
-      });
+      activeBuses.filter(b => corridorOf(b) === g).forEach(b => lanes.appendChild(buildLaneEl(b, day, st, tripById, garaBroken)));
       board.appendChild(lanes);
     });
 
