@@ -186,6 +186,7 @@ html.pw-locked #pwGate{display:flex;}
         <div class="field" id="f-ngaykt-wrap">
           <label for="f-ngaykt" id="f-ngaykt-label">Đến ngày (cuối tuần)</label>
           <input type="date" id="f-ngaykt" required>
+          <div class="note" id="f-ngaykt-hint" style="display:none; margin-top:4px;">Để trống = cắt hẳn vô thời hạn (chưa xác định ngày sửa xong)</div>
         </div>
         <div class="field" id="f-sogio-wrap">
           <label for="f-sogio">Mất bao nhiêu tiếng</label>
@@ -292,6 +293,7 @@ html.pw-locked #pwGate{display:flex;}
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
+  const OPEN_ENDED_DATE = '9999-12-31';
   function addDaysISO(isoStr, n){
     const [y,m,d] = isoStr.split('-').map(Number);
     const dt = new Date(Date.UTC(y, m-1, d));
@@ -328,12 +330,17 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('f-ngaybd-label').textContent = isBD ? 'Từ ngày (đầu tuần)' : 'Từ ngày';
     document.getElementById('f-ngaykt-label').textContent = isBD ? 'Đến ngày (cuối tuần)' : 'Đến ngày';
     document.getElementById('f-sogio-wrap').style.display = isBD ? '' : 'none';
+    // "Hỏng — cắt hẳn" không bắt buộc chọn ngày: để trống nghĩa là cắt vô thời hạn
+    document.getElementById('f-ngaybd').required = isBD;
+    document.getElementById('f-ngaykt').required = isBD;
+    document.getElementById('f-ngaykt-hint').style.display = isBD ? 'none' : '';
   }
   document.querySelectorAll('input[name="loai"]').forEach(r => r.addEventListener('change', updateFieldVisibility));
   updateFieldVisibility();
 
   function fmtRange(e){
-    const range = e.ngaybd === e.ngaykt ? e.ngaybd : `${e.ngaybd} → ${e.ngaykt}`;
+    const range = e.ngaykt === OPEN_ENDED_DATE ? `${e.ngaybd} → chưa xác định`
+      : (e.ngaybd === e.ngaykt ? e.ngaybd : `${e.ngaybd} → ${e.ngaykt}`);
     if (e.loai === 'baoduong'){
       const sched = e.scheduled ? ` — đã xếp ${e.scheduled.date} lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00` : ' — chưa xếp giờ';
       return `${range} · ${e.sogio} tiếng${sched}`;
@@ -637,19 +644,22 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.querySelector('input[name="loai"]:checked').value;
+    const rawNgaybd = document.getElementById('f-ngaybd').value;
+    const rawNgaykt = document.getElementById('f-ngaykt').value;
     const entry = {
       id: counter++,
       bks: document.getElementById('f-bks').value,
       loai,
-      ngaybd: document.getElementById('f-ngaybd').value,
-      ngaykt: document.getElementById('f-ngaykt').value,
+      // "Hỏng — cắt hẳn" cho phép để trống ngày: không ghi gì thì coi là cắt vô thời hạn từ hôm nay
+      ngaybd: rawNgaybd || (loai === 'hong' ? todayISO() : ''),
+      ngaykt: rawNgaykt || (loai === 'hong' ? OPEN_ENDED_DATE : ''),
       sogio: loai === 'baoduong' ? Number(document.getElementById('f-sogio').value) : null,
       scheduled: null,
       noidung: document.getElementById('f-noidung').value.trim(),
       trangthai: 'wait',
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
-    if (!entry.ngaybd || !entry.ngaykt || entry.ngaykt < entry.ngaybd){
+    if (!entry.ngaybd || !entry.ngaykt || (entry.ngaykt !== OPEN_ENDED_DATE && entry.ngaykt < entry.ngaybd)){
       alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
     }
     if (loai === 'baoduong' && (!entry.sogio || entry.sogio <= 0)){

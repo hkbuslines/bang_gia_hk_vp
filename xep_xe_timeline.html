@@ -2121,7 +2121,8 @@ html.pw-locked #pwGate{display:flex;}
       const chip = document.createElement('div');
       chip.className = 'bkschip gara';
       chip.innerHTML = `<span class="tabular">${bks}</span><span style="opacity:0.7;">(theo Gara)</span>`;
-      chip.title = entry ? `${entry.ngaybd} → ${entry.ngaykt}${entry.noidung ? ' — ' + entry.noidung : ''} (${STATE_LABEL_VN[entry.trangthai]}). Cập nhật trạng thái bên trang Gara.` : '';
+      const rangeText = entry ? (entry.ngaykt === '9999-12-31' ? `${entry.ngaybd} → chưa xác định` : `${entry.ngaybd} → ${entry.ngaykt}`) : '';
+      chip.title = entry ? `${rangeText}${entry.noidung ? ' — ' + entry.noidung : ''} (${STATE_LABEL_VN[entry.trangthai]}). Cập nhật trạng thái bên trang Gara.` : '';
       chips.appendChild(chip);
     });
     [...st.broken].sort().forEach(bks => {
