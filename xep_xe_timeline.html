@@ -2325,6 +2325,12 @@ html.pw-locked #pwGate{display:flex;}
     const tripById = ensureTripMap(day.date);
     // chỉ 9 xe cố định HN-SaPa, và chỉ tính xe đang thật sự chạy (có chuyến hôm nay) — xe rảnh cả
     // ngày không có gì để "đóng lệnh"
+    const perBks = {};
+    Object.entries(st.assignments).forEach(([bks, ids]) => {
+      if (!CD_HNSP_BKS.has(bks) || !ids.length) return;
+      perBks[bks] = ids.map(id => tripById[id]).filter(Boolean).sort((a, b) => a.dep - b.dep);
+    });
+    const slotKey = slot => slot.station + ' ' + slot.name;
     const slotCands = LENH_SLOTS.map(slot => {
       const cutoff = slot.min - LENH_BUFFER;
       const cands = [];
