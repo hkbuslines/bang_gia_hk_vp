@@ -1047,6 +1047,13 @@ html.pw-locked #pwGate{display:flex;}
 
   function overlaps(a, b){ return a.dep < effArr(b) && b.dep < effArr(a); }
 
+  // Hạ Long và Quảng Ninh là cùng 1 địa điểm thực tế (bến xe chung) — coi như trùng vị trí
+  function sameCity(x, y){
+    if (x === y) return true;
+    const norm = s => (s === 'Hạ Long' || s === 'Quảng Ninh') ? 'HL_QN' : s;
+    return norm(x) === norm(y);
+  }
+
   // pairwise issues for a bks's own chain of trips that day: overlap / turnaround / position
   function computeBksIssues(date, bks){
     const st = ensureState(date);
@@ -1060,7 +1067,7 @@ html.pw-locked #pwGate{display:flex;}
         add(b.id, `⚠ Trùng giờ với chuyến ${a.depStr} (${a.route})`);
         continue;
       }
-      if (a.to !== b.from){
+      if (!sameCity(a.to, b.from)){
         add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
       } else {
         const gap = b.dep - effArr(a);
