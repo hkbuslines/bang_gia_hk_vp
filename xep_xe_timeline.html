@@ -414,6 +414,11 @@ html.pw-locked #pwGate{display:flex;}
       </div>
       <div class="card" style="flex:1; min-width:0;">
         <div class="tray-head">Danh sách lái xe — trạng thái hôm nay & lý do chưa xếp</div>
+        <form id="addDriverForm" class="addtriprow" style="margin-bottom:10px;">
+          <input type="text" id="newDriverTen" class="addtrip-time" placeholder="Tên lái xe mới" required style="flex:2; min-width:160px;">
+          <input type="text" id="newDriverManv" class="addtrip-time" placeholder="Mã NV (không bắt buộc)" style="flex:1; min-width:120px;">
+          <button type="submit" class="addtrip-ok">+ Thêm lái xe</button>
+        </form>
         <div id="driversOffWrap" style="overflow-x:auto;"></div>
       </div>
     </div>
@@ -2235,12 +2240,9 @@ html.pw-locked #pwGate{display:flex;}
     const available = computeDriverStatuses().filter(d => !d.working && !d.leave).length;
     document.getElementById('tabDriversOffCount').textContent = `(${available})`;
   }
-  // xoá 1 lái xe khỏi danh sách chung — lưu ngay qua Sheet key 'drivers' để bên Xin nghỉ (tab Quản lý
-  // lái xe) và trang này luôn khớp nhau
-  async function deleteDriver(name){
-    DRIVERS_FULL = DRIVERS_FULL.filter(d => d.ten !== name);
-    rebuildDriverPool();
-    renderAll();
+  // lưu chung danh sách lái xe lên Sheet key 'drivers' — dùng cho cả thêm lẫn xoá, để bên Xin nghỉ
+  // (tab Quản lý lái xe) và trang này luôn khớp nhau ngay khi có ai đổi
+  async function saveDriversFull(){
     try{
       const res = await fetch(SHEET_API_URL, {
         method: 'POST',
@@ -2251,6 +2253,23 @@ html.pw-locked #pwGate{display:flex;}
     } catch(err){
       alert('Lưu lỗi (mạng): ' + err.message);
     }
+  }
+  async function deleteDriver(name){
+    DRIVERS_FULL = DRIVERS_FULL.filter(d => d.ten !== name);
+    rebuildDriverPool();
+    renderAll();
+    await saveDriversFull();
+  }
+  async function addDriver(ten, ma_nv){
+    if (DRIVERS_FULL.some(d => d.ten === ten)){
+      alert(`"${ten}" đã có trong danh sách lái xe rồi.`);
+      return;
+    }
+    DRIVERS_FULL.push({ ma_nv, ten, trang_thai: 'Đang làm việc', note: '' });
+    DRIVERS_FULL.sort((a, b) => a.ten.localeCompare(b.ten, 'vi'));
+    rebuildDriverPool();
+    renderAll();
+    await saveDriversFull();
   }
   // bảng đầy đủ — chỉ vẽ khi tab "Lái xe" đang mở
   function renderDriversOffTab(){
@@ -2375,6 +2394,15 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('tabDriversOff').addEventListener('click', () => setTab('driversoff'));
+  document.getElementById('addDriverForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const ten = document.getElementById('newDriverTen').value.trim();
+    if (!ten) return;
+    const ma_nv = document.getElementById('newDriverManv').value.trim();
+    addDriver(ten, ma_nv);
+    e.target.reset();
+    document.getElementById('newDriverTen').focus();
+  });
   document.getElementById('tabBusCrew').addEventListener('click', () => setTab('buscrew'));
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
