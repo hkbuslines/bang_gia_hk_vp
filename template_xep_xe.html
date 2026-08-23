@@ -480,6 +480,14 @@ html.pw-locked #pwGate{display:flex;}
   const PX_PER_MIN = 0.60;
   const laneWidth = AXIS_END * PX_PER_MIN;
   const MIN_TURNAROUND = 20; // phút — ngưỡng tối thiểu giữa 2 chuyến cùng điểm
+  // quy tắc xe cố định — cảnh báo ngay trong bảng nếu xếp sai, không cần đợi soát riêng sau khi lắp
+  // từ Excel: "Cố định Hà Nội - Sa Pa" chỉ được chạy đúng tuyến HN-SaPa; 993.00/993.09 "Cố định Ninh
+  // Bình - Sa Pa" chỉ chạy đúng 2 khung giờ cố định mỗi ngày, không nhận chuyến Ninh Bình nào khác
+  const CD_HNSP_BKS = new Set(['29K-079.90','29K-067.82','29H-953.23','29E-337.13','29K-026.00','29H-953.83','29E-342.14','29H-952.86','29K-018.85']);
+  const CD_NB_SLOTS = {
+    '29H-993.00': [{route:'Sa Pa - Ninh Bình', dep:'10:30'}, {route:'Ninh Bình - Sa Pa', dep:'21:30'}],
+    '29H-993.09': [{route:'Ninh Bình - Sa Pa', dep:'09:00'}, {route:'Sa Pa - Ninh Bình', dep:'22:00'}],
+  };
   // tuyến này thực tế chỉ chạy hết ngần này phút — chặn bớt arr nếu dữ liệu ghi dài hơn thực tế,
   // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan
   const ROUTE_DURATION_CAP_MIN = {
@@ -1020,6 +1028,16 @@ html.pw-locked #pwGate{display:flex;}
         const win = { dep: e.scheduled.startHour*60, arr: e.scheduled.startHour*60 + Math.round(e.sogio*60) };
         if (overlaps(win, t)) add(id, `🔧 Trùng giờ bảo dưỡng đã xếp (${String(e.scheduled.startHour).padStart(2,'0')}:00, ~${e.sogio}h)`);
       });
+      // xe cố định Hà Nội - Sa Pa chỉ được chạy đúng tuyến này
+      if (CD_HNSP_BKS.has(bks) && t.route !== 'Hà Nội - Sa Pa' && t.route !== 'Sa Pa - Hà Nội'){
+        add(id, `🚫 Xe cố định Hà Nội - Sa Pa nhưng đang xếp tuyến ${t.route}`);
+      }
+      // xe cố định Ninh Bình chỉ được chạy đúng 2 khung giờ cố định của nó
+      const nbSlots = CD_NB_SLOTS[bks];
+      if (nbSlots && !nbSlots.some(s => s.route === t.route && s.dep === t.depStr)){
+        const slotTxt = nbSlots.map(s => `${s.dep} ${s.route}`).join(' & ');
+        add(id, `🚫 Xe cố định Ninh Bình sai khung giờ — chỉ chạy ${slotTxt}`);
+      }
     });
     return issues;
   }
@@ -2153,8 +2171,10 @@ html.pw-locked #pwGate{display:flex;}
     });
 
     // chuyến quá ngắn, chữ tràn ra ngoài khối màu — nới cả khối màu ra theo đúng độ dài chữ
-    // thay vì chỉ hiện chữ nổi trên nền trong suốt, để luôn là 1 thanh màu liền, dễ đọc hơn
-    board.querySelectorAll('.block .chiptext').forEach(label => {
+    // thay vì chỉ hiện chữ nổi trên nền trong suốt, để luôn là 1 thanh màu liền, dễ đọc hơn.
+    // KHÔNG áp dụng cho khối carryover (đêm qua) — độ rộng của nó thể hiện đúng thời điểm xe rảnh
+    // (vd "về 01:00"), nới theo chữ sẽ khiến nhìn nhầm là xe bận tới tận giờ xa hơn thực tế.
+    board.querySelectorAll('.block:not(.carryover) .chiptext').forEach(label => {
       const block = label.parentElement;
       const needed = label.scrollWidth + 16;
       if (needed > block.offsetWidth) block.style.width = needed + 'px';
