@@ -222,22 +222,18 @@ button.gicon:hover{transform:scale(1.15);}
 .izempty{color:var(--ink-faint); font-size:12px;}
 .izchip{display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; background:var(--surface); border:1px solid var(--ok); color:var(--ok); font-size:12px; font-weight:700;}
 .doempty{color:var(--ink-faint); font-size:12px; padding:14px;}
-.lenhzone{border:1.5px dashed var(--ink-muted); border-radius:var(--radius); background:var(--surface-2); padding:8px 14px; margin-bottom:10px;}
-.lenhzone.ok{border-color:var(--ok); background:var(--ok-fill);}
-.lenhzone.bad{border-color:var(--danger); background:var(--danger-fill);}
-.lenhzone .lhhead{display:flex; align-items:center; gap:8px; font-size:11.5px; font-weight:700; color:var(--ink-muted); line-height:1.4; cursor:pointer; user-select:none;}
-.lenhzone.ok .lhhead{color:var(--ok);}
-.lenhzone.bad .lhhead{color:var(--danger);}
-.lenhzone .lhhead .arrow{display:inline-block; font-size:9px; transition:transform 0.15s;}
-.lenhzone.collapsed .lhhead .arrow{transform:rotate(-90deg);}
-.lenhzone .lhhead .sub2{font-weight:400; color:var(--ink-muted);}
-.lenhzone .lhhead .zonecount{font-weight:700;}
-.lenhzone .lhtable{margin-top:8px; display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:6px;}
-.lenhzone.collapsed .lhtable{display:none;}
-.lhrow{display:flex; align-items:center; gap:6px; padding:4px 8px; border-radius:6px; background:var(--surface); font-size:11.5px;}
-.lhrow.miss{opacity:0.6;}
-.lhrow .lhslot{font-weight:700; min-width:100px;}
-.lhrow .lhbks{color:var(--ink-muted); tabular-nums;}
+.lhcols{display:flex; gap:20px; flex-wrap:wrap;}
+table.lhtabletab{border-collapse:collapse; min-width:280px; font-size:13px;}
+table.lhtabletab th{text-align:left; padding:7px 12px; background:var(--surface-2); border-bottom:1px solid var(--line-strong); font-size:11.5px; text-transform:uppercase; letter-spacing:0.03em; color:var(--ink-muted);}
+table.lhtabletab thead tr:first-child th{background:var(--ink); color:var(--page); font-size:12.5px; text-transform:none; letter-spacing:0; font-weight:700;}
+table.lhtabletab td{padding:7px 12px; border-bottom:1px solid var(--line);}
+table.lhtabletab tr.miss td{opacity:0.55;}
+.lhok{color:var(--ok); font-weight:700;}
+.lhmiss{color:var(--danger); font-weight:700;}
+.lhbks{color:var(--ink-muted); font-size:12px;}
+.lhsummary{margin-top:16px; padding:10px 14px; border-radius:var(--radius); font-weight:700; font-size:13px;}
+.lhsummary.ok{background:var(--ok-fill); color:var(--ok);}
+.lhsummary.bad{background:var(--danger-fill); color:var(--danger);}
 table.dotable{width:100%; border-collapse:collapse; font-size:13px;}
 table.dotable th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 12px; border-bottom:1px solid var(--line-strong);}
 table.dotable td{padding:9px 12px; border-bottom:0.5px solid var(--line); vertical-align:top;}
@@ -370,6 +366,7 @@ html.pw-locked #pwGate{display:flex;}
     <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
     <button class="tabbtn" id="tabDriversOff" type="button">Lái xe <span id="tabDriversOffCount"></span></button>
     <button class="tabbtn" id="tabBusCrew" type="button">Định biên xe</button>
+    <button class="tabbtn" id="tabLenh" type="button">Đóng lệnh <span id="tabLenhCount"></span></button>
   </div>
 
   <div style="display:flex; gap:8px; margin-bottom:12px;">
@@ -404,10 +401,6 @@ html.pw-locked #pwGate{display:flex;}
     <div class="izchips" id="idleChips"></div>
   </div>
 
-  <div class="lenhzone collapsed" id="lenhZone">
-    <div class="lhhead" id="lenhZoneHead"><span class="arrow">▾</span> 🕐 Đóng lệnh Hà Nội - Sa Pa <span class="zonecount" id="lenhCount"></span><span class="sub2">Cần ≥12/14 khung — xe về sớm ≥15p và còn ở bến qua giờ đóng</span></div>
-    <div class="lhtable" id="lenhTable"></div>
-  </div>
 
   <!-- ============ TAB 1: theo nốt giờ ============ -->
   <div class="tabpane active" id="paneSlots">
@@ -462,6 +455,15 @@ html.pw-locked #pwGate{display:flex;}
     </div>
   </div>
 
+  <!-- ============ TAB 5: đóng lệnh ============ -->
+  <div class="tabpane" id="paneLenh">
+    <div class="card">
+      <div class="tray-head">Đóng lệnh Hà Nội - Sa Pa — 9 xe cố định, cần đủ <span id="lenhReqText"></span> khung/ngày</div>
+      <div class="sub" style="padding:8px 14px 0;">Chỉ tính xe thuộc nhóm "Cố định Hà Nội - Sa Pa" đang thật sự chạy chuyến hôm nay (không tính xe rảnh cả ngày), về đúng bến ít nhất 15 phút trước giờ đóng lệnh và còn ở đó tới giờ đóng — về sớm hơn bao lâu cũng được.</div>
+      <div id="lenhTabWrap" style="padding:14px; overflow-x:auto;"></div>
+    </div>
+  </div>
+
   <footer class="note">
     <b>Cách dùng:</b> tab "Theo nốt giờ" là nơi xếp chính — kéo 1 xe (BKS) từ khay thả vào ô chấm chấm cạnh nốt giờ
     muốn xếp; kéo xe đã xếp sang nốt khác để đổi, kéo lại vào khay để gỡ. Hệ thống tự cảnh báo 3 kiểu (không chặn,
@@ -509,27 +511,28 @@ html.pw-locked #pwGate{display:flex;}
     '29H-993.00': [{route:'Sa Pa - Ninh Bình', dep:'10:30'}, {route:'Ninh Bình - Sa Pa', dep:'21:30'}],
     '29H-993.09': [{route:'Ninh Bình - Sa Pa', dep:'09:00'}, {route:'Sa Pa - Ninh Bình', dep:'22:00'}],
   };
-  // "Đóng lệnh" xe Hà Nội - Sa Pa: 14 khung giờ cố định (bất kỳ xe nào chạy tuyến này cũng tính, không
-  // riêng nhóm cố định) — điều hành xác nhận 2026-08-23. 1 khung được coi là "đóng được" nếu có 1 xe
-  // về TỚI ĐÚNG bến (Gia Lâm = Hà Nội / Sa Pa) ít nhất LENH_BUFFER phút trước giờ đóng, và chưa xuất
-  // bến chuyến kế tiếp trước giờ đóng đó (tức còn thật sự "ở bến" tại thời điểm đóng lệnh).
+  // "Đóng lệnh" xe Cố định Hà Nội - Sa Pa (chỉ 9 xe nhóm CD_HNSP_BKS, không xe khác): 14 khung giờ cố
+  // định mỗi ngày, chia 2 đầu bến (Gia Lâm = Hà Nội / Sa Pa) — điều hành xác nhận 2026-08-23. 1 khung
+  // "đóng được" khi có 1 xe cố định ĐANG THẬT SỰ CHẠY (không tính xe rảnh cả ngày — chưa hề có chuyến
+  // nào) về ĐÚNG bến, về TRƯỚC giờ đóng ít nhất LENH_BUFFER phút (về sớm hơn bao lâu cũng được, miễn
+  // đang rảnh/còn ở đúng bến tại giờ đóng — không cần về sát giờ, không giới hạn trên).
   const LENH_BUFFER = 15;
   const LENH_MIN_REQUIRED = 12;
   const LENH_SLOTS = [
-    { name: 'Gia Lâm 14:00', min: 14*60, city: 'Hà Nội' },
-    { name: 'Gia Lâm 15:00', min: 15*60, city: 'Hà Nội' },
-    { name: 'Gia Lâm 16:00', min: 16*60, city: 'Hà Nội' },
-    { name: 'Gia Lâm 22:15', min: 22*60+15, city: 'Hà Nội' },
-    { name: 'Gia Lâm 23:00', min: 23*60, city: 'Hà Nội' },
-    { name: 'Gia Lâm 23:45', min: 23*60+45, city: 'Hà Nội' },
-    { name: 'Sa Pa 13:45', min: 13*60+45, city: 'Sa Pa' },
-    { name: 'Sa Pa 14:30', min: 14*60+30, city: 'Sa Pa' },
-    { name: 'Sa Pa 15:15', min: 15*60+15, city: 'Sa Pa' },
-    { name: 'Sa Pa 17:30', min: 17*60+30, city: 'Sa Pa' },
-    { name: 'Sa Pa 22:15', min: 22*60+15, city: 'Sa Pa' },
-    { name: 'Sa Pa 22:30', min: 22*60+30, city: 'Sa Pa' },
-    { name: 'Sa Pa 23:00', min: 23*60, city: 'Sa Pa' },
-    { name: 'Sa Pa 23:45', min: 23*60+45, city: 'Sa Pa' },
+    { name: '14:00', station: 'Gia Lâm', min: 14*60, city: 'Hà Nội' },
+    { name: '15:00', station: 'Gia Lâm', min: 15*60, city: 'Hà Nội' },
+    { name: '16:00', station: 'Gia Lâm', min: 16*60, city: 'Hà Nội' },
+    { name: '22:15', station: 'Gia Lâm', min: 22*60+15, city: 'Hà Nội' },
+    { name: '23:00', station: 'Gia Lâm', min: 23*60, city: 'Hà Nội' },
+    { name: '23:45', station: 'Gia Lâm', min: 23*60+45, city: 'Hà Nội' },
+    { name: '13:45', station: 'Sa Pa', min: 13*60+45, city: 'Sa Pa' },
+    { name: '14:30', station: 'Sa Pa', min: 14*60+30, city: 'Sa Pa' },
+    { name: '15:15', station: 'Sa Pa', min: 15*60+15, city: 'Sa Pa' },
+    { name: '17:30', station: 'Sa Pa', min: 17*60+30, city: 'Sa Pa' },
+    { name: '22:15', station: 'Sa Pa', min: 22*60+15, city: 'Sa Pa' },
+    { name: '22:30', station: 'Sa Pa', min: 22*60+30, city: 'Sa Pa' },
+    { name: '23:00', station: 'Sa Pa', min: 23*60, city: 'Sa Pa' },
+    { name: '23:45', station: 'Sa Pa', min: 23*60+45, city: 'Sa Pa' },
   ];
   // tuyến này thực tế chỉ chạy hết ngần này phút — chặn bớt arr nếu dữ liệu ghi dài hơn thực tế,
   // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan
@@ -1162,10 +1165,12 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('tabBoard').classList.toggle('active', t === 'board');
     document.getElementById('tabDriversOff').classList.toggle('active', t === 'driversoff');
     document.getElementById('tabBusCrew').classList.toggle('active', t === 'buscrew');
+    document.getElementById('tabLenh').classList.toggle('active', t === 'lenh');
     document.getElementById('paneSlots').classList.toggle('active', t === 'slots');
     document.getElementById('paneBoard').classList.toggle('active', t === 'board');
     document.getElementById('paneDriversOff').classList.toggle('active', t === 'driversoff');
     document.getElementById('paneBusCrew').classList.toggle('active', t === 'buscrew');
+    document.getElementById('paneLenh').classList.toggle('active', t === 'lenh');
     renderAll();
   }
 
@@ -2314,18 +2319,18 @@ html.pw-locked #pwGate{display:flex;}
     });
   }
 
-  function renderLenhZone(){
+  function computeLenhResult(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
     const tripById = ensureTripMap(day.date);
-    // lịch đầy đủ từng xe hôm nay, sắp theo giờ đi
+    // chỉ 9 xe cố định HN-SaPa, và chỉ tính xe đang thật sự chạy (có chuyến hôm nay) — xe rảnh cả
+    // ngày không có gì để "đóng lệnh"
     const perBks = {};
     Object.entries(st.assignments).forEach(([bks, ids]) => {
-      if (!ids.length) return;
+      if (!CD_HNSP_BKS.has(bks) || !ids.length) return;
       perBks[bks] = ids.map(id => tripById[id]).filter(Boolean).sort((a, b) => a.dep - b.dep);
     });
-    // với mỗi khung: tìm các xe đang "ở bến đúng thành phố", về từ ít nhất LENH_BUFFER phút trước,
-    // và chưa xuất bến chuyến kế tiếp trước giờ đóng lệnh
+    const slotKey = slot => slot.station + ' ' + slot.name;
     const slotCands = LENH_SLOTS.map(slot => {
       const cutoff = slot.min - LENH_BUFFER;
       const cands = [];
@@ -2333,34 +2338,48 @@ html.pw-locked #pwGate{display:flex;}
         trips.forEach((t, i) => {
           if (t.to !== slot.city) return;
           const nextDep = i + 1 < trips.length ? trips[i + 1].dep : Infinity;
-          if (t.arr <= cutoff && nextDep >= slot.min) cands.push({ bks, arrStr: t.arrStr });
+          if (t.arr <= cutoff && nextDep >= slot.min) cands.push({ bks, arrStr: t.arrStr, tripKey: bks + '#' + t.id, gap: slot.min - t.arr });
         });
       });
+      // ưu tiên xe về SÁT giờ đóng lệnh nhất (gap nhỏ nhất) — vừa đủ 15 phút là được, không chọn xe
+      // đã về từ rất lâu rồi ngồi chờ, để lái xe đóng lệnh xong là được nghỉ ngay, không bị giữ lại chờ
+      cands.sort((a, b) => a.gap - b.gap);
       return { slot, cands };
     });
-    // ghép 1 xe riêng/khung — ưu tiên khung ít lựa chọn trước để tối đa số khung đóng được
+    // ghép theo TỪNG LƯỢT VỀ (không phải theo xe) — 1 xe chạy nhiều chuyến trong ngày vẫn đóng được
+    // nhiều khung khác nhau MIỄN LÀ mỗi lượt về là 1 sự kiện thật riêng biệt (khớp cửa sổ giờ chặt nên
+    // 1 lượt về chỉ có thể rơi vào đúng 1 khung, không lo 1 lượt "gánh" 2 khung cùng lúc)
     const order = [...slotCands].sort((a, b) => a.cands.length - b.cands.length);
     const used = new Set();
     const result = {};
     order.forEach(({ slot, cands }) => {
-      const pick = cands.find(c => !used.has(c.bks));
-      if (pick){ used.add(pick.bks); result[slot.name] = pick; }
+      const pick = cands.find(c => !used.has(c.tripKey));
+      if (pick) used.add(pick.tripKey);
+      result[slotKey(slot)] = pick || null;
     });
-    const covered = Object.keys(result).length;
-
-    const zone = document.getElementById('lenhZone');
-    zone.classList.toggle('ok', covered >= LENH_MIN_REQUIRED);
-    zone.classList.toggle('bad', covered < LENH_MIN_REQUIRED);
-    document.getElementById('lenhCount').textContent = `(${covered}/${LENH_SLOTS.length} — cần ≥${LENH_MIN_REQUIRED})`;
-    const table = document.getElementById('lenhTable');
-    table.innerHTML = '';
-    LENH_SLOTS.forEach(slot => {
-      const pick = result[slot.name];
-      const row = document.createElement('div');
-      row.className = 'lhrow' + (pick ? '' : ' miss');
-      row.innerHTML = `<span class="lhslot">${pick ? '✓' : '✗'} ${slot.name}</span><span class="lhbks">${pick ? `${pick.bks} (về ${pick.arrStr})` : 'chưa có xe'}</span>`;
-      table.appendChild(row);
-    });
+    return result;
+  }
+  function renderLenhTab(){
+    const result = computeLenhResult();
+    const covered = Object.values(result).filter(Boolean).length;
+    const ok = covered >= LENH_MIN_REQUIRED;
+    document.getElementById('tabLenhCount').textContent = `(${covered}/${LENH_SLOTS.length})`;
+    document.getElementById('tabLenhCount').style.color = ok ? 'var(--ok)' : 'var(--danger)';
+    if (activeTab !== 'lenh') return; // bảng chi tiết chỉ cần dựng khi đang mở tab này
+    document.getElementById('lenhReqText').textContent = `${LENH_MIN_REQUIRED}/${LENH_SLOTS.length}`;
+    const wrap = document.getElementById('lenhTabWrap');
+    if (!wrap) return;
+    function colHtml(station){
+      const rows = LENH_SLOTS.filter(s => s.station === station).map(slot => {
+        const pick = result[station + ' ' + slot.name];
+        return `<tr class="${pick ? '' : 'miss'}"><td class="tabular">${slot.name}</td><td>${pick ? `<span class="lhok">✓ ${pick.bks}</span> <span class="lhbks">(về ${pick.arrStr})</span>` : '<span class="lhmiss">✗ chưa có xe</span>'}</td></tr>`;
+      }).join('');
+      const n = LENH_SLOTS.filter(s => s.station === station && result[station + ' ' + s.name]).length;
+      const total = LENH_SLOTS.filter(s => s.station === station).length;
+      return `<table class="lhtabletab"><thead><tr><th colspan="2">Đầu ${station} (${n}/${total})</th></tr><tr><th>Giờ</th><th>Xe đóng lệnh</th></tr></thead><tbody>${rows}</tbody></table>`;
+    }
+    wrap.innerHTML = `<div class="lhcols">${colHtml('Gia Lâm')}${colHtml('Sa Pa')}</div>
+      <div class="lhsummary ${ok ? 'ok' : 'bad'}">${covered}/${LENH_SLOTS.length} khung đóng được lệnh — ${ok ? 'ĐỦ' : 'THIẾU'} (cần ≥${LENH_MIN_REQUIRED})</div>`;
   }
 
   // tính trạng thái từng lái xe hôm nay: đang chạy (kèm xe) hoặc lý do không chạy — đang nghỉ phép
@@ -2538,13 +2557,13 @@ html.pw-locked #pwGate{display:flex;}
     buildLegend();
     renderBrokenZone();
     renderIdleZone();
-    renderLenhZone();
+    renderLenhTab();
     updateDriversOffCount();
     renderBusTray();
     if (activeTab === 'slots') renderSlotList();
     else if (activeTab === 'board') { renderUnassignedTray(); renderBoard(); }
     else if (activeTab === 'buscrew') renderBusCrewTab();
-    else renderDriversOffTab();
+    else if (activeTab === 'driversoff') renderDriversOffTab();
     updateStats();
   }
 
@@ -2579,6 +2598,7 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('newDriverTen').focus();
   });
   document.getElementById('tabBusCrew').addEventListener('click', () => setTab('buscrew'));
+  document.getElementById('tabLenh').addEventListener('click', () => setTab('lenh'));
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
   document.getElementById('exportCsvByBksBtn').addEventListener('click', exportScheduleCSVByBks);
@@ -2609,7 +2629,7 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('saveXepXeBtn').addEventListener('click', saveXepXeState);
   // bấm vào tiêu đề để đóng/mở từng thẻ báo cáo (xe hỏng/xe chưa dùng) — mặc định đóng để đỡ chiếm
   // diện tích, số lượng vẫn hiện ngay cả khi đang đóng
-  ['brokenZoneHead', 'idleZoneHead', 'lenhZoneHead'].forEach(id => {
+  ['brokenZoneHead', 'idleZoneHead'].forEach(id => {
     document.getElementById(id).addEventListener('click', () => {
       document.getElementById(id).parentElement.classList.toggle('collapsed');
     });
