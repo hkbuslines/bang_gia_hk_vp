@@ -116,6 +116,13 @@
         </select>
       </div>
 
+      <div class="field" id="tcField" style="display:none;">
+        <div class="checkbox-row">
+          <input type="checkbox" id="coTC" name="coTC">
+          <label for="coTC">Trung chuyển</label>
+        </div>
+      </div>
+
       <div class="field">
         <div class="checkbox-row">
           <input type="checkbox" id="coTen" name="coTen">
@@ -169,35 +176,28 @@
 
   const DEPARTMENTS = [
     "VP Phố Cổ (70 Nguyễn Hữu Huân)",
-    "VP Phố Cổ (70 Nguyễn Hữu Huân) - Trung chuyển",
     "VP Võ Chí Công (96 Võ Chí Công)",
-    "VP Võ Chí Công (96 Võ Chí Công) - Trung chuyển",
     "VP Long Biên (Hồng Tiến)",
-    "VP Long Biên (Hồng Tiến) - Trung chuyển",
     "VP Ninh Bình",
-    "VP Ninh Bình - Trung chuyển",
     "VP Ninh Bình 2",
-    "VP Ninh Bình 2 - Trung chuyển",
     "VP Sapa",
-    "VP Sapa - Trung chuyển",
     "VP Huế",
-    "VP Huế - Trung chuyển",
     "VP Hội An",
     "VP Đà Nẵng (Nguyễn Tất Thành)",
-    "VP Đà Nẵng (Nguyễn Tất Thành) - Trung chuyển",
     "VP Hạ Long",
-    "VP Hạ Long - Trung chuyển",
     "VP Lào Cai",
-    "VP Lào Cai - Trung chuyển",
     "VP Nha Trang",
-    "VP Nha Trang - Trung chuyển",
     "BP Điều hành",
     "BP Gara"
   ];
 
+  const NO_TRUNG_CHUYEN = new Set(["VP Hội An", "BP Điều hành", "BP Gara"]);
+
   const form = document.getElementById("logForm");
   const ngayInput = document.getElementById("ngay");
   const boPhanSelect = document.getElementById("boPhan");
+  const tcField = document.getElementById("tcField");
+  const coTCCheckbox = document.getElementById("coTC");
   const coTenCheckbox = document.getElementById("coTen");
   const tenInput = document.getElementById("ten");
   const submitBtn = document.getElementById("submitBtn");
@@ -217,6 +217,12 @@
       opt.value = d;
       opt.textContent = d;
       boPhanSelect.appendChild(opt);
+    });
+
+    boPhanSelect.addEventListener("change", function () {
+      const canTC = boPhanSelect.value && !NO_TRUNG_CHUYEN.has(boPhanSelect.value);
+      tcField.style.display = canTC ? "block" : "none";
+      if (!canTC) coTCCheckbox.checked = false;
     });
 
     coTenCheckbox.addEventListener("change", function () {
@@ -248,9 +254,12 @@
       return;
     }
 
+    const canTC = boPhanSelect.value && !NO_TRUNG_CHUYEN.has(boPhanSelect.value);
+    const boPhan = boPhanSelect.value + (canTC && coTCCheckbox.checked ? " - Trung chuyển" : "");
+
     const payload = {
       ngay: formatDateDisplay(ngayInput.value),
-      boPhan: boPhanSelect.value,
+      boPhan: boPhan,
       ten: coTenCheckbox.checked ? tenInput.value.trim() : "",
       loi: document.getElementById("loi").value.trim(),
       hoanTra: document.getElementById("hoanTra").value.trim()
@@ -276,6 +285,7 @@
           form.reset();
           ngayInput.value = new Date().toISOString().slice(0, 10);
           tenInput.style.display = "none";
+          tcField.style.display = "none";
           loadEntries();
         } else {
           showStatus("Lỗi: " + (data.message || "không rõ"), "err");
