@@ -116,6 +116,13 @@ def main():
                 ["id", "date", "departure_time", "arrival_date", "arrival_time", "route_id", "vehicle_id",
                  "driver_id", "driver2_id"])
 
+    # bỏ qua chuyến chưa có đủ giờ đi/giờ đến (Odoo trả về False cho field trống) — trước đây không
+    # lọc nên 1 chuyến mới tạo nhưng chưa điền giờ làm to_min() crash toàn bộ script (False.split fail)
+    skipped_incomplete = [r["id"] for r in rows if not r.get("departure_time") or not r.get("arrival_time")]
+    if skipped_incomplete:
+        print(f"Bỏ qua {len(skipped_incomplete)} chuyến chưa có đủ giờ đi/đến: {skipped_incomplete}")
+    rows = [r for r in rows if r.get("departure_time") and r.get("arrival_time")]
+
     by_date = {}
     for r in rows:
         by_date.setdefault(r["date"], []).append(r)
