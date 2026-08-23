@@ -157,6 +157,10 @@ button.ghost:hover{background:var(--page);}
 .dropzone.filled{border-style:solid; border-color:transparent; padding:0;}
 .assignedchip{display:flex; align-items:center; gap:8px; width:100%; padding:5px 10px; border-radius:6px; cursor:grab; color:#fff; font-weight:700; font-size:12px;}
 .assignedchip:active{cursor:grabbing;}
+.tripchip{display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:6px; cursor:grab; color:#fff; font-weight:700; font-size:12px;}
+.tripchip:active{cursor:grabbing;}
+.tripchip .route{font-weight:600; opacity:0.9;}
+#unassignedTray.dragover{background:var(--surface-2); outline:2px dashed var(--ink-muted); outline-offset:-2px;}
 .slotrow .issues{flex:0 0 auto; max-width:260px; font-size:11px; color:var(--danger); display:flex; flex-direction:column; gap:2px;}
 .slotrow .issues span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
@@ -398,6 +402,10 @@ html.pw-locked #pwGate{display:flex;}
 
   <!-- ============ TAB 2: theo xe ============ -->
   <div class="tabpane" id="paneBoard">
+    <div class="card trayCard" style="margin-bottom:10px;">
+      <div class="tray-head">Nốt giờ chưa xếp — kéo thả vào xe bên dưới, hoặc kéo 1 chuyến từ xe thả ngược lại đây để bỏ xếp</div>
+      <div class="tray-body" id="unassignedTray"></div>
+    </div>
     <div class="board">
       <div class="board-inner" id="boardInner"></div>
     </div>
@@ -2041,6 +2049,47 @@ html.pw-locked #pwGate{display:flex;}
     return lane;
   }
 
+  // khay nốt giờ chưa xếp — hiện ngay trên tab "Theo xe" để kéo thả xếp/bỏ xếp mà không cần
+  // chuyển qua tab "Theo nốt giờ"; cùng giao thức application/x-slotmove với các chip trong lane
+  function renderUnassignedTray(){
+    const day = dayFor(currentDate);
+    const st = ensureState(day.date);
+    const tripById = ensureTripMap(day.date);
+    const tray = document.getElementById('unassignedTray');
+    if (!tray) return;
+    tray.innerHTML = '';
+    const ids = [...st.unassigned].filter(id => tripById[id]).sort((a, b) => tripById[a].dep - tripById[b].dep);
+    if (!ids.length){
+      const e = document.createElement('span');
+      e.className = 'izempty';
+      e.textContent = 'Đã xếp hết — không còn nốt giờ nào chưa có xe.';
+      tray.appendChild(e);
+    }
+    ids.forEach(id => {
+      const t = tripById[id];
+      const idx = routeIdx(t.route);
+      const chip = document.createElement('div');
+      chip.className = 'tripchip';
+      chip.style.background = `var(--rt${idx})`;
+      chip.draggable = true;
+      chip.innerHTML = `<span class="tabular">${t.depStr}</span><span class="route">${t.route}</span>`;
+      chip.title = `${t.from} → ${t.to}`;
+      chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('application/x-slotmove', JSON.stringify({ tripId: id, bks: null }));
+        chip.classList.add('dragging');
+      });
+      chip.addEventListener('dragend', () => chip.classList.remove('dragging'));
+      tray.appendChild(chip);
+    });
+    tray.ondragover = e => {
+      if (e.dataTransfer.types.includes('application/x-slotmove')){ e.preventDefault(); tray.classList.add('dragover'); }
+    };
+    tray.ondragleave = () => tray.classList.remove('dragover');
+    tray.ondrop = e => {
+      const raw = e.dataTransfer.getData('application/x-slotmove');
+      if (raw){ e.preventDefault(); tray.classList.remove('dragover'); const { tripId } = JSON.parse(raw); assignBksToTrip(day.date, tripId, null); }
+    };
+  }
   function renderBoard(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -2367,7 +2416,7 @@ html.pw-locked #pwGate{display:flex;}
     updateDriversOffCount();
     renderBusTray();
     if (activeTab === 'slots') renderSlotList();
-    else if (activeTab === 'board') renderBoard();
+    else if (activeTab === 'board') { renderUnassignedTray(); renderBoard(); }
     else if (activeTab === 'buscrew') renderBusCrewTab();
     else renderDriversOffTab();
     updateStats();
