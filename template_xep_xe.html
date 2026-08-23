@@ -554,6 +554,12 @@ html.pw-locked #pwGate{display:flex;}
     });
     stateByDay[day.date] = { assignments, unassigned, broken: new Set(), drivers };
   });
+  // CHỈ những ngày thật sự bị sửa tay (hoặc đã có sẵn trong Sheet) mới cần lưu lại — nếu lưu luôn cả
+  // ~28 ngày mặc định (nguyên bản Odoo, chưa ai đụng vào) thì payload quá to (>100KB, vượt giới hạn
+  // 1 ô Google Sheets ~50.000 ký tự), khiến "Lưu & đồng bộ" báo lưu thành công nhưng dữ liệu không
+  // thật sự vào Sheet (thấy rõ khi bấm lưu rồi tải lại thì mất). Chỉ những ngày trong tập này mới được
+  // gửi lên khi bấm lưu.
+  const touchedDays = new Set();
   const tripByIdByDay = {};
   DAYS.forEach(day => {
     const m = {}; day.trips.forEach(t => m[t.id] = t); tripByIdByDay[day.date] = m;
@@ -589,7 +595,7 @@ html.pw-locked #pwGate{display:flex;}
   function xepxeStatusEl(){ return document.getElementById('xepxeStatus'); }
   function serializeXepXeState(){
     const days = {};
-    Object.keys(stateByDay).forEach(dateStr => {
+    Object.keys(stateByDay).filter(dateStr => touchedDays.has(dateStr)).forEach(dateStr => {
       const st = stateByDay[dateStr];
       const assignments = {};
       Object.entries(st.assignments).forEach(([bks, ids]) => { if (ids.length) assignments[bks] = ids; });
@@ -674,6 +680,7 @@ html.pw-locked #pwGate{display:flex;}
       Object.keys(days).forEach(dateStr => {
         injectManualTrips(dateStr, days[dateStr].manualTrips);
         applyXepXeOverride(dateStr, days[dateStr]);
+        touchedDays.add(dateStr); // ngày đã có sẵn trong Sheet — giữ nguyên khi lưu lại lần sau
       });
       updateXepXeStatus();
       renderAll();
@@ -1295,6 +1302,7 @@ html.pw-locked #pwGate{display:flex;}
   }
 
   function assignBksToTrip(date, tripId, bks){
+    touchedDays.add(date);
     const st = ensureState(date);
     // remove this trip from whichever bks currently holds it
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== tripId); });
@@ -1310,6 +1318,7 @@ html.pw-locked #pwGate{display:flex;}
     renderAll();
   }
   function setTripDriver(date, tripId, slot, name){
+    touchedDays.add(date);
     const st = ensureState(date);
     if (!st.drivers[tripId]) st.drivers[tripId] = {lai1:'', lai2:''};
     st.drivers[tripId][slot] = name.trim();
@@ -1807,6 +1816,7 @@ html.pw-locked #pwGate{display:flex;}
     day.trips.push(t);
     ensureTripMap(dateStr)[id] = t;
     ensureState(dateStr).unassigned.add(id);
+    touchedDays.add(dateStr);
     renderAll();
   }
   function addTripRowEl(dateStr, route){
@@ -1845,6 +1855,7 @@ html.pw-locked #pwGate{display:flex;}
     return wrap;
   }
   function deleteTrip(date, id){
+    touchedDays.add(date);
     const st = ensureState(date);
     st.unassigned.delete(id);
     Object.keys(st.assignments).forEach(k => { st.assignments[k] = st.assignments[k].filter(x => x !== id); });
@@ -2158,6 +2169,7 @@ html.pw-locked #pwGate{display:flex;}
 
   function markBroken(bks){
     const day = dayFor(currentDate);
+    touchedDays.add(day.date);
     const st = ensureState(day.date);
     st.broken.add(bks);
     st.assignments[bks].forEach(id => st.unassigned.add(id));
@@ -2166,6 +2178,7 @@ html.pw-locked #pwGate{display:flex;}
   }
   function restoreBus(bks){
     const day = dayFor(currentDate);
+    touchedDays.add(day.date);
     ensureState(day.date).broken.delete(bks);
     renderAll();
   }
