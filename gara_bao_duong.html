@@ -165,7 +165,8 @@ html.pw-locked #pwGate{display:flex;}
       <div class="formgrid">
         <div class="field">
           <label for="f-bks">Biển số xe</label>
-          <select id="f-bks" required></select>
+          <input type="text" id="f-bks" list="bksList" placeholder="Gõ để tìm biển số..." autocomplete="off" required>
+          <datalist id="bksList"></datalist>
         </div>
         <div class="field full" style="grid-column:span 3;">
           <label>Loại xử lý</label>
@@ -274,12 +275,13 @@ html.pw-locked #pwGate{display:flex;}
   }
   document.getElementById('ghSaveBtn').addEventListener('click', saveToGithub);
 
-  const bksSel = document.getElementById('f-bks');
+  const bksList = document.getElementById('bksList');
+  const BKS_SET = new Set(BUSES.map(b => b.bks));
   BUSES.forEach(b => {
     const opt = document.createElement('option');
     opt.value = b.bks;
     opt.textContent = b.bks + (b.tuyen_chinh ? ' — ' + b.tuyen_chinh : '');
-    bksSel.appendChild(opt);
+    bksList.appendChild(opt);
   });
 
   const today = new Date();
@@ -644,11 +646,16 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.querySelector('input[name="loai"]:checked').value;
+    const bksVal = document.getElementById('f-bks').value.trim();
+    if (!BKS_SET.has(bksVal)){
+      alert('Không tìm thấy biển số "' + bksVal + '" trong danh sách xe. Gõ để chọn đúng biển từ gợi ý.');
+      return;
+    }
     const rawNgaybd = document.getElementById('f-ngaybd').value;
     const rawNgaykt = document.getElementById('f-ngaykt').value;
     const entry = {
       id: counter++,
-      bks: document.getElementById('f-bks').value,
+      bks: bksVal,
       loai,
       // "Hỏng — cắt hẳn" cho phép để trống ngày: không ghi gì thì coi là cắt vô thời hạn từ hôm nay
       ngaybd: rawNgaybd || (loai === 'hong' ? todayISO() : ''),
