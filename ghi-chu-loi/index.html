@@ -241,12 +241,6 @@
     statusEl.className = "status " + kind;
   }
 
-  function formatDateDisplay(iso) {
-    const parts = iso.split("-");
-    if (parts.length !== 3) return iso;
-    return parts[2] + "/" + parts[1] + "/" + parts[0];
-  }
-
   function onSubmit(e) {
     e.preventDefault();
     if (!WEB_APP_URL) {
@@ -258,7 +252,10 @@
     const boPhan = boPhanSelect.value + (canTC && coTCCheckbox.checked ? " - Trung chuyển" : "");
 
     const payload = {
-      ngay: formatDateDisplay(ngayInput.value),
+      // Gửi nguyên dạng "yyyy-MM-dd" của <input type="date"> — không tự
+      // format lại thành dd/MM/yyyy vì Google Sheets sẽ đoán nhầm ngày ≤12
+      // theo kiểu Mỹ (MM/DD) khi ghi chuỗi. Code.gs dựng Date từ giá trị này.
+      ngay: ngayInput.value,
       boPhan: boPhan,
       ten: coTenCheckbox.checked ? tenInput.value.trim() : "",
       loi: document.getElementById("loi").value.trim(),
