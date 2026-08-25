@@ -511,6 +511,8 @@ html.pw-locked #pwGate{display:flex;}
     '29H-993.00': [{route:'Sa Pa - Ninh Bình', dep:'10:30'}, {route:'Ninh Bình - Sa Pa', dep:'21:30'}],
     '29H-993.09': [{route:'Ninh Bình - Sa Pa', dep:'09:00'}, {route:'Sa Pa - Ninh Bình', dep:'22:00'}],
   };
+  const CD_NB_SLOT_TOLERANCE = 30; // phút — VeXeRe hay lệch nhẹ so với giờ chuẩn của khung cố định
+  function nbSlotMin(s){ const [h,m] = s.split(':').map(Number); return h*60+m; }
   // "Đóng lệnh" xe Cố định Hà Nội - Sa Pa (chỉ 9 xe nhóm CD_HNSP_BKS, không xe khác): 14 khung giờ cố
   // định mỗi ngày, chia 2 đầu bến (Gia Lâm = Hà Nội / Sa Pa) — điều hành xác nhận 2026-08-23. 1 khung
   // "đóng được" khi có 1 xe cố định ĐANG THẬT SỰ CHẠY (không tính xe rảnh cả ngày — chưa hề có chuyến
@@ -1047,11 +1049,22 @@ html.pw-locked #pwGate{display:flex;}
 
   function overlaps(a, b){ return a.dep < effArr(b) && b.dep < effArr(a); }
 
-  // Hạ Long và Quảng Ninh là cùng 1 địa điểm thực tế (bến xe chung) — coi như trùng vị trí
+  // Hạ Long/Quảng Ninh là cùng 1 địa điểm; "X (Limousine)" và "X" cũng là cùng 1 địa điểm
+  // (chỉ khác loại xe, không khác vị trí thực tế) — coi như trùng vị trí.
   function sameCity(x, y){
     if (x === y) return true;
-    const norm = s => (s === 'Hạ Long' || s === 'Quảng Ninh') ? 'HL_QN' : s;
+    const norm = s => {
+      s = (s || '').replace(/\s*\(Limousine\)\s*$/i, '');
+      return (s === 'Hạ Long' || s === 'Quảng Ninh') ? 'HL_QN' : s;
+    };
     return norm(x) === norm(y);
+  }
+
+  // Hà Nội ↔ Ninh Bình: được phép chạy rỗng ~90p giữa 2 bến này (đúng luật trong xepxe.py).
+  const NB_HN_MIN = 90;
+  function isHnNbPair(x, y){
+    const pair = new Set([x, y]);
+    return pair.size === 2 && pair.has('Hà Nội') && pair.has('Ninh Bình');
   }
 
   // pairwise issues for a bks's own chain of trips that day: overlap / turnaround / position
@@ -1068,7 +1081,12 @@ html.pw-locked #pwGate{display:flex;}
         continue;
       }
       if (!sameCity(a.to, b.from)){
-        add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
+        const gap = b.dep - effArr(a);
+        if (isHnNbPair(a.to, b.from) && gap >= NB_HN_MIN){
+          add(b.id, `🔁 Chạy rỗng ${a.to} → ${b.from} (~${NB_HN_MIN}p) trước chuyến này — còn dư ${gap - NB_HN_MIN}p`);
+        } else {
+          add(b.id, `📍 Sai vị trí — xe đang ở ${a.to}, chuyến này xuất phát từ ${b.from}`);
+        }
       } else {
         const gap = b.dep - effArr(a);
         if (gap < MIN_TURNAROUND) add(b.id, `⏱ Chỉ ${gap} phút quay đầu (nên ≥ ${MIN_TURNAROUND}p)`);
@@ -1087,7 +1105,7 @@ html.pw-locked #pwGate{display:flex;}
       }
       // xe cố định Ninh Bình chỉ được chạy đúng 2 khung giờ cố định của nó
       const nbSlots = CD_NB_SLOTS[bks];
-      if (nbSlots && !nbSlots.some(s => s.route === t.route && s.dep === t.depStr)){
+      if (nbSlots && !nbSlots.some(s => s.route === t.route && Math.abs(nbSlotMin(s.dep) - t.dep) <= CD_NB_SLOT_TOLERANCE)){
         const slotTxt = nbSlots.map(s => `${s.dep} ${s.route}`).join(' & ');
         add(id, `🚫 Xe cố định Ninh Bình sai khung giờ — chỉ chạy ${slotTxt}`);
       }
