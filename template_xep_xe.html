@@ -512,11 +512,7 @@ html.pw-locked #pwGate{display:flex;}
     '29H-993.09': [{route:'Ninh Bình - Sa Pa', dep:'09:00'}, {route:'Sa Pa - Ninh Bình', dep:'22:00'}],
   };
   const CD_NB_SLOT_TOLERANCE = 30; // phút — VeXeRe hay lệch nhẹ so với giờ chuẩn của khung cố định
-<<<<<<< Updated upstream
   function nbSlotMin(s){ const [h,m] = s.split(':').map(Number); return h*60+m; }
-=======
-  function hhmmToMin(s){ const [h,m] = s.split(':').map(Number); return h*60+m; }
->>>>>>> Stashed changes
   // "Đóng lệnh" xe Cố định Hà Nội - Sa Pa (chỉ 9 xe nhóm CD_HNSP_BKS, không xe khác): 14 khung giờ cố
   // định mỗi ngày, chia 2 đầu bến (Gia Lâm = Hà Nội / Sa Pa) — điều hành xác nhận 2026-08-23. 1 khung
   // "đóng được" khi có 1 xe cố định ĐANG THẬT SỰ CHẠY (không tính xe rảnh cả ngày — chưa hề có chuyến
@@ -1064,10 +1060,7 @@ html.pw-locked #pwGate{display:flex;}
     return norm(x) === norm(y);
   }
 
-<<<<<<< Updated upstream
   // Hà Nội ↔ Ninh Bình: được phép chạy rỗng ~90p giữa 2 bến này (đúng luật trong xepxe.py).
-=======
->>>>>>> Stashed changes
   const NB_HN_MIN = 90;
   function isHnNbPair(x, y){
     const pair = new Set([x, y]);
@@ -1113,11 +1106,7 @@ html.pw-locked #pwGate{display:flex;}
       // xe cố định Ninh Bình chỉ được chạy đúng 2 khung giờ cố định của nó — cho phép lệch nhẹ
       // (VeXeRe hay xê dịch vài-chục phút so với giờ chuẩn, không phải sai chuyến)
       const nbSlots = CD_NB_SLOTS[bks];
-<<<<<<< Updated upstream
       if (nbSlots && !nbSlots.some(s => s.route === t.route && Math.abs(nbSlotMin(s.dep) - t.dep) <= CD_NB_SLOT_TOLERANCE)){
-=======
-      if (nbSlots && !nbSlots.some(s => s.route === t.route && Math.abs(hhmmToMin(s.dep) - t.dep) <= CD_NB_SLOT_TOLERANCE)){
->>>>>>> Stashed changes
         const slotTxt = nbSlots.map(s => `${s.dep} ${s.route}`).join(' & ');
         add(id, `🚫 Xe cố định Ninh Bình sai khung giờ — chỉ chạy ${slotTxt}`);
       }
