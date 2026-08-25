@@ -156,10 +156,11 @@
           </div>
 
           <div class="field">
-            <div class="checkbox-row">
+            <div class="checkbox-row" id="coTenRow">
               <input type="checkbox" id="coTen" name="coTen">
               <label for="coTen">Nhập tên lái xe (chỉ khi lỗi do lái xe)</label>
             </div>
+            <label for="ten" id="tenRequiredLabel" style="display:none;">Tên lái xe</label>
             <input type="text" id="ten" name="ten" placeholder="Họ tên lái xe" style="display:none;">
           </div>
 
@@ -232,7 +233,6 @@
     "VP Võ Chí Công (96 Võ Chí Công)",
     "VP Long Biên (Hồng Tiến)",
     "VP Ninh Bình",
-    "VP Ninh Bình 2",
     "VP Sapa",
     "VP Huế",
     "VP Hội An",
@@ -241,10 +241,12 @@
     "VP Lào Cai",
     "VP Nha Trang",
     "BP Điều hành",
-    "BP Gara"
+    "BP Gara",
+    "Lái xe"
   ];
 
-  const NO_TRUNG_CHUYEN = new Set(["VP Hội An", "BP Điều hành", "BP Gara"]);
+  const NO_TRUNG_CHUYEN = new Set(["VP Hội An", "BP Điều hành", "BP Gara", "Lái xe"]);
+  const DRIVER_DEPT = "Lái xe";
 
   const form = document.getElementById("logForm");
   const ngayInput = document.getElementById("ngay");
@@ -253,8 +255,10 @@
   const coTCCheckbox = document.getElementById("coTC");
   const maVeInput = document.getElementById("maVe");
   const tuyenInput = document.getElementById("tuyen");
+  const coTenRow = document.getElementById("coTenRow");
   const coTenCheckbox = document.getElementById("coTen");
   const tenInput = document.getElementById("ten");
+  const tenRequiredLabel = document.getElementById("tenRequiredLabel");
   const submitBtn = document.getElementById("submitBtn");
   const statusEl = document.getElementById("status");
   const logBody = document.getElementById("logBody");
@@ -283,6 +287,16 @@
       const canTC = boPhanSelect.value && !NO_TRUNG_CHUYEN.has(boPhanSelect.value);
       tcField.style.display = canTC ? "block" : "none";
       if (!canTC) coTCCheckbox.checked = false;
+
+      const isDriverDept = boPhanSelect.value === DRIVER_DEPT;
+      coTenRow.style.display = isDriverDept ? "none" : "flex";
+      tenRequiredLabel.style.display = isDriverDept ? "block" : "none";
+      tenInput.required = isDriverDept;
+      if (isDriverDept) {
+        tenInput.style.display = "block";
+      } else {
+        tenInput.style.display = coTenCheckbox.checked ? "block" : "none";
+      }
     });
 
     coTenCheckbox.addEventListener("change", function () {
@@ -317,6 +331,7 @@
 
     const canTC = boPhanSelect.value && !NO_TRUNG_CHUYEN.has(boPhanSelect.value);
     const boPhan = boPhanSelect.value + (canTC && coTCCheckbox.checked ? " - Trung chuyển" : "");
+    const isDriverDept = boPhanSelect.value === DRIVER_DEPT;
 
     const payload = {
       // Gửi nguyên dạng "yyyy-MM-dd" của <input type="date"> — không tự
@@ -326,13 +341,18 @@
       boPhan: boPhan,
       maVe: maVeInput.value.trim(),
       tuyen: tuyenInput.value.trim(),
-      ten: coTenCheckbox.checked ? tenInput.value.trim() : "",
+      ten: (isDriverDept || coTenCheckbox.checked) ? tenInput.value.trim() : "",
       loi: document.getElementById("loi").value.trim(),
       hoanTra: document.getElementById("hoanTra").value.trim()
     };
 
     if (!payload.ngay || !payload.boPhan || !payload.loi) {
       showStatus("Vui lòng điền Ngày, Bộ phận và Lỗi.", "err");
+      return;
+    }
+
+    if (isDriverDept && !payload.ten) {
+      showStatus("Bộ phận \"Lái xe\" bắt buộc phải nhập tên lái xe.", "err");
       return;
     }
 
@@ -351,6 +371,9 @@
           form.reset();
           ngayInput.value = new Date().toISOString().slice(0, 10);
           tenInput.style.display = "none";
+          tenInput.required = false;
+          tenRequiredLabel.style.display = "none";
+          coTenRow.style.display = "flex";
           tcField.style.display = "none";
           loadEntries();
         } else {
