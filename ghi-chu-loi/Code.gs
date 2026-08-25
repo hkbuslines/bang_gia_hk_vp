@@ -33,7 +33,9 @@ function doGet(e) {
       boPhan: r[2],
       ten: r[3],
       loi: r[4],
-      hoanTra: r[5]
+      hoanTra: r[5],
+      maVe: r[6],
+      tuyen: r[7]
     };
   }).reverse();
 
@@ -60,7 +62,9 @@ function doPost(e) {
       body.boPhan,
       body.ten || "",
       body.loi,
-      body.hoanTra || ""
+      body.hoanTra || "",
+      body.maVe || "",
+      body.tuyen || ""
     ]);
 
     return jsonOutput_({ result: "success" });
@@ -74,10 +78,48 @@ function getSheet_() {
   var sheet = ss.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = ss.insertSheet(SHEET_NAME);
-    sheet.appendRow(["Thời gian ghi", "Ngày", "Bộ phận", "Tên", "Lỗi", "Hoàn trả"]);
+    sheet.appendRow(["Thời gian ghi", "Ngày", "Bộ phận", "Tên", "Lỗi", "Hoàn trả", "Mã vé", "Tuyến"]);
     sheet.setFrozenRows(1);
   }
   return sheet;
+}
+
+/**
+ * Chạy MỘT LẦN thủ công (chọn hàm này trong dropdown ở Apps Script editor
+ * rồi bấm Run) sau khi nâng cấp lên bản có cột Mã vé/Tuyến, để:
+ * 1. Thêm tiêu đề "Mã vé"/"Tuyến" nếu sheet cũ chưa có (an toàn nếu đã có).
+ * 2. Bù cột Mã vé/Tuyến cho các dòng cũ bằng cách tách từ text cột Lỗi
+ *    (định dạng "[Mã vé] Tuyến (Nhóm lỗi): mô tả...").
+ * 3. Xóa cột Tên ở các dòng "... - Trung chuyển (...)" vì lỗi trung chuyển
+ *    (điều phối/lịch trình) không phải lúc nào cũng là lỗi cá nhân lái xe.
+ */
+function migrateBackfillMaVeTuyenAndFixTen() {
+  var sheet = getSheet_();
+  var header = sheet.getRange(1, 1, 1, 8).getValues()[0];
+  if (header[6] !== "Mã vé") sheet.getRange(1, 7).setValue("Mã vé");
+  if (header[7] !== "Tuyến") sheet.getRange(1, 8).setValue("Tuyến");
+
+  var lastRow = sheet.getLastRow();
+  if (lastRow < 2) return;
+
+  var range = sheet.getRange(2, 1, lastRow - 1, 8);
+  var values = range.getValues();
+  var pattern = /^\[([^\]]+)\]\s+(.+?)\s+(?:- Trung chuyển )?\(/;
+
+  for (var i = 0; i < values.length; i++) {
+    var row = values[i];
+    var loi = String(row[4] || "");
+    var m = loi.match(pattern);
+    if (m) {
+      if (!row[6]) values[i][6] = m[1]; // Mã vé
+      if (!row[7]) values[i][7] = m[2]; // Tuyến
+    }
+    if (loi.indexOf("- Trung chuyển (") !== -1) {
+      values[i][3] = ""; // Tên: xóa vì lỗi trung chuyển không hẳn do lái xe
+    }
+  }
+
+  range.setValues(values);
 }
 
 function jsonOutput_(obj) {

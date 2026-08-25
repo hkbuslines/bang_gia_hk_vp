@@ -25,7 +25,16 @@
     color: var(--text);
     padding: 24px 16px 60px;
   }
-  .wrap { max-width: 720px; margin: 0 auto; }
+  .wrap { max-width: 1400px; margin: 0 auto; }
+  .layout { display: flex; gap: 24px; align-items: flex-start; }
+  .form-col { flex: 0 0 380px; }
+  .list-col { flex: 1 1 auto; min-width: 0; }
+  @media (max-width: 900px) {
+    .layout { flex-direction: column; }
+    .form-col { flex: 1 1 auto; width: 100%; }
+  }
+  .field-row { display: flex; gap: 12px; }
+  .field-row .field { flex: 1 1 0; min-width: 0; }
   h1 { font-size: 22px; margin: 0 0 4px; }
   .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 20px; }
   .card {
@@ -74,16 +83,26 @@
   .status { margin-top: 12px; font-size: 14px; display: none; }
   .status.ok { color: var(--ok); display: block; }
   .status.err { color: var(--danger); display: block; }
-  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .list-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
   .list-header h2 { font-size: 16px; margin: 0; }
-  .refresh-btn {
+  .filter-row { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .filter-row .field { margin-bottom: 0; }
+  .filter-row .field label { margin-bottom: 4px; }
+  .filter-row input[type=date] { width: auto; }
+  .refresh-btn, .clear-filter-btn {
     background: none; border: 1px solid var(--border); border-radius: 6px;
     padding: 6px 10px; font-size: 13px; cursor: pointer; color: var(--text);
   }
-  .refresh-btn:hover { background: #f0f1f3; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  .refresh-btn:hover, .clear-filter-btn:hover { background: #f0f1f3; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; table-layout: fixed; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); vertical-align: top; word-wrap: break-word; }
   th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  col.col-ngay { width: 88px; }
+  col.col-bophan { width: 150px; }
+  col.col-mave { width: 100px; }
+  col.col-tuyen { width: 130px; }
+  col.col-ten { width: 110px; }
+  col.col-hoantra { width: 130px; }
   .empty, .loading { color: var(--muted); font-size: 13px; padding: 8px 0; }
   .table-scroll { overflow-x: auto; }
   .config-warning {
@@ -102,70 +121,104 @@
     <code>WEB_APP_URL</code> ở cuối file thành URL Web App Apps Script của bạn (xem hướng dẫn trong Code.gs).
   </div>
 
-  <div class="card">
-    <form id="logForm">
-      <div class="field">
-        <label for="ngay">Ngày</label>
-        <input type="date" id="ngay" name="ngay" required>
+  <div class="layout">
+    <div class="form-col">
+      <div class="card">
+        <form id="logForm">
+          <div class="field">
+            <label for="ngay">Ngày</label>
+            <input type="date" id="ngay" name="ngay" required>
+          </div>
+
+          <div class="field">
+            <label for="boPhan">Bộ phận</label>
+            <select id="boPhan" name="boPhan" required>
+              <option value="" disabled selected>-- Chọn bộ phận --</option>
+            </select>
+          </div>
+
+          <div class="field" id="tcField" style="display:none;">
+            <div class="checkbox-row">
+              <input type="checkbox" id="coTC" name="coTC">
+              <label for="coTC">Trung chuyển</label>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <div class="field">
+              <label for="maVe">Mã vé (nếu có)</label>
+              <input type="text" id="maVe" name="maVe" placeholder="VD: HYR298458">
+            </div>
+            <div class="field">
+              <label for="tuyen">Tuyến (nếu có)</label>
+              <input type="text" id="tuyen" name="tuyen" placeholder="VD: Sapa - Hà Nội">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="checkbox-row">
+              <input type="checkbox" id="coTen" name="coTen">
+              <label for="coTen">Nhập tên lái xe (chỉ khi lỗi do lái xe)</label>
+            </div>
+            <input type="text" id="ten" name="ten" placeholder="Họ tên lái xe" style="display:none;">
+          </div>
+
+          <div class="field">
+            <label for="loi">Lỗi</label>
+            <textarea id="loi" name="loi" placeholder="Mô tả lỗi..." required></textarea>
+          </div>
+
+          <div class="field">
+            <label for="hoanTra">Hoàn trả (nếu có)</label>
+            <input type="text" id="hoanTra" name="hoanTra" placeholder="VD: 200,000đ hoặc để trống nếu không có">
+          </div>
+
+          <button type="submit" id="submitBtn">Lưu ghi chú</button>
+          <div id="status" class="status"></div>
+        </form>
       </div>
-
-      <div class="field">
-        <label for="boPhan">Bộ phận</label>
-        <select id="boPhan" name="boPhan" required>
-          <option value="" disabled selected>-- Chọn bộ phận --</option>
-        </select>
-      </div>
-
-      <div class="field" id="tcField" style="display:none;">
-        <div class="checkbox-row">
-          <input type="checkbox" id="coTC" name="coTC">
-          <label for="coTC">Trung chuyển</label>
-        </div>
-      </div>
-
-      <div class="field">
-        <div class="checkbox-row">
-          <input type="checkbox" id="coTen" name="coTen">
-          <label for="coTen">Nhập tên người liên quan</label>
-        </div>
-        <input type="text" id="ten" name="ten" placeholder="Họ tên" style="display:none;">
-      </div>
-
-      <div class="field">
-        <label for="loi">Lỗi</label>
-        <textarea id="loi" name="loi" placeholder="Mô tả lỗi..." required></textarea>
-      </div>
-
-      <div class="field">
-        <label for="hoanTra">Hoàn trả (nếu có)</label>
-        <input type="text" id="hoanTra" name="hoanTra" placeholder="VD: 200,000đ hoặc để trống nếu không có">
-      </div>
-
-      <button type="submit" id="submitBtn">Lưu ghi chú</button>
-      <div id="status" class="status"></div>
-    </form>
-  </div>
-
-  <div class="card">
-    <div class="list-header">
-      <h2>Ghi chú gần đây</h2>
-      <button type="button" class="refresh-btn" id="refreshBtn">Làm mới</button>
     </div>
-    <div class="table-scroll">
-      <table>
-        <thead>
-          <tr>
-            <th>Ngày</th>
-            <th>Bộ phận</th>
-            <th>Tên</th>
-            <th>Lỗi</th>
-            <th>Hoàn trả</th>
-          </tr>
-        </thead>
-        <tbody id="logBody">
-          <tr><td colspan="5" class="loading">Đang tải...</td></tr>
-        </tbody>
-      </table>
+
+    <div class="list-col">
+      <div class="card">
+        <div class="list-header">
+          <h2>Ghi chú gần đây</h2>
+          <button type="button" class="refresh-btn" id="refreshBtn">Làm mới</button>
+        </div>
+        <div class="filter-row">
+          <div class="field">
+            <label for="tuNgay">Từ ngày</label>
+            <input type="date" id="tuNgay">
+          </div>
+          <div class="field">
+            <label for="denNgay">Đến ngày</label>
+            <input type="date" id="denNgay">
+          </div>
+          <button type="button" class="clear-filter-btn" id="clearFilterBtn">Xóa lọc</button>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <colgroup>
+              <col class="col-ngay"><col class="col-bophan"><col class="col-mave"><col class="col-tuyen">
+              <col class="col-ten"><col><col class="col-hoantra">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Ngày</th>
+                <th>Bộ phận</th>
+                <th>Mã vé</th>
+                <th>Tuyến</th>
+                <th>Tên</th>
+                <th>Lỗi</th>
+                <th>Hoàn trả</th>
+              </tr>
+            </thead>
+            <tbody id="logBody">
+              <tr><td colspan="7" class="loading">Đang tải...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -198,6 +251,8 @@
   const boPhanSelect = document.getElementById("boPhan");
   const tcField = document.getElementById("tcField");
   const coTCCheckbox = document.getElementById("coTC");
+  const maVeInput = document.getElementById("maVe");
+  const tuyenInput = document.getElementById("tuyen");
   const coTenCheckbox = document.getElementById("coTen");
   const tenInput = document.getElementById("ten");
   const submitBtn = document.getElementById("submitBtn");
@@ -205,6 +260,11 @@
   const logBody = document.getElementById("logBody");
   const refreshBtn = document.getElementById("refreshBtn");
   const configWarning = document.getElementById("configWarning");
+  const tuNgayInput = document.getElementById("tuNgay");
+  const denNgayInput = document.getElementById("denNgay");
+  const clearFilterBtn = document.getElementById("clearFilterBtn");
+
+  let allEntries = [];
 
   function init() {
     if (!WEB_APP_URL) configWarning.style.display = "block";
@@ -232,6 +292,13 @@
 
     form.addEventListener("submit", onSubmit);
     refreshBtn.addEventListener("click", loadEntries);
+    tuNgayInput.addEventListener("change", renderTable);
+    denNgayInput.addEventListener("change", renderTable);
+    clearFilterBtn.addEventListener("click", function () {
+      tuNgayInput.value = "";
+      denNgayInput.value = "";
+      renderTable();
+    });
 
     loadEntries();
   }
@@ -257,6 +324,8 @@
       // theo kiểu Mỹ (MM/DD) khi ghi chuỗi. Code.gs dựng Date từ giá trị này.
       ngay: ngayInput.value,
       boPhan: boPhan,
+      maVe: maVeInput.value.trim(),
+      tuyen: tuyenInput.value.trim(),
       ten: coTenCheckbox.checked ? tenInput.value.trim() : "",
       loi: document.getElementById("loi").value.trim(),
       hoanTra: document.getElementById("hoanTra").value.trim()
@@ -296,33 +365,66 @@
       });
   }
 
+  function parseVnDate(str) {
+    // "dd/MM/yyyy" -> Date (local midnight), hoặc null nếu không parse được.
+    if (!str) return null;
+    const parts = str.split("/");
+    if (parts.length !== 3) return null;
+    const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
   function loadEntries() {
     if (!WEB_APP_URL) {
-      logBody.innerHTML = '<tr><td colspan="5" class="empty">Chưa cấu hình WEB_APP_URL.</td></tr>';
+      logBody.innerHTML = '<tr><td colspan="7" class="empty">Chưa cấu hình WEB_APP_URL.</td></tr>';
       return;
     }
-    logBody.innerHTML = '<tr><td colspan="5" class="loading">Đang tải...</td></tr>';
+    logBody.innerHTML = '<tr><td colspan="7" class="loading">Đang tải...</td></tr>';
 
     fetch(WEB_APP_URL)
       .then(function (res) { return res.json(); })
       .then(function (data) {
-        if (data.result !== "success" || !data.data.length) {
-          logBody.innerHTML = '<tr><td colspan="5" class="empty">Chưa có ghi chú nào.</td></tr>';
+        if (data.result !== "success") {
+          logBody.innerHTML = '<tr><td colspan="7" class="empty">Lỗi tải dữ liệu.</td></tr>';
           return;
         }
-        logBody.innerHTML = data.data.map(function (row) {
-          return "<tr>" +
-            "<td>" + escapeHtml(row.ngay) + "</td>" +
-            "<td>" + escapeHtml(row.boPhan) + "</td>" +
-            "<td>" + escapeHtml(row.ten || "-") + "</td>" +
-            "<td>" + escapeHtml(row.loi) + "</td>" +
-            "<td>" + escapeHtml(row.hoanTra || "-") + "</td>" +
-            "</tr>";
-        }).join("");
+        allEntries = data.data;
+        renderTable();
       })
       .catch(function (err) {
-        logBody.innerHTML = '<tr><td colspan="5" class="empty">Lỗi tải dữ liệu: ' + escapeHtml(err.message) + "</td></tr>";
+        logBody.innerHTML = '<tr><td colspan="7" class="empty">Lỗi tải dữ liệu: ' + escapeHtml(err.message) + "</td></tr>";
       });
+  }
+
+  function renderTable() {
+    const tuNgay = tuNgayInput.value ? new Date(tuNgayInput.value + "T00:00:00") : null;
+    const denNgay = denNgayInput.value ? new Date(denNgayInput.value + "T00:00:00") : null;
+
+    const filtered = allEntries.filter(function (row) {
+      if (!tuNgay && !denNgay) return true;
+      const d = parseVnDate(row.ngay);
+      if (!d) return true; // giữ lại dòng không parse được ngày thay vì ẩn nhầm
+      if (tuNgay && d < tuNgay) return false;
+      if (denNgay && d > denNgay) return false;
+      return true;
+    });
+
+    if (!filtered.length) {
+      logBody.innerHTML = '<tr><td colspan="7" class="empty">Không có ghi chú nào trong khoảng ngày này.</td></tr>';
+      return;
+    }
+
+    logBody.innerHTML = filtered.map(function (row) {
+      return "<tr>" +
+        "<td>" + escapeHtml(row.ngay) + "</td>" +
+        "<td>" + escapeHtml(row.boPhan) + "</td>" +
+        "<td>" + escapeHtml(row.maVe || "-") + "</td>" +
+        "<td>" + escapeHtml(row.tuyen || "-") + "</td>" +
+        "<td>" + escapeHtml(row.ten || "-") + "</td>" +
+        "<td>" + escapeHtml(row.loi) + "</td>" +
+        "<td>" + escapeHtml(row.hoanTra || "-") + "</td>" +
+        "</tr>";
+    }).join("");
   }
 
   function escapeHtml(str) {
