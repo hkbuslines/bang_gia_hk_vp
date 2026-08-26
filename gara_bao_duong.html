@@ -257,6 +257,40 @@ html.pw-locked #pwGate{display:flex;}
     }
   }
 
+  // Xe hỏng sửa xong (bấm xoá mục "hỏng") — xe luôn được sửa ở Hà Nội, nên khi thả ra chạy lại,
+  // báo sang bên Xếp xe (Sheet key "xepxe") 1 chuyến tay để hệ thống biết đúng vị trí thật khi
+  // tính lịch cho ngày kế tiếp — không cần đợi ai đó xếp/lắp tay lại từ đầu.
+  async function returnVehicleToHanoi(bks){
+    try {
+      const today = todayISO();
+      const res = await fetch(`${SHEET_API_URL}?action=load&key=xepxe&t=${Date.now()}`, {cache: 'no-store'});
+      const data = await res.json();
+      const days = data.days || {};
+      const day = days[today] || {};
+      day.assignments = day.assignments || {};
+      day.drivers = day.drivers || {};
+      day.manualTrips = day.manualTrips || [];
+      day.broken = day.broken || [];
+      const now = new Date();
+      const mins = now.getHours() * 60 + now.getMinutes();
+      const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+      const id = -Date.now();
+      day.manualTrips.push({
+        id, route: 'Gara - Hà Nội', dep: mins, arr: mins, depStr: timeStr, arrStr: timeStr,
+        from: 'Gara', to: 'Hà Nội', assignedBks: null, odooLai1: null, odooLai2: null, manual: true,
+      });
+      day.assignments[bks] = day.assignments[bks] || [];
+      day.assignments[bks].push(id);
+      days[today] = day;
+      await fetch(SHEET_API_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'save', key: 'xepxe', payload: { days } }),
+      });
+    } catch(err){
+      console.warn('Không báo được vị trí Hà Nội sang bên Xếp xe:', err);
+    }
+  }
+
   async function saveToGithub(){
     const statusEl = document.getElementById('ghStatus');
     statusEl.textContent = 'Đang lưu...';
@@ -631,6 +665,9 @@ html.pw-locked #pwGate{display:flex;}
           if (!confirm(`Xoá mục "${entry ? entry.bks : ''}" này?`)) return;
           entries = entries.filter(e => e.id !== Number(btn.dataset.del));
           render();
+          if (entry && entry.loai === 'hong'){
+            returnVehicleToHanoi(entry.bks);   // xe hỏng sửa xong luôn về lại Hà Nội
+          }
         });
       });
       wrap.querySelectorAll('[data-state]').forEach(sel => {
