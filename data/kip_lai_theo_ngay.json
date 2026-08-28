@@ -1,9 +1,4 @@
 {
-  "2026-08-13": {
-    "kip": 105,
-    "real": true,
-    "refDate": null
-  },
   "2026-08-14": {
     "kip": 103,
     "real": true,
@@ -80,14 +75,14 @@
     "refDate": null
   },
   "2026-08-29": {
-    "kip": 97,
-    "real": false,
-    "refDate": "2026-08-22"
+    "kip": 122,
+    "real": true,
+    "refDate": null
   },
   "2026-08-30": {
-    "kip": 108,
-    "real": false,
-    "refDate": "2026-08-23"
+    "kip": 126,
+    "real": true,
+    "refDate": null
   },
   "2026-08-31": {
     "kip": 100,
@@ -105,9 +100,9 @@
     "refDate": "2026-08-26"
   },
   "2026-09-03": {
-    "kip": 93,
+    "kip": 94,
     "real": false,
-    "refDate": "2026-08-20"
+    "refDate": "2026-08-27"
   },
   "2026-09-04": {
     "kip": 101,
@@ -138,5 +133,10 @@
     "kip": 100,
     "real": false,
     "refDate": "2026-08-26"
+  },
+  "2026-09-10": {
+    "kip": 94,
+    "real": false,
+    "refDate": "2026-08-27"
   }
 }
