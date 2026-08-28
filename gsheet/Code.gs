@@ -126,6 +126,9 @@ function writeKey_(key, valueStr) {
 }
 
 function doGet(e) {
+  // e undefined khi bấm "Run" thử trực tiếp trong Apps Script editor (không phải request thật qua
+  // URL) — trả thông báo rõ ràng thay vì crash TypeError, không ảnh hưởng gì khi chạy qua Web App.
+  if (!e || !e.parameter) return jsonOut_({ ok: false, error: 'Hàm này chỉ chạy qua URL Web App (thêm ?key=...), không chạy trực tiếp trong editor.' });
   const key = e.parameter.key;
   if (!key) return jsonOut_({ ok: false, error: 'Thiếu tham số key' });
   const raw = readKey_(key);
@@ -138,6 +141,8 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // e undefined khi bấm "Run" thử trực tiếp trong Apps Script editor — xem chú thích ở doGet.
+  if (!e || !e.postData) return jsonOut_({ ok: false, error: 'Hàm này chỉ chạy qua URL Web App (POST thật), không chạy trực tiếp trong editor.' });
   let body;
   try {
     body = JSON.parse(e.postData.contents);
