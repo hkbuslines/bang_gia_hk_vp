@@ -660,8 +660,12 @@ html.pw-locked #pwGate{display:flex;}
       const broken = Array.from(st.broken);
       const manualTrips = Object.values(ensureTripMap(dateStr)).filter(t => t.manual)
         .map(t => ({ id: t.id, route: t.route, dep: t.dep, arr: t.arr, depStr: t.depStr, arrStr: t.arrStr, from: t.from, to: t.to }));
-      if (Object.keys(assignments).length || Object.keys(drivers).length || broken.length || manualTrips.length){
-        days[dateStr] = { assignments, drivers, broken, manualTrips };
+      // Chuyến còn trống TẠI THỜI ĐIỂM LƯU này — ghi lại để applyXepXeOverride không tự điền lại từ
+      // Odoo lần tải sau (xem chú thích ở applyXepXeOverride). Ngày này đang touched (đang được sửa
+      // chủ động) nên đây đúng là bức tranh "để trống có chủ đích", không phải "chưa ai đụng tới".
+      const unassignedIds = Array.from(st.unassigned);
+      if (Object.keys(assignments).length || Object.keys(drivers).length || broken.length || manualTrips.length || unassignedIds.length){
+        days[dateStr] = { assignments, drivers, broken, manualTrips, unassignedIds };
       }
     });
     return days;
@@ -701,13 +705,19 @@ html.pw-locked #pwGate{display:flex;}
     // gây xung đột giả xuất hiện lại nhiều lần. Xe Odoo (t.assignedBks) giờ chỉ áp dụng cho chuyến
     // CHƯA TỪNG được lưu trong Sheet — TRỪ KHI ngày đó có cờ ignoreOdoo:true trong Sheet, khi đó
     // bỏ qua hẳn xe Odoo, để trống toàn bộ chuyến chưa lưu tay (dùng khi cần xoá sạch, xếp lại từ đầu).
+    //
+    // saved.unassignedIds: các chuyến CỐ TÌNH để trống (đã cân nhắc, không phải "chưa đụng tới") —
+    // nếu không có cờ này, 1 chuyến để trống vẫn âm thầm rơi về xe Odoo tự gán (t.assignedBks), có
+    // thể trùng giờ với xe khác đã lưu tay khác → hiện xung đột giả trên "Theo xe" dù dữ liệu đã lưu
+    // đúng ý. Đánh dấu vào đây để chuyến đó LUÔN trống, không bao giờ tự điền lại từ Odoo.
     const ignoreOdoo = !!saved.ignoreOdoo;
+    const forcedUnassigned = new Set(saved.unassignedIds || []);
     Object.keys(trips).forEach(idStr => {
       const id = Number(idStr);
       const t = trips[id];
       const hasSavedBks = Object.prototype.hasOwnProperty.call(savedTripBks, id);
       const bks = hasSavedBks ? savedTripBks[id]
-        : (!ignoreOdoo && t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
+        : (!ignoreOdoo && !forcedUnassigned.has(id) && t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
         : null;
       if (bks && assignments[bks]){
         assignments[bks].push(id);
