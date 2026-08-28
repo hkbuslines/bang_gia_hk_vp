@@ -1993,7 +1993,9 @@ html.pw-locked #pwGate{display:flex;}
     el.appendChild(del);
     if (forLane){
       const left = trip.dep * PX_PER_MIN;
-      const width = Math.max(8, Math.min(AXIS_END, effArr(trip)) - trip.dep) * PX_PER_MIN;
+      // không cắt ở AXIS_END (24h) — chuyến qua đêm hôm sau vẫn vẽ đủ chiều dài thật, tránh nhầm là
+      // xe chỉ chạy đến nửa đêm
+      const width = Math.max(8, effArr(trip) - trip.dep) * PX_PER_MIN;
       el.style.left = left + 'px';
       el.style.width = width + 'px';
     }
