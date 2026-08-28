@@ -699,13 +699,15 @@ html.pw-locked #pwGate{display:flex;}
     // build lại từ Odoo thì mốc đó tự động mới hơn mọi lần lưu tay trước đó → Odoo lại thắng, âm
     // thầm đè lên các chuyến đã lưu tay (dù xe Odoo có thể không qua kiểm tra vị trí/quay đầu) →
     // gây xung đột giả xuất hiện lại nhiều lần. Xe Odoo (t.assignedBks) giờ chỉ áp dụng cho chuyến
-    // CHƯA TỪNG được lưu trong Sheet.
+    // CHƯA TỪNG được lưu trong Sheet — TRỪ KHI ngày đó có cờ ignoreOdoo:true trong Sheet, khi đó
+    // bỏ qua hẳn xe Odoo, để trống toàn bộ chuyến chưa lưu tay (dùng khi cần xoá sạch, xếp lại từ đầu).
+    const ignoreOdoo = !!saved.ignoreOdoo;
     Object.keys(trips).forEach(idStr => {
       const id = Number(idStr);
       const t = trips[id];
       const hasSavedBks = Object.prototype.hasOwnProperty.call(savedTripBks, id);
       const bks = hasSavedBks ? savedTripBks[id]
-        : (t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
+        : (!ignoreOdoo && t.assignedBks && assignments[t.assignedBks]) ? t.assignedBks
         : null;
       if (bks && assignments[bks]){
         assignments[bks].push(id);
