@@ -18,6 +18,14 @@
 
 const SHEET_NAME = 'Data';
 const REPO = 'hkbuslines/bang_gia_hk_vp';
+// 1 ô Google Sheets giới hạn cứng 50.000 ký tự. Trước đây ghi thẳng cả chuỗi JSON vào 1 ô — khi
+// vượt giới hạn, setValue() ném lỗi NHƯNG doPost không có try/catch nên throw ra ngoài khiến
+// Apps Script trả về trang lỗi HTML thay vì JSON; ở một số trường hợp khác (ví dụ ghi đè ô đã có
+// dữ liệu ngắn hơn) việc ghi coi như "thành công" phía client dù giá trị thật sự không đổi — nhìn
+// chung là thất bại IM LẶNG, rất khó phát hiện. Giờ tự động CHIA NHỎ chuỗi dài ra nhiều ô liên tiếp
+// (mỗi ô ≤ CHUNK_SIZE ký tự, chừa biên an toàn) — bỏ hẳn giới hạn thay vì né nó, và luôn báo lỗi rõ
+// ràng nếu ghi thất bại vì lý do khác (quota, mạng...) thay vì báo "ok" giả.
+const CHUNK_SIZE = 40000;
 
 function getSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -33,11 +41,38 @@ function jsonOut_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
+// Chuỗi dài được lưu thành nhiều dòng liên tiếp ngay sau dòng "key" gốc:
+//   key            | __chunked__:<tổng số đoạn>
+//   key::chunk::1  | <đoạn 1>
+//   key::chunk::2  | <đoạn 2>
+//   ...
+// readKey_ tự nhận diện và ghép lại; dữ liệu cũ ghi kiểu 1-ô vẫn đọc bình thường (tương thích ngược).
+function chunkMarkerKey_(key, idx) { return key + '::chunk::' + idx; }
+
 function readKey_(key) {
   const sheet = getSheet_();
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) return data[i][1] || '';
+    if (data[i][0] === key) {
+      const raw = data[i][1] || '';
+      const m = /^__chunked__:(\d+)$/.exec(raw);
+      if (!m) return raw;
+      const total = parseInt(m[1], 10);
+      const chunkMap = {};
+      for (let j = 1; j < data.length; j++) {
+        const ck = String(data[j][0] || '');
+        const cm = /^.+::chunk::(\d+)$/.exec(ck);
+        if (cm && ck.indexOf(key + '::chunk::') === 0) {
+          chunkMap[parseInt(cm[1], 10)] = data[j][1] || '';
+        }
+      }
+      let out = '';
+      for (let n = 1; n <= total; n++) {
+        if (!(n in chunkMap)) throw new Error('Thiếu đoạn ' + n + '/' + total + ' của key "' + key + '" — dữ liệu bị hỏng.');
+        out += chunkMap[n];
+      }
+      return out;
+    }
   }
   return '';
 }
@@ -45,13 +80,49 @@ function readKey_(key) {
 function writeKey_(key, valueStr) {
   const sheet = getSheet_();
   const data = sheet.getDataRange().getValues();
+  let keyRow = -1;
+  const oldChunkRows = []; // {row, idx} — các dòng chunk CŨ của key này, để dọn nếu số đoạn mới ít hơn
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === key) {
-      sheet.getRange(i + 1, 2).setValue(valueStr);
-      return;
-    }
+    if (data[i][0] === key) keyRow = i;
+    const ck = String(data[i][0] || '');
+    const cm = /^.+::chunk::(\d+)$/.exec(ck);
+    if (cm && ck.indexOf(key + '::chunk::') === 0) oldChunkRows.push({ row: i, idx: parseInt(cm[1], 10) });
   }
-  sheet.appendRow([key, valueStr]);
+
+  const needsChunking = valueStr.length > CHUNK_SIZE;
+  const chunks = [];
+  if (needsChunking) {
+    for (let p = 0; p < valueStr.length; p += CHUNK_SIZE) chunks.push(valueStr.slice(p, p + CHUNK_SIZE));
+  }
+  const headerValue = needsChunking ? ('__chunked__:' + chunks.length) : valueStr;
+
+  if (keyRow === -1) {
+    sheet.appendRow([key, headerValue]);
+  } else {
+    sheet.getRange(keyRow + 1, 2).setValue(headerValue);
+  }
+
+  // ghi các đoạn mới (append vào cuối sheet — thứ tự dòng không quan trọng, readKey_ tra theo tên key)
+  chunks.forEach((c, idx0) => {
+    const idx = idx0 + 1;
+    const existing = oldChunkRows.find(r => r.idx === idx);
+    if (existing) {
+      sheet.getRange(existing.row + 1, 2).setValue(c);
+    } else {
+      sheet.appendRow([chunkMarkerKey_(key, idx), c]);
+    }
+  });
+  // dọn các đoạn CŨ dư ra (lần lưu trước nhiều đoạn hơn lần này)
+  oldChunkRows.filter(r => r.idx > chunks.length).forEach(r => {
+    sheet.getRange(r.row + 1, 1, 1, 2).clearContent();
+  });
+
+  // Xác minh lại ngay sau khi ghi — phát hiện sớm nếu vì lý do gì đó (quota, race) mà không ghi đúng,
+  // thay vì để client tin "ok" rồi phát hiện mất dữ liệu về sau.
+  const verify = readKey_(key);
+  if (verify !== valueStr) {
+    throw new Error('Ghi thất bại: đọc lại không khớp dữ liệu vừa lưu (độ dài ghi ' + valueStr.length + ', đọc lại ' + verify.length + ').');
+  }
 }
 
 function doGet(e) {
@@ -78,7 +149,13 @@ function doPost(e) {
     if (!body.key || !body.payload) return jsonOut_({ ok: false, error: 'Thiếu key hoặc payload' });
     const payload = body.payload;
     payload.updated_at = new Date().toISOString();
-    writeKey_(body.key, JSON.stringify(payload));
+    try {
+      writeKey_(body.key, JSON.stringify(payload));
+    } catch (err) {
+      // Trả lỗi rõ ràng thay vì để exception rơi ra thành trang lỗi HTML (client parse JSON sẽ
+      // không thấy "ok":true và tự retry) — không bao giờ báo "ok":true khi chưa chắc đã ghi đúng.
+      return jsonOut_({ ok: false, error: 'Lưu thất bại: ' + err.message });
+    }
     return jsonOut_({ ok: true, updated_at: payload.updated_at });
   }
 
