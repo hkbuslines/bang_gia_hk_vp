@@ -416,6 +416,7 @@ html.pw-locked #pwGate{display:flex;}
       }
       renderDriverMgmt();
       renderWeeklyTable();
+      renderSummary();
     } catch(err){
       statusEl.textContent = 'Không tải được danh sách đã lưu (mạng lỗi hoặc chưa từng lưu) — đang dùng danh sách gốc.';
       renderDriverMgmt();
@@ -1017,7 +1018,10 @@ html.pw-locked #pwGate{display:flex;}
     const soP = countLeaveFor(picked, ['P']);
     const soD = countLeaveFor(picked, ['D']);
     const soDx = countLeaveFor(picked, ['DX','KB']);
-    const conLai = DRIVERS.length - soP - soD - soDx;
+    // tổng chỉ tính lái xe còn đang làm việc thật (loại "Đã nghỉ" ra khỏi mẫu số) — nếu không, xe
+    // đã nghỉ hẳn vẫn bị tính vào "khả dụng" dù không tồn tại nữa
+    const tongDangLam = DRIVERS.filter(d => d.trang_thai !== 'Đã nghỉ').length;
+    const conLai = tongDangLam - soP - soD - soDx;
     document.getElementById('s-p').textContent = soP;
     document.getElementById('s-d').textContent = soD;
     document.getElementById('s-dx').textContent = soDx;
