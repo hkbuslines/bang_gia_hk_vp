@@ -467,13 +467,17 @@ html.pw-locked #pwGate{display:flex;}
     </table>`;
     wrap.querySelectorAll('.dm-ma').forEach(el => el.addEventListener('change', () => {
       DRIVERS[Number(el.dataset.i)].ma_nv = el.value;
+      saveDriversToSheet();
     }));
     wrap.querySelectorAll('.dm-trangthai').forEach(el => el.addEventListener('change', () => {
       DRIVERS[Number(el.dataset.i)].trang_thai = el.value;
       rebuildDriverIndexes();
+      renderSummary();
+      saveDriversToSheet();
     }));
     wrap.querySelectorAll('.dm-note').forEach(el => el.addEventListener('change', () => {
       DRIVERS[Number(el.dataset.i)].note = el.value;
+      saveDriversToSheet();
     }));
     wrap.querySelectorAll('[data-del]').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -483,9 +487,14 @@ html.pw-locked #pwGate{display:flex;}
         rebuildDriverIndexes();
         renderDriverMgmt();
         renderWeeklyTable();
+        renderSummary();
+        saveDriversToSheet();
       });
     });
   }
+  // Tự lưu ngay lên Sheet key 'drivers' mỗi khi thêm/sửa/xoá — để bên xếp xe (xep_xe_timeline.html)
+  // luôn thấy đúng danh sách mới nhất mà không cần ai nhớ bấm "💾 Lưu" riêng (trước đây chỉ bên
+  // xếp xe tự lưu ngay, bên này phải bấm tay nên hay bị lệch nhau).
   document.getElementById('driverForm').addEventListener('submit', e => {
     e.preventDefault();
     const ten = document.getElementById('d-ten').value.trim();
@@ -500,6 +509,8 @@ html.pw-locked #pwGate{display:flex;}
     rebuildDriverIndexes();
     renderDriverMgmt();
     renderWeeklyTable();
+    renderSummary();
+    saveDriversToSheet();
     e.target.reset();
     document.getElementById('d-manv').focus();
   });
