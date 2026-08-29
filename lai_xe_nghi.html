@@ -168,6 +168,7 @@ html.pw-locked #pwGate{display:flex;}
     <button class="tabbtn active" id="tabNhap" type="button">Nhập &amp; theo dõi</button>
     <button class="tabbtn" id="tabTuan" type="button">Nghỉ theo tuần</button>
     <button class="tabbtn" id="tabQuanLy" type="button">Quản lý lái xe</button>
+    <button class="tabbtn" id="tabLuuTru" type="button">Lưu trữ</button>
   </div>
 
   <div class="tabpane active" id="paneNhap">
@@ -341,6 +342,16 @@ html.pw-locked #pwGate{display:flex;}
       </div>
     </div>
   </div>
+
+  <div class="tabpane" id="paneLuuTru">
+    <div class="card">
+      <h2>Lưu trữ — đơn đã qua đến ngày (<span id="archiveCountLabel">0</span>)</h2>
+      <div class="cardsub">Mọi đơn có "đến ngày" sớm hơn hôm nay tự động rơi vào đây, không còn chiếm chỗ ở tab
+      "Nhập &amp; theo dõi" — dữ liệu vẫn giữ nguyên, chỉ ẩn khỏi danh sách đang theo dõi. Nghỉ dài ngày chưa biết
+      ngày về thì không bao giờ tự vào đây cho tới khi điền ngày đi làm lại thật.</div>
+      <div id="archiveWrap"></div>
+    </div>
+  </div>
 </div>
 
 <div id="printArea"></div>
@@ -429,6 +440,7 @@ html.pw-locked #pwGate{display:flex;}
         ? `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}).`
         : 'Chưa có dữ liệu nào — đây sẽ là lần lưu đầu tiên.';
       render();
+      renderArchive();
       readParamInputs();
       renderWeeklyTable();
     } catch(err){
@@ -621,15 +633,19 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('tabNhap').classList.toggle('active', t === 'nhap');
     document.getElementById('tabTuan').classList.toggle('active', t === 'tuan');
     document.getElementById('tabQuanLy').classList.toggle('active', t === 'quanly');
+    document.getElementById('tabLuuTru').classList.toggle('active', t === 'luutru');
     document.getElementById('paneNhap').classList.toggle('active', t === 'nhap');
     document.getElementById('paneTuan').classList.toggle('active', t === 'tuan');
     document.getElementById('paneQuanLy').classList.toggle('active', t === 'quanly');
+    document.getElementById('paneLuuTru').classList.toggle('active', t === 'luutru');
     if (t === 'tuan') renderWeeklyTable();
     if (t === 'quanly') renderDriverMgmt();
+    if (t === 'luutru') renderArchive();
   }
   document.getElementById('tabNhap').addEventListener('click', () => setTab('nhap'));
   document.getElementById('tabTuan').addEventListener('click', () => setTab('tuan'));
   document.getElementById('tabQuanLy').addEventListener('click', () => setTab('quanly'));
+  document.getElementById('tabLuuTru').addEventListener('click', () => setTab('luutru'));
 
   // điều hướng tuần cho bảng "Nghỉ theo tuần" — nút ‹/› + nhãn tuần in đậm + lịch chọn đúng ngày
   let weeklyStart = mondayOfISO(todayISO());
@@ -977,47 +993,86 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('exportWeeklyCsvBtn').addEventListener('click', exportWeeklyCSV);
   document.getElementById('exportWeeklyPdfBtn').addEventListener('click', exportWeeklyPDF);
 
-  function render(){
-    const wrap = document.getElementById('listWrap');
-    document.getElementById('countLabel').textContent = entries.length;
-    if (!entries.length){
-      wrap.innerHTML = '<div class="empty">Chưa có mục nào — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
-    } else {
-      const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay)).map(e => `
+  // 1 mục được coi là ĐÃ QUA khi đến ngày (denngay) sớm hơn hôm nay — tự động chuyển sang tab
+  // "Lưu trữ" mà không cần ai bấm gì (trừ nghỉ dài ngày OPEN_ENDED_DATE, luôn còn hiệu lực nên
+  // không bao giờ tự lưu trữ cho tới khi ai điền ngày đi làm lại thật).
+  function isPastEntry(e){ return e.denngay < todayISO(); }
+
+  function entryRowHtml(e, { archived }){
+    const backBtn = (!archived && e.denngay === OPEN_ENDED_DATE)
+      ? `<button type="button" class="rowbtn backbtn" data-back="${e.id}" title="Điền ngày hôm nay làm ngày đi làm lại">✓ Đã đi làm lại</button>`
+      : '';
+    return `
         <tr>
           <td style="font-weight:700;">${e.ten}</td>
           <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
           <td class="tabular">${fmtRange(e)}</td>
           <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
           <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
-          <td>${e.denngay === OPEN_ENDED_DATE ? `<button type="button" class="rowbtn backbtn" data-back="${e.id}" title="Điền ngày hôm nay làm ngày đi làm lại">✓ Đã đi làm lại</button>` : ''}</td>
+          <td>${backBtn}</td>
           <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
-        </tr>`).join('');
+        </tr>`;
+  }
+  function wireRowButtons(wrap){
+    wrap.querySelectorAll('[data-back]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entry = entries.find(e => e.id === Number(btn.dataset.back));
+        if (!entry) return;
+        entry.denngay = todayISO();
+        renderAll();
+      });
+    });
+    wrap.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entry = entries.find(e => e.id === Number(btn.dataset.del));
+        if (!confirm(`Xoá đơn nghỉ của "${entry ? entry.ten : ''}"?`)) return;
+        entries = entries.filter(e => e.id !== Number(btn.dataset.del));
+        renderAll();
+      });
+    });
+  }
+  function renderAll(){
+    render();
+    renderArchive();
+    renderAvailability();
+    renderWeeklyTable();
+  }
+
+  function render(){
+    const wrap = document.getElementById('listWrap');
+    const active = entries.filter(e => !isPastEntry(e));
+    document.getElementById('countLabel').textContent = active.length;
+    if (!active.length){
+      wrap.innerHTML = '<div class="empty">Chưa có mục nào — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
+    } else {
+      const rows = active.slice().sort((a,b) => a.tungay.localeCompare(b.tungay))
+        .map(e => entryRowHtml(e, { archived: false })).join('');
       wrap.innerHTML = `<table>
         <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th><th></th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
-      wrap.querySelectorAll('[data-back]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const entry = entries.find(e => e.id === Number(btn.dataset.back));
-          if (!entry) return;
-          entry.denngay = todayISO();
-          render();
-          renderAvailability();
-          renderWeeklyTable();
-        });
-      });
-      wrap.querySelectorAll('[data-del]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const entry = entries.find(e => e.id === Number(btn.dataset.del));
-          if (!confirm(`Xoá đơn nghỉ của "${entry ? entry.ten : ''}"?`)) return;
-          entries = entries.filter(e => e.id !== Number(btn.dataset.del));
-          render();
-          renderAvailability();
-          renderWeeklyTable();
-        });
-      });
+      wireRowButtons(wrap);
     }
+  }
+
+  // Tab "Lưu trữ" — mọi đơn đã qua đến ngày, tự động rơi vào đây, không còn chiếm chỗ ở danh sách
+  // chính. Vẫn giữ nguyên dữ liệu (không xoá), chỉ ẩn khỏi danh sách đang theo dõi.
+  function renderArchive(){
+    const wrap = document.getElementById('archiveWrap');
+    if (!wrap) return;
+    const past = entries.filter(isPastEntry);
+    document.getElementById('archiveCountLabel').textContent = past.length;
+    if (!past.length){
+      wrap.innerHTML = '<div class="empty">Chưa có mục nào đã qua đến ngày.</div>';
+      return;
+    }
+    const rows = past.slice().sort((a,b) => b.denngay.localeCompare(a.denngay))
+      .map(e => entryRowHtml(e, { archived: true })).join('');
+    wrap.innerHTML = `<table>
+      <thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th><th></th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    wireRowButtons(wrap);
   }
 
   // bảng khả dụng theo ngày — đúng công thức sheet "Lịch nghỉ phép": hàng 6/7/8/9/10/11
@@ -1103,12 +1158,14 @@ html.pw-locked #pwGate{display:flex;}
     tenInput.value = '';
     document.getElementById('f-ghichu').value = '';
     render();
+    renderArchive();
     renderAvailability();
     renderWeeklyTable();
   });
 
   fillParamInputs();
   render();
+  renderArchive();
   renderAvailability();
   renderWeeklyTable();
   renderDriverMgmt();
