@@ -228,7 +228,12 @@ html.pw-locked #pwGate{display:flex;}
   </div>
 
   <div class="card">
-    <h2>Tình trạng hôm nay</h2>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+      <h2 style="margin:0;" id="s-heading">Tình trạng hôm nay</h2>
+      <label style="font-size:12px; color:var(--ink-muted); display:flex; align-items:center; gap:6px;">Xem theo ngày
+        <input type="date" id="s-datePick" style="font-size:13px; padding:5px 8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
+      </label>
+    </div>
     <div class="statgrid">
       <div class="statbox"><div class="statnum" id="s-p">0</div><div class="statlabel">Đã duyệt phép (P)</div></div>
       <div class="statbox"><div class="statnum" id="s-d">0</div><div class="statlabel">Nghỉ dài (D)</div></div>
@@ -532,6 +537,8 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('f-tungay').value = iso(today);
   document.getElementById('f-denngay').value = iso(today);
   document.getElementById('f-ngaynop').value = iso(today);
+  document.getElementById('s-datePick').value = iso(today);
+  document.getElementById('s-datePick').addEventListener('change', renderSummary);
 
   function todayISO(){
     const d = new Date();
@@ -1006,15 +1013,17 @@ html.pw-locked #pwGate{display:flex;}
     return entries.filter(e => loaiList.includes(e.loai) && e.tungay <= dateStr && dateStr <= e.denngay).length;
   }
   function renderSummary(){
-    const today = todayISO();
-    const soP = countLeaveFor(today, ['P']);
-    const soD = countLeaveFor(today, ['D']);
-    const soDx = countLeaveFor(today, ['DX','KB']);
+    const picked = document.getElementById('s-datePick').value || todayISO();
+    const soP = countLeaveFor(picked, ['P']);
+    const soD = countLeaveFor(picked, ['D']);
+    const soDx = countLeaveFor(picked, ['DX','KB']);
     const conLai = DRIVERS.length - soP - soD - soDx;
     document.getElementById('s-p').textContent = soP;
     document.getElementById('s-d').textContent = soD;
     document.getElementById('s-dx').textContent = soDx;
     document.getElementById('s-conlai').textContent = conLai;
+    document.getElementById('s-heading').textContent = picked === todayISO()
+      ? 'Tình trạng hôm nay' : `Tình trạng ngày ${fmtDMY(picked)}`;
   }
 
   // KB (đột xuất KHÔNG báo trước) nghỉ đúng 1 ngày — không cần khai "từ ngày/đến ngày", chỉ cần
