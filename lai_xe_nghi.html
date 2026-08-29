@@ -933,8 +933,12 @@ html.pw-locked #pwGate{display:flex;}
   function isPastEntry(e){ return e.denngay < todayISO(); }
 
   function entryRowHtml(e, { archived }){
-    const backBtn = (!archived && e.denngay === OPEN_ENDED_DATE)
-      ? `<button type="button" class="rowbtn backbtn" data-back="${e.id}" title="Điền ngày hôm nay làm ngày đi làm lại">✓ Đã đi làm lại</button>`
+    // Nút "đi làm lại sớm hơn dự kiến" — hiện cho MỌI đơn còn hiệu lực (đến ngày >= hôm nay), không
+    // chỉ riêng nghỉ dài ngày OPEN_ENDED_DATE nữa: lái xe đăng ký P/DX hết hạn 1 ngày cụ thể nhưng đi
+    // làm sớm hơn thì bấm nút này để cắt ngắn đơn về đúng hôm nay, khỏi phải xoá rồi nhập lại.
+    const canEndEarly = !archived && e.denngay >= todayISO();
+    const backBtn = canEndEarly
+      ? `<button type="button" class="rowbtn backbtn" data-back="${e.id}" title="Điền ngày hôm nay làm ngày đi làm lại (dùng khi đi làm sớm hơn dự kiến)">✓ Đã đi làm lại</button>`
       : '';
     return `
         <tr>
@@ -952,7 +956,14 @@ html.pw-locked #pwGate{display:flex;}
       btn.addEventListener('click', () => {
         const entry = entries.find(e => e.id === Number(btn.dataset.back));
         if (!entry) return;
-        entry.denngay = todayISO();
+        // đơn chưa tới ngày bắt đầu (đăng ký nghỉ tương lai) mà bấm "đã đi làm lại" thì coi như huỷ
+        // hẳn đơn đó, khỏi tạo ra khoảng ngày ngược (đến ngày < từ ngày)
+        if (entry.tungay > todayISO()){
+          if (!confirm(`Đơn này chưa tới ngày bắt đầu nghỉ (${entry.tungay}). Huỷ hẳn đơn nghỉ của "${entry.ten}"?`)) return;
+          entries = entries.filter(e => e.id !== entry.id);
+        } else {
+          entry.denngay = todayISO();
+        }
         renderAll();
       });
     });
