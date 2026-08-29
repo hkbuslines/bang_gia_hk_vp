@@ -2431,6 +2431,23 @@ html.pw-locked #pwGate{display:flex;}
   function isMienTrungRoute(route){
     return /Huế|Hội An|Nha Trang/.test(route || '');
   }
+  // rút gọn tên tuyến về mã điểm (Hà Nội→HN, Sa Pa→SP...) để hiện các nốt quay đầu gọn trong bảng lái xe
+  function cityAbbr(name){
+    const s = (name || '').toLowerCase();
+    const map = [
+      ['hà nội', 'HN'], ['ha noi', 'HN'], ['sa pa', 'SP'], ['sapa', 'SP'], ['ninh bình', 'NB'],
+      ['hạ long', 'HL'], ['quảng ninh', 'HL'], ['hội an', 'HA'], ['huế', 'HUE'], ['hue', 'HUE'],
+      ['nha trang', 'NT'], ['đà nẵng', 'DN'],
+    ];
+    for (const [k, v] of map) if (s.includes(k)) return v;
+    return name || '';
+  }
+  function routeCode(route){
+    const clean = (route || '').replace(/\s*\(.*?\)\s*/g, '').trim();
+    const parts = clean.split(' - ');
+    if (parts.length < 2) return clean;
+    return `${cityAbbr(parts[0])}-${cityAbbr(parts[1])}`;
+  }
   function computeDriverStatuses(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -2454,7 +2471,10 @@ html.pw-locked #pwGate{display:flex;}
         const leave = bks ? null : driverLeaveFor(d.ten, day.date);
         const routes = tripRoutes[d.ten] || [];
         const singleTripWarn = routes.length === 1 && !isMienTrungRoute(routes[0]);
-        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave, tripCount: routes.length, singleTripWarn };
+        const routeCounts = {};
+        routes.forEach(r => { const rc = routeCode(r); routeCounts[rc] = (routeCounts[rc] || 0) + 1; });
+        const routeSummary = Object.entries(routeCounts).map(([rc, c]) => `${c} ${rc}`).join(', ');
+        return { name: d.ten, ma_nv: d.ma_nv, working: !!bks, bks, leave, tripCount: routes.length, singleTripWarn, routeSummary };
       })
       .sort((a, b) => {
         const rank = x => x.leave ? 0 : (!x.working ? 1 : 2);
@@ -2509,7 +2529,7 @@ html.pw-locked #pwGate{display:flex;}
       wrap.innerHTML = '<div class="doempty">Chưa có lái xe nào.</div>';
       return;
     }
-    const rows = list.map(({name, ma_nv, working, bks, leave, singleTripWarn}, i) => {
+    const rows = list.map(({name, ma_nv, working, bks, leave, singleTripWarn, tripCount, routeSummary}, i) => {
       let statusHtml;
       if (leave){
         const reasonText = LOAI_LABEL[leave.loai] || leave.loai;
@@ -2520,7 +2540,8 @@ html.pw-locked #pwGate{display:flex;}
         const warn = singleTripWarn
           ? `<span class="dowarn" title="Lái xe này chỉ có 1 lượt trong ngày — kiểm tra lại có thiếu chuyến đi/về không">⚠ Chỉ 1 lượt</span>`
           : '';
-        statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>${warn}`;
+        const routeNote = routeSummary ? `<div class="note" style="margin-top:2px;">${routeSummary}</div>` : '';
+        statusHtml = `<span class="doreason working">Đang chạy — ${bks}</span>${warn}${routeNote}`;
       } else {
         statusHtml = `<span class="doreason">Chưa xếp</span>`;
       }
@@ -2529,11 +2550,12 @@ html.pw-locked #pwGate{display:flex;}
         <td style="font-weight:700;">${name}</td>
         <td class="tabular note">${ma_nv || ''}</td>
         <td>${statusHtml}</td>
+        <td class="tabular note">${tripCount || 0}</td>
         <td><button type="button" class="rowbtn" data-deldriver="${name.replace(/"/g, '&quot;')}" title="Xoá lái xe này khỏi danh sách">×</button></td>
       </tr>`;
     }).join('');
     wrap.innerHTML = `<table class="dotable">
-      <thead><tr><th>STT</th><th>Tên lái xe</th><th>Mã NV</th><th>Trạng thái</th><th></th></tr></thead>
+      <thead><tr><th>STT</th><th>Tên lái xe</th><th>Mã NV</th><th>Trạng thái</th><th>Tổng nốt</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
     wrap.querySelectorAll('[data-deldriver]').forEach(btn => {
