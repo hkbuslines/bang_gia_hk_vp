@@ -2639,14 +2639,33 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
   document.getElementById('exportCsvByBksBtn').addEventListener('click', exportScheduleCSVByBks);
+  // "Làm mới từ Odoo" = odoo -> save -> odoo: xoá sạch lịch ĐÃ LƯU của đúng ngày đang xem (assignments/
+  // lái/xe hỏng/chuyến tự thêm/danh sách để trống) rồi mới kích hoạt build lại trang — để chuyến nào
+  // Odoo chưa có xe thì hiện TRỐNG THẬT, không bị hasSavedBks (xem applyXepXeOverride) giữ lại lịch cũ.
+  // Chỉ xoá đúng ngày đang xem, các ngày khác không đụng tới.
+  async function clearSavedDayForRefresh(dateStr){
+    const res = await fetch(`${SHEET_API_URL}?key=${XEPXE_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
+    const data = await res.json();
+    const days = data.days || {};
+    days[dateStr] = { assignments: {}, drivers: {}, broken: [], manualTrips: [], unassignedIds: [], ignoreOdoo: false };
+    const saveRes = await fetch(SHEET_API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'save', key: XEPXE_SHEET_KEY, payload: { days } }),
+    });
+    const saveResult = await saveRes.json();
+    if (!saveResult.ok) throw new Error(saveResult.error || 'lưu thất bại');
+  }
   // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
   // GitHub trong Script Properties), trình duyệt không cần token gì cả
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
+    if (!confirm(`Xoá sạch lịch đã lưu của ngày ${currentDate} và chỉ lấy thuần dữ liệu Odoo? Không hoàn tác được.`)) return;
     const btn = document.getElementById('refreshOdooBtn');
     const oldText = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Đang yêu cầu...';
+    btn.textContent = 'Đang xoá lịch đã lưu...';
     try{
+      await clearSavedDayForRefresh(currentDate);
+      btn.textContent = 'Đang yêu cầu...';
       // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
       const res = await fetch(SHEET_API_URL, { method: 'POST', body: JSON.stringify({ action: 'triggerRefresh' }) });
       const result = await res.json();
@@ -2658,7 +2677,7 @@ html.pw-locked #pwGate{display:flex;}
         btn.textContent = oldText; btn.disabled = false;
       }
     } catch(err){
-      alert('Lỗi mạng: ' + err.message);
+      alert('Lỗi: ' + err.message);
       btn.textContent = oldText; btn.disabled = false;
     }
   });
