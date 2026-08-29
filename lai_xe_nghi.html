@@ -59,6 +59,11 @@ h1{font-size:19px; font-weight:600; margin:0;}
 
 .formgrid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px;}
 .formgrid .full{grid-column:1 / -1;}
+
+.statgrid{display:grid; grid-template-columns:repeat(4, 1fr); gap:12px 14px;}
+.statbox{background:var(--surface-2); border-radius:10px; padding:14px; text-align:center;}
+.statnum{font-size:28px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.2;}
+.statlabel{font-size:12px; color:var(--ink-muted); margin-top:2px;}
 .field{display:flex; flex-direction:column; gap:4px; position:relative;}
 .field label{font-size:11.5px; color:var(--ink-muted); font-weight:600;}
 .field input, .field select, .field textarea{
@@ -223,45 +228,13 @@ html.pw-locked #pwGate{display:flex;}
   </div>
 
   <div class="card">
-    <h2>Tham số tính ngưỡng duyệt nghỉ</h2>
-    <div class="cardsub">Lấy đúng cách tính đang dùng trong file Excel (sheet "Tham số"). Ngưỡng nghỉ tối đa duyệt/ngày
-    = Số lái xe hoạt động − Kíp lái cần thiết/ngày − Vùng đệm an toàn − Dự phòng cho KB. Riêng "Kíp lái cần thiết" ở
-    bảng bên dưới <b>tự lấy số nốt giờ thật từ bên xếp xe/Odoo cho từng ngày</b> (không dùng số tĩnh nữa) — số nhập ở
-    đây chỉ là mặc định dự phòng khi ngày nào chưa có dữ liệu. Sửa số nếu cần, tự tính lại ngay — lưu chung lên
-    GitHub khi bấm "Lưu lên GitHub" nên cả văn phòng thấy cùng 1 mức ngưỡng.</div>
-    <div class="formgrid">
-      <div class="field">
-        <label for="p-tong">Tổng số lái xe</label>
-        <input type="number" id="p-tong" min="0">
-      </div>
-      <div class="field">
-        <label for="p-hoatdong">Số lái xe hoạt động</label>
-        <input type="number" id="p-hoatdong" min="0">
-      </div>
-      <div class="field">
-        <label for="p-kip">Kíp lái cần thiết/ngày (mặc định dự phòng)</label>
-        <input type="number" id="p-kip" min="0">
-      </div>
-      <div class="field">
-        <label for="p-dem">Vùng đệm an toàn tối thiểu</label>
-        <input type="number" id="p-dem" min="0">
-      </div>
-      <div class="field">
-        <label for="p-kb">Dự phòng cho KB/ngày</label>
-        <input type="number" id="p-kb" min="0">
-      </div>
-      <div class="field">
-        <label for="p-nguong">→ Ngưỡng nghỉ tối đa duyệt/ngày</label>
-        <input type="text" id="p-nguong" readonly>
-      </div>
+    <h2>Tình trạng hôm nay</h2>
+    <div class="statgrid">
+      <div class="statbox"><div class="statnum" id="s-p">0</div><div class="statlabel">Đã duyệt phép (P)</div></div>
+      <div class="statbox"><div class="statnum" id="s-d">0</div><div class="statlabel">Nghỉ dài (D)</div></div>
+      <div class="statbox"><div class="statnum" id="s-dx">0</div><div class="statlabel">Đột xuất (DX+KB)</div></div>
+      <div class="statbox"><div class="statnum" id="s-conlai">0</div><div class="statlabel">Còn lại (khả dụng)</div></div>
     </div>
-  </div>
-
-  <div class="card">
-    <h2>Khả dụng lái xe theo ngày (14 ngày tới)</h2>
-    <div class="cardsub">Đang nghỉ = P+DX+D (nghỉ có kế hoạch). KB = đột xuất không báo trước, tính rủi ro riêng so
-    với "Dự phòng cho KB". Còn lại = Số lái hoạt động − tất cả đang nghỉ ngày đó (mọi loại).</div>
-    <div id="availWrap" style="overflow-x:auto;"></div>
   </div>
 
   <div class="card">
@@ -373,7 +346,6 @@ html.pw-locked #pwGate{display:flex;}
   }
   const LOAI_LABEL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
   const REPO = 'hkbuslines/bang_gia_hk_vp';
-  const KIP_RAW_URL = `https://raw.githubusercontent.com/${REPO}/main/data/kip_lai_theo_ngay.json?t=${Date.now()}`;
   // Google Sheet (qua Apps Script Web App) giữ dữ liệu dùng chung — không trang nào cần token
   const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
   const SHEET_KEY = 'leave';
@@ -382,49 +354,6 @@ html.pw-locked #pwGate{display:flex;}
   const OPEN_ENDED_DATE = '9999-12-31';
   let entries = [];
   let counter = 1;
-  let kipLaiTheoNgay = {}; // {date: {kip, real, refDate}} — số nốt giờ thật lấy từ bên xếp xe/Odoo, tự cập nhật mỗi giờ
-
-  // mặc định giống công thức Tham số!C4/C5 trong file Excel gốc:
-  // Tổng số lái xe = đếm tên khác rỗng; Số lái xe hoạt động = đếm những dòng cột Ghi chú để trống
-  // kip = mặc định DỰ PHÒNG khi chưa có số thật cho ngày đó — ngày có dữ liệu thật sẽ tự lấy từ bên xếp xe/Odoo
-  const params = {
-    tong: DRIVERS.length,
-    hoatdong: DRIVERS.filter(d => !d.note).length,
-    kip: 98,
-    dem: 3,
-    kb: 3,
-  };
-  async function loadKipLaiTheoNgay(){
-    try{
-      const res = await fetch(KIP_RAW_URL, {cache:'no-store'});
-      if (!res.ok) return;
-      kipLaiTheoNgay = await res.json();
-      renderAvailability();
-    } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — vẫn dùng số mặc định trong Tham số */ }
-  }
-
-  function fillParamInputs(){
-    document.getElementById('p-tong').value = params.tong;
-    document.getElementById('p-hoatdong').value = params.hoatdong;
-    document.getElementById('p-kip').value = params.kip;
-    document.getElementById('p-dem').value = params.dem;
-    document.getElementById('p-kb').value = params.kb;
-  }
-  function nguongDuyet(){
-    return params.hoatdong - params.kip - params.dem - params.kb;
-  }
-  function readParamInputs(){
-    params.tong = Number(document.getElementById('p-tong').value) || 0;
-    params.hoatdong = Number(document.getElementById('p-hoatdong').value) || 0;
-    params.kip = Number(document.getElementById('p-kip').value) || 0;
-    params.dem = Number(document.getElementById('p-dem').value) || 0;
-    params.kb = Number(document.getElementById('p-kb').value) || 0;
-    document.getElementById('p-nguong').value = nguongDuyet() + ' người';
-    renderAvailability();
-  }
-  ['p-tong','p-hoatdong','p-kip','p-dem','p-kb'].forEach(id => {
-    document.getElementById(id).addEventListener('input', readParamInputs);
-  });
 
   async function loadFromGithub(){
     const statusEl = document.getElementById('ghStatus');
@@ -434,18 +363,15 @@ html.pw-locked #pwGate{display:flex;}
       const data = await res.json();
       entries = data.entries || [];
       counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
-      if (data.params) Object.assign(params, data.params);
-      fillParamInputs();
       statusEl.textContent = entries.length
         ? `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}).`
         : 'Chưa có dữ liệu nào — đây sẽ là lần lưu đầu tiên.';
       render();
       renderArchive();
-      readParamInputs();
+      renderSummary();
       renderWeeklyTable();
     } catch(err){
       statusEl.textContent = 'Không tải được dữ liệu cũ (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
-      fillParamInputs(); readParamInputs();
     }
   }
 
@@ -456,7 +382,7 @@ html.pw-locked #pwGate{display:flex;}
       // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
       const res = await fetch(SHEET_API_URL, {
         method: 'POST',
-        body: JSON.stringify({ action: 'save', key: SHEET_KEY, payload: { entries, params } }),
+        body: JSON.stringify({ action: 'save', key: SHEET_KEY, payload: { entries } }),
       });
       const result = await res.json();
       if (!result.ok){ statusEl.textContent = 'Lưu lỗi: ' + result.error; return; }
@@ -1034,7 +960,7 @@ html.pw-locked #pwGate{display:flex;}
   function renderAll(){
     render();
     renderArchive();
-    renderAvailability();
+    renderSummary();
     renderWeeklyTable();
   }
 
@@ -1075,43 +1001,20 @@ html.pw-locked #pwGate{display:flex;}
     wireRowButtons(wrap);
   }
 
-  // bảng khả dụng theo ngày — đúng công thức sheet "Lịch nghỉ phép": hàng 6/7/8/9/10/11
+  // tình trạng hôm nay — chỉ đếm số người, không tính ngưỡng/kíp lái nữa
   function countLeaveFor(dateStr, loaiList){
     return entries.filter(e => loaiList.includes(e.loai) && e.tungay <= dateStr && dateStr <= e.denngay).length;
   }
-  function renderAvailability(){
-    const wrap = document.getElementById('availWrap');
-    const start = todayISO();
-    const rows = [];
-    for (let i = 0; i < 14; i++){
-      const d = addDaysISO(start, i);
-      const kipInfo = kipLaiTheoNgay[d];
-      const kipNgay = kipInfo ? kipInfo.kip : params.kip;
-      const kipTag = kipInfo
-        ? (kipInfo.real ? '<span class="tag ok" title="Số nốt giờ thật từ Odoo">thật</span>' : '<span class="tag dx" title="Odoo chưa có lịch thật, tạm theo nề nếp">≈ dự kiến</span>')
-        : '<span class="note" title="Chưa có dữ liệu từ bên xếp xe, dùng số mặc định trong Tham số">mặc định</span>';
-      const nguongNgay = params.hoatdong - kipNgay - params.dem - params.kb;
-      const nghiThuong = countLeaveFor(d, ['P','DX','D']);
-      const nghiKB = countLeaveFor(d, ['KB']);
-      const trangThai = nghiThuong > nguongNgay ? 'VƯỢT NGƯỠNG DUYỆT!' : 'OK';
-      const trangThaiKB = nghiKB > params.kb ? 'KB VƯỢT DỰ PHÒNG!' : 'OK';
-      const conLai = params.hoatdong - nghiThuong - nghiKB;
-      const warn = trangThai !== 'OK' || trangThaiKB !== 'OK';
-      rows.push(`
-        <tr class="${warn ? 'warnrow' : ''}">
-          <td class="tabular">${weekdayOf(d)} ${fmtDM(d)}</td>
-          <td class="tabular">${kipNgay} ${kipTag}</td>
-          <td class="tabular">${nghiThuong} / ${nguongNgay}</td>
-          <td><span class="tag ${trangThai === 'OK' ? 'ok' : 'vuot'}">${trangThai}</span></td>
-          <td class="tabular">${nghiKB} / ${params.kb}</td>
-          <td><span class="tag ${trangThaiKB === 'OK' ? 'ok' : 'vuot'}">${trangThaiKB}</span></td>
-          <td class="tabular" style="font-weight:700;">${conLai}</td>
-        </tr>`);
-    }
-    wrap.innerHTML = `<table>
-      <thead><tr><th>Ngày</th><th>Kíp lái cần thiết</th><th>Đang nghỉ / Ngưỡng</th><th>Trạng thái</th><th>Nghỉ KB / Dự phòng</th><th>Trạng thái KB</th><th>Còn lại (khả dụng)</th></tr></thead>
-      <tbody>${rows.join('')}</tbody>
-    </table>`;
+  function renderSummary(){
+    const today = todayISO();
+    const soP = countLeaveFor(today, ['P']);
+    const soD = countLeaveFor(today, ['D']);
+    const soDx = countLeaveFor(today, ['DX','KB']);
+    const conLai = DRIVERS.length - soP - soD - soDx;
+    document.getElementById('s-p').textContent = soP;
+    document.getElementById('s-d').textContent = soD;
+    document.getElementById('s-dx').textContent = soDx;
+    document.getElementById('s-conlai').textContent = conLai;
   }
 
   // KB (đột xuất KHÔNG báo trước) nghỉ đúng 1 ngày — không cần khai "từ ngày/đến ngày", chỉ cần
@@ -1159,18 +1062,16 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('f-ghichu').value = '';
     render();
     renderArchive();
-    renderAvailability();
+    renderSummary();
     renderWeeklyTable();
   });
 
-  fillParamInputs();
   render();
   renderArchive();
-  renderAvailability();
+  renderSummary();
   renderWeeklyTable();
   renderDriverMgmt();
   loadFromGithub();
-  loadKipLaiTheoNgay();
   loadDriversFromSheet();
 })();
 </script>
