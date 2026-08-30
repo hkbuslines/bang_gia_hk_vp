@@ -584,17 +584,30 @@ html.pw-locked #pwGate{display:flex;}
     return [...ordered, ...extra];
   }
 
+  // khai báo sớm (trước khi stateByDay dùng dropIfOnLeave lúc dựng lịch lần đầu) — nếu để driverLeaves
+  // khai báo muộn hơn như cũ thì gọi driverLeaveFor lúc dựng lịch ban đầu sẽ lỗi "Cannot access before
+  // initialization" (temporal dead zone của let/const, khác với function declaration được hoist sẵn).
+  let driverLeaves = [];
   const busByBks = {}; BUSES.forEach(b => busByBks[b.bks] = b);
-  function defaultDrivers(bks){
+  // lái đang nghỉ (theo lịch nghỉ, xem driverLeaveFor bên dưới) thì KHÔNG bao giờ tự điền tên vào
+  // Lái 1/Lái 2 khi xếp xe — dù đó đúng là định biên (lái mặc định) của xe hay lái thật Odoo đã gán,
+  // để trống buộc người xếp xe phải tự chọn lái thay thế thay vì âm thầm hiện tên người đang nghỉ.
+  function dropIfOnLeave(name, dateStr){
+    if (!name || !dateStr) return name || '';
+    return driverLeaveFor(name, dateStr) ? '' : name;
+  }
+  function defaultDrivers(bks, dateStr){
     const bus = busByBks[bks];
-    return { lai1: (bus && bus.lai1) || '', lai2: (bus && bus.lai2) || '' };
+    return { lai1: dropIfOnLeave((bus && bus.lai1) || '', dateStr), lai2: dropIfOnLeave((bus && bus.lai2) || '', dateStr) };
   }
   // xe đúng như Odoo đã gán (t.assignedBks === bks) thì ưu tiên lấy tài xế thật Odoo đã lắp cho
   // đúng chuyến đó (driver_id/driver2_id) thay vì định biên tĩnh; xe do người dùng tự đổi tay
   // (khác với Odoo) thì vẫn về định biên của xe mới vì tài xế Odoo gán là cho xe cũ, không còn đúng
-  function initialDriversFor(t, bks){
-    if (t.assignedBks === bks && t.odooLai1) return { lai1: t.odooLai1, lai2: t.odooLai2 || '' };
-    return defaultDrivers(bks);
+  function initialDriversFor(t, bks, dateStr){
+    if (t.assignedBks === bks && t.odooLai1){
+      return { lai1: dropIfOnLeave(t.odooLai1, dateStr), lai2: dropIfOnLeave(t.odooLai2 || '', dateStr) };
+    }
+    return defaultDrivers(bks, dateStr);
   }
   const stateByDay = {};
   DAYS.forEach(day => {
@@ -605,7 +618,7 @@ html.pw-locked #pwGate{display:flex;}
     day.trips.forEach(t => {
       if (t.assignedBks && assignments[t.assignedBks]){
         assignments[t.assignedBks].push(t.id);
-        drivers[t.id] = initialDriversFor(t, t.assignedBks);
+        drivers[t.id] = initialDriversFor(t, t.assignedBks, day.date);
       } else unassigned.add(t.id);
     });
     stateByDay[day.date] = { assignments, unassigned, broken: new Set(), drivers };
@@ -724,7 +737,10 @@ html.pw-locked #pwGate{display:flex;}
         // chỉ lấy lái thật từ Odoo khi chuyến này CHƯA TỪNG lưu tay (bks đến từ t.assignedBks);
         // chuyến đã lưu tay thì luôn theo lái đã lưu (hoặc định biên mặc định), không lấy lái Odoo
         const useOdooDrivers = !hasSavedBks && t.assignedBks === bks && t.odooLai1;
-        drivers[id] = useOdooDrivers ? initialDriversFor(t, bks) : ((saved.drivers || {})[id] || initialDriversFor(t, bks));
+        const savedDriver = (saved.drivers || {})[id];
+        drivers[id] = useOdooDrivers ? initialDriversFor(t, bks, dateStr)
+          : savedDriver ? { lai1: dropIfOnLeave(savedDriver.lai1, dateStr), lai2: dropIfOnLeave(savedDriver.lai2, dateStr) }
+          : initialDriversFor(t, bks, dateStr);
       } else {
         unassigned.add(id);
       }
@@ -790,8 +806,8 @@ html.pw-locked #pwGate{display:flex;}
   const STATE_LABEL_VN = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
   const LOAI_LABEL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
 
-  // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua Google Sheet
-  let driverLeaves = [];
+  // lịch nghỉ lái xe — đồng bộ chỉ đọc từ trang "Lái xe — báo nghỉ" qua Google Sheet (driverLeaves
+  // khai báo sớm hơn, ngay trên đầu busByBks — xem chú thích ở đó)
   const OPEN_ENDED_DATE = '9999-12-31';
   function driverLeaveFor(name, dateStr){
     if (!name) return null;
@@ -801,12 +817,28 @@ html.pw-locked #pwGate{display:flex;}
     if (leave.denngay === OPEN_ENDED_DATE) return `${leave.tungay} → chưa xác định`;
     return leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`;
   }
+  // dữ liệu nghỉ phép chỉ tải xong SAU khi lịch xe đã dựng xong (bất đồng bộ) — nên lúc dựng lịch
+  // ban đầu, driverLeaves còn rỗng và initialDriversFor/defaultDrivers chưa kịp lọc được ai đang
+  // nghỉ. Quét lại toàn bộ 1 lần ngay khi tải xong danh sách nghỉ để gỡ nốt các tên đã lỡ điền vào
+  // (kể cả tên đã lưu tay trên Sheet) — chỉ sửa trong bộ nhớ để hiện đúng, không tự lưu lên Sheet.
+  function stripLeaveDriversEverywhere(){
+    Object.keys(stateByDay).forEach(dateStr => {
+      const drivers = stateByDay[dateStr].drivers;
+      Object.keys(drivers).forEach(tripId => {
+        const d = drivers[tripId];
+        if (!d) return;
+        d.lai1 = dropIfOnLeave(d.lai1, dateStr);
+        d.lai2 = dropIfOnLeave(d.lai2, dateStr);
+      });
+    });
+  }
   async function loadDriverLeaves(){
     try{
       const res = await fetch(`${SHEET_API_URL}?key=${LEAVE_SHEET_KEY}&t=${Date.now()}`, {cache:'no-store'});
       if (!res.ok) return;
       const data = await res.json();
       driverLeaves = data.entries || [];
+      stripLeaveDriversEverywhere();
       renderAll();
     } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua */ }
   }
@@ -1411,7 +1443,7 @@ html.pw-locked #pwGate{display:flex;}
     if (bks){
       st.assignments[bks].push(tripId);
       const t = ensureTripMap(date)[tripId];
-      st.drivers[tripId] = t ? initialDriversFor(t, bks) : defaultDrivers(bks); // ưu tiên tài xế thật Odoo nếu đúng xe Odoo đã gán, không thì định biên
+      st.drivers[tripId] = t ? initialDriversFor(t, bks, date) : defaultDrivers(bks, date); // ưu tiên tài xế thật Odoo nếu đúng xe Odoo đã gán, không thì định biên
     } else {
       st.unassigned.add(tripId);
       delete st.drivers[tripId];
