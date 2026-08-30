@@ -240,6 +240,7 @@ html.pw-locked #pwGate{display:flex;}
       <div class="statbox"><div class="statnum" id="s-dx">0</div><div class="statlabel">Đột xuất (DX+KB)</div></div>
       <div class="statbox"><div class="statnum" id="s-conlai">0</div><div class="statlabel">Còn lại (khả dụng)</div></div>
     </div>
+    <div id="s-list" style="margin-top:14px;"></div>
   </div>
 
   <div class="card">
@@ -1032,24 +1033,39 @@ html.pw-locked #pwGate{display:flex;}
   }
 
   // tình trạng hôm nay — chỉ đếm số người, không tính ngưỡng/kíp lái nữa
+  function leaveFor(dateStr, loaiList){
+    return entries.filter(e => loaiList.includes(e.loai) && e.tungay <= dateStr && dateStr <= e.denngay);
+  }
   function countLeaveFor(dateStr, loaiList){
-    return entries.filter(e => loaiList.includes(e.loai) && e.tungay <= dateStr && dateStr <= e.denngay).length;
+    return leaveFor(dateStr, loaiList).length;
   }
   function renderSummary(){
     const picked = document.getElementById('s-datePick').value || todayISO();
-    const soP = countLeaveFor(picked, ['P']);
-    const soD = countLeaveFor(picked, ['D']);
-    const soDx = countLeaveFor(picked, ['DX','KB']);
+    const listP = leaveFor(picked, ['P']);
+    const listD = leaveFor(picked, ['D']);
+    const listDx = leaveFor(picked, ['DX','KB']);
     // tổng chỉ tính lái xe còn đang làm việc thật (loại "Đã nghỉ" ra khỏi mẫu số) — nếu không, xe
     // đã nghỉ hẳn vẫn bị tính vào "khả dụng" dù không tồn tại nữa
     const tongDangLam = DRIVERS.filter(d => d.trang_thai !== 'Đã nghỉ').length;
-    const conLai = tongDangLam - soP - soD - soDx;
-    document.getElementById('s-p').textContent = soP;
-    document.getElementById('s-d').textContent = soD;
-    document.getElementById('s-dx').textContent = soDx;
+    const conLai = tongDangLam - listP.length - listD.length - listDx.length;
+    document.getElementById('s-p').textContent = listP.length;
+    document.getElementById('s-d').textContent = listD.length;
+    document.getElementById('s-dx').textContent = listDx.length;
     document.getElementById('s-conlai').textContent = conLai;
     document.getElementById('s-heading').textContent = picked === todayISO()
       ? 'Tình trạng hôm nay' : `Tình trạng ngày ${fmtDMY(picked)}`;
+
+    const groups = [['P', listP], ['D', listD], ['DX+KB', listDx]];
+    const rows = groups.flatMap(([label, list]) => list.map(e => `
+      <tr>
+        <td style="font-weight:700;">${e.ten}</td>
+        <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
+        <td class="tabular">${fmtRange(e)}</td>
+        <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
+      </tr>`)).join('');
+    document.getElementById('s-list').innerHTML = rows
+      ? `<table><thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ghi chú</th></tr></thead><tbody>${rows}</tbody></table>`
+      : '<div class="note">Không ai nghỉ ngày này.</div>';
   }
 
   // KB (đột xuất KHÔNG báo trước) nghỉ đúng 1 ngày — không cần khai "từ ngày/đến ngày", chỉ cần
