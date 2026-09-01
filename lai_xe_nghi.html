@@ -226,6 +226,9 @@ html.pw-locked #pwGate{display:flex;}
     <div class="btnrow" style="justify-content:flex-start; margin-bottom:10px;">
       <button type="button" class="ghost" id="exportListPdfBtn">🖨 Xuất PDF</button>
       <button type="button" class="ghost" id="exportListCsvBtn">📊 Xuất Excel</button>
+      <button type="button" class="ghost" id="editAllBtn">✏️ Sửa danh sách</button>
+      <button type="button" class="primary" id="saveAllBtn" style="display:none;">✓ Lưu tất cả</button>
+      <button type="button" class="ghost" id="cancelAllBtn" style="display:none;">Huỷ</button>
     </div>
     <div id="listWrap"></div>
   </div>
@@ -947,10 +950,12 @@ html.pw-locked #pwGate{display:flex;}
   // không bao giờ tự lưu trữ cho tới khi ai điền ngày đi làm lại thật).
   function isPastEntry(e){ return e.denngay < todayISO(); }
 
-  // id đơn đang được sửa tại chỗ (bút chì) — chỉ 1 dòng sửa cùng lúc, null nghĩa là không dòng nào
-  let editingId = null;
+  // chế độ sửa toàn bộ danh sách — bấm 1 nút "Sửa danh sách" trên đầu, mọi dòng của danh sách
+  // đang theo dõi (không áp dụng cho Lưu trữ) biến thành form sửa cùng lúc, sửa xong bấm 1 nút
+  // "Lưu tất cả" ở trên để lưu hết, hoặc "Huỷ" để bỏ hết thay đổi.
+  let editingAll = false;
   function entryRowHtml(e, { archived }){
-    if (e.id === editingId) return editRowHtml(e);
+    if (!archived && editingAll) return editRowHtml(e);
     // Nút "đi làm lại sớm hơn dự kiến" — hiện cho MỌI đơn còn hiệu lực (đến ngày >= hôm nay), không
     // chỉ riêng nghỉ dài ngày OPEN_ENDED_DATE nữa: lái xe đăng ký P/DX hết hạn 1 ngày cụ thể nhưng đi
     // làm sớm hơn thì bấm nút này để cắt ngắn đơn về đúng hôm nay, khỏi phải xoá rồi nhập lại.
@@ -966,14 +971,11 @@ html.pw-locked #pwGate{display:flex;}
           <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
           <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
           <td>${backBtn}</td>
-          <td style="white-space:nowrap;">
-            <button type="button" class="rowbtn" data-edit="${e.id}" title="Sửa đơn này">✏️</button>
-            <button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button>
-          </td>
+          <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
         </tr>`;
   }
-  // dòng sửa tại chỗ — cho sửa MỌI thứ (tên, loại, khoảng ngày, ngày nộp đơn, ghi chú) trong đúng
-  // hàng đó rồi bấm Lưu, khỏi phải xoá đơn cũ nhập lại đơn mới (mất lịch sử ai đã bấm "đi làm lại").
+  // dòng sửa tại chỗ — cho sửa MỌI thứ (tên, loại, khoảng ngày, ngày nộp đơn, ghi chú); nút Lưu/Huỷ
+  // dùng chung 1 cặp ở trên đầu danh sách nên ô cuối chỉ còn nút xoá.
   function editRowHtml(e){
     const isOpenEnded = e.denngay === OPEN_ENDED_DATE;
     const loaiOptions = Object.keys(LOAI_LABEL).map(k =>
@@ -991,10 +993,8 @@ html.pw-locked #pwGate{display:flex;}
           </td>
           <td><input type="date" data-f="ngaynop" value="${e.ngaynop || ''}" style="width:100%;"></td>
           <td><input type="text" data-f="ghichu" value="${(e.ghichu || '').replace(/"/g,'&quot;')}" style="width:100%;"></td>
-          <td colspan="2" style="white-space:nowrap;">
-            <button type="button" class="rowbtn primary" data-save="${e.id}" title="Lưu thay đổi">✓ Lưu</button>
-            <button type="button" class="rowbtn" data-canceledit="${e.id}" title="Huỷ, không sửa">Huỷ</button>
-          </td>
+          <td></td>
+          <td><button type="button" class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
         </tr>`;
   }
   function wireRowButtons(wrap){
@@ -1021,48 +1021,10 @@ html.pw-locked #pwGate{display:flex;}
         renderAll();
       });
     });
-    wrap.querySelectorAll('[data-edit]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        editingId = Number(btn.dataset.edit);
-        renderAll();
-      });
-    });
-    wrap.querySelectorAll('[data-canceledit]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        editingId = null;
-        renderAll();
-      });
-    });
     wrap.querySelectorAll('tr[data-editrow] [data-f="khongketthuc"]').forEach(cb => {
       cb.addEventListener('change', () => {
         const denngayInput = cb.closest('tr').querySelector('[data-f="denngay"]');
         denngayInput.style.display = cb.checked ? 'none' : '';
-      });
-    });
-    wrap.querySelectorAll('[data-save]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = Number(btn.dataset.save);
-        const entry = entries.find(e => e.id === id);
-        if (!entry) return;
-        const row = btn.closest('tr');
-        const val = f => row.querySelector(`[data-f="${f}"]`).value;
-        const khongKetThuc = row.querySelector('[data-f="khongketthuc"]').checked;
-        const ten = val('ten').trim();
-        const tungay = val('tungay');
-        const denngay = khongKetThuc ? OPEN_ENDED_DATE : val('denngay');
-        if (!ten){ alert('Chọn/gõ tên lái xe.'); return; }
-        if (!tungay){ alert('Chọn "Từ ngày".'); return; }
-        if (!khongKetThuc && (!denngay || denngay < tungay)){
-          alert('Kiểm tra lại "Từ ngày" / "Đến ngày", hoặc tick "Không có ngày kết thúc".'); return;
-        }
-        entry.ten = ten;
-        entry.loai = val('loai');
-        entry.tungay = tungay;
-        entry.denngay = denngay;
-        entry.ngaynop = val('ngaynop');
-        entry.ghichu = val('ghichu').trim();
-        editingId = null;
-        renderAll();
       });
     });
   }
@@ -1071,7 +1033,51 @@ html.pw-locked #pwGate{display:flex;}
     renderArchive();
     renderSummary();
     renderWeeklyTable();
+    const editBtn = document.getElementById('editAllBtn');
+    const saveBtn = document.getElementById('saveAllBtn');
+    const cancelBtn = document.getElementById('cancelAllBtn');
+    editBtn.style.display = editingAll ? 'none' : '';
+    saveBtn.style.display = editingAll ? '' : 'none';
+    cancelBtn.style.display = editingAll ? '' : 'none';
   }
+  document.getElementById('editAllBtn').addEventListener('click', () => {
+    editingAll = true;
+    renderAll();
+  });
+  document.getElementById('cancelAllBtn').addEventListener('click', () => {
+    editingAll = false;
+    renderAll();
+  });
+  document.getElementById('saveAllBtn').addEventListener('click', () => {
+    const rows = document.querySelectorAll('#listWrap tr[data-editrow]');
+    const updates = [];
+    for (const row of rows){
+      const id = Number(row.dataset.editrow);
+      const entry = entries.find(e => e.id === id);
+      if (!entry) continue;
+      const val = f => row.querySelector(`[data-f="${f}"]`).value;
+      const khongKetThuc = row.querySelector('[data-f="khongketthuc"]').checked;
+      const ten = val('ten').trim();
+      const tungay = val('tungay');
+      const denngay = khongKetThuc ? OPEN_ENDED_DATE : val('denngay');
+      if (!ten){ alert(`Thiếu tên lái xe ở 1 dòng.`); return; }
+      if (!tungay){ alert(`Thiếu "Từ ngày" ở dòng của "${ten}".`); return; }
+      if (!khongKetThuc && (!denngay || denngay < tungay)){
+        alert(`Kiểm tra lại "Từ ngày" / "Đến ngày" ở dòng của "${ten}", hoặc tick "Không có ngày kết thúc".`); return;
+      }
+      updates.push({ entry, ten, loai: val('loai'), tungay, denngay, ngaynop: val('ngaynop'), ghichu: val('ghichu').trim() });
+    }
+    for (const u of updates){
+      u.entry.ten = u.ten;
+      u.entry.loai = u.loai;
+      u.entry.tungay = u.tungay;
+      u.entry.denngay = u.denngay;
+      u.entry.ngaynop = u.ngaynop;
+      u.entry.ghichu = u.ghichu;
+    }
+    editingAll = false;
+    renderAll();
+  });
 
   function render(){
     const wrap = document.getElementById('listWrap');
