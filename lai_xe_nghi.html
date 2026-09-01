@@ -1068,18 +1068,17 @@ html.pw-locked #pwGate{display:flex;}
       : '<div class="note">Không ai nghỉ ngày này.</div>';
   }
 
-  // KB (đột xuất KHÔNG báo trước) nghỉ đúng 1 ngày — không cần khai "từ ngày/đến ngày", chỉ cần
-  // ngày nộp đơn (chính là ngày nghỉ luôn). D (nghỉ dài ngày) thì có ngày bắt đầu rõ ràng nhưng
-  // thường CHƯA biết ngày về — để trống "đến ngày", tự coi là đang nghỉ vô thời hạn (OPEN_ENDED_DATE,
-  // một ngày rất xa trong tương lai để mọi so sánh tungay<=d<=denngay vẫn đúng) cho tới khi ai đó bấm
-  // "✓ Đã đi làm lại" trên dòng đó điền đúng ngày về thực tế. P/DX vẫn cần đủ khoảng ngày như trước.
+  // KB (đột xuất KHÔNG báo trước) và D (nghỉ dài ngày) đều có thể kéo dài nhiều ngày mà CHƯA biết
+  // ngày về — cả 2 chỉ cần "Từ ngày" (ngày bắt đầu nghỉ), để trống "đến ngày" và tự coi là đang nghỉ
+  // vô thời hạn (OPEN_ENDED_DATE, một ngày rất xa trong tương lai để mọi so sánh tungay<=d<=denngay
+  // vẫn đúng) cho tới khi ai đó bấm "✓ Đã đi làm lại" trên dòng đó điền đúng ngày về thực tế.
+  // P/DX vẫn cần đủ khoảng ngày (biết trước cả ngày đi lẫn ngày về) như cũ.
   function toggleDateRangeFields(){
     const loai = document.getElementById('f-loai').value;
-    const hideTungay = loai === 'KB';
     const hideDenngay = loai === 'KB' || loai === 'D';
-    document.getElementById('fieldTungay').style.display = hideTungay ? 'none' : '';
+    document.getElementById('fieldTungay').style.display = '';
     document.getElementById('fieldDenngay').style.display = hideDenngay ? 'none' : '';
-    document.getElementById('f-tungay').required = !hideTungay;
+    document.getElementById('f-tungay').required = true;
     document.getElementById('f-denngay').required = !hideDenngay;
   }
   document.getElementById('f-loai').addEventListener('change', toggleDateRangeFields);
@@ -1088,23 +1087,20 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.getElementById('f-loai').value;
-    const isKb = loai === 'KB';
-    const isD = loai === 'D';
+    const isOpenEnded = loai === 'KB' || loai === 'D';
     const ngaynop = document.getElementById('f-ngaynop').value;
     const entry = {
       id: counter++,
       ten: tenInput.value.trim(),
       loai,
-      tungay: isKb ? ngaynop : document.getElementById('f-tungay').value,
-      denngay: isKb ? ngaynop : (isD ? OPEN_ENDED_DATE : document.getElementById('f-denngay').value),
+      tungay: document.getElementById('f-tungay').value,
+      denngay: isOpenEnded ? OPEN_ENDED_DATE : document.getElementById('f-denngay').value,
       ngaynop,
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
     if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
-    if (isKb){
-      if (!entry.ngaynop){ alert('Chọn "Ngày nộp đơn".'); return; }
-    } else if (isD){
-      if (!entry.tungay){ alert('Chọn "Từ ngày" (ngày bắt đầu nghỉ dài).'); return; }
+    if (isOpenEnded){
+      if (!entry.tungay){ alert('Chọn "Từ ngày" (ngày bắt đầu nghỉ).'); return; }
     } else if (!entry.tungay || !entry.denngay || entry.denngay < entry.tungay){
       alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
     }
