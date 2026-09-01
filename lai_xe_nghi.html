@@ -199,10 +199,12 @@ html.pw-locked #pwGate{display:flex;}
           <input type="date" id="f-tungay" required>
         </div>
         <div class="field" id="fieldDenngay">
-          <label for="f-denngay">Đến ngày</label>
-          <label style="font-size:12px; font-weight:400; display:flex; align-items:center; gap:5px; margin:2px 0 4px;">
-            <input type="checkbox" id="f-khongketthuc" style="width:auto;"> Không có ngày kết thúc
-          </label>
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <label for="f-denngay" style="margin:0;">Đến ngày</label>
+            <label style="font-size:12px; font-weight:400; display:flex; align-items:center; gap:5px; white-space:nowrap;">
+              <input type="checkbox" id="f-khongketthuc" style="width:auto;"> Không có ngày kết thúc
+            </label>
+          </div>
           <input type="date" id="f-denngay">
         </div>
         <div class="field">
