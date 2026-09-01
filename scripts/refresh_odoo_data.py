@@ -88,8 +88,10 @@ def build_trip(t):
         arr += 24 * 60
     elif arr < dep:
         arr += 24 * 60
-    if arr - dep > 1200:
-        arr = dep + 1200
+    # trần an toàn chống dữ liệu Odoo lỗi (vd nhầm ngày đến xa tít) — nới lên 1500p (25h) vì tuyến
+    # Hà Nội - Nha Trang chạy thật đúng 24h (1440p), 1200p (20h) cũ sẽ cắt cụt tuyến này sai lệch
+    if arr - dep > 1500:
+        arr = dep + 1500
     route = t["route_id"][1] if t["route_id"] else "?"
     f, to = parse_from_to(route)
     return {
