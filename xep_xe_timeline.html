@@ -2085,6 +2085,21 @@ html.pw-locked #pwGate{display:flex;}
 
   // xây 1 dòng (lane) cho đúng 1 xe trong tab "Theo xe" — dùng chung cho cả nhóm tuyến bình thường
   // và nhóm tổng hợp "Xe chưa dùng hôm nay" ở trên cùng, để 2 chỗ luôn hiện giống hệt nhau
+  // gom tên lái thực tế đang chạy các chuyến hôm nay của 1 xe (st.drivers, theo Odoo) — dùng cho
+  // nhãn xe ở tab "Theo xe" để luôn khớp với tab "Theo nốt giờ". Xe rảnh hôm nay thì không có chuyến
+  // nào để tra, trả về định biên mặc định (cap_lai_nha) cho có thông tin thay vì để trống.
+  function crewLabelFor(b, st){
+    const ids = st.assignments[b.bks] || [];
+    const names = [];
+    ids.forEach(id => {
+      const drv = st.drivers[id];
+      if (drv){
+        if (drv.lai1 && !names.includes(drv.lai1)) names.push(drv.lai1);
+        if (drv.lai2 && !names.includes(drv.lai2)) names.push(drv.lai2);
+      }
+    });
+    return names.length ? names.join(' + ') : (b.cap_lai_nha || '');
+  }
   function buildLaneEl(b, day, st, tripById, garaBroken){
     const lane = document.createElement('div');
     lane.className = 'lane';
@@ -2092,7 +2107,11 @@ html.pw-locked #pwGate{display:flex;}
     label.className = 'label';
     label.draggable = true;
     label.title = 'Kéo vào khu "Xe hỏng" nếu xe này không chạy được';
-    label.innerHTML = `<span class="info"><span class="bks tabular">${b.bks}</span><span class="crew">${b.cap_lai_nha || ''}</span></span>`;
+    // Tên lái hiện dưới BKS ở tab "Theo xe" lấy đúng lái đang chạy các chuyến hôm nay của xe này
+    // (st.drivers, đã cập nhật theo Odoo) thay vì định biên tĩnh cap_lai_nha, để khớp với tên lái
+    // hiện ở tab "Theo nốt giờ". Xe rảnh hôm nay (không có chuyến) thì vẫn hiện định biên mặc định.
+    const crewText = crewLabelFor(b, st);
+    label.innerHTML = `<span class="info"><span class="bks tabular">${b.bks}</span><span class="crew">${escHtml(crewText)}</span></span>`;
     label.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-bks', b.bks);
       label.style.opacity = '0.35';
