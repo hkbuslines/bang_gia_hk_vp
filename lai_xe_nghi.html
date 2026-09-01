@@ -1075,11 +1075,15 @@ html.pw-locked #pwGate{display:flex;}
   // P/DX vẫn cần đủ khoảng ngày (biết trước cả ngày đi lẫn ngày về) như cũ.
   function toggleDateRangeFields(){
     const loai = document.getElementById('f-loai').value;
-    const hideDenngay = loai === 'KB' || loai === 'D';
+    // D (nghỉ dài ngày): gần như không bao giờ biết trước ngày về — ẩn hẳn "đến ngày" cho gọn.
+    // KB (đột xuất KHÔNG báo trước): vẫn hiện đủ 3 ô như DX (ngày nộp đơn/từ ngày/đến ngày) để
+    // nhất quán giao diện, nhưng "đến ngày" để TUỲ CHỌN — biết ngay thì điền, chưa biết thì để
+    // trống (tự hiểu là chưa có ngày về, giống D) thay vì ẩn hẳn ô đi.
+    const hideDenngay = loai === 'D';
     document.getElementById('fieldTungay').style.display = '';
     document.getElementById('fieldDenngay').style.display = hideDenngay ? 'none' : '';
     document.getElementById('f-tungay').required = true;
-    document.getElementById('f-denngay').required = !hideDenngay;
+    document.getElementById('f-denngay').required = !hideDenngay && loai !== 'KB';
   }
   document.getElementById('f-loai').addEventListener('change', toggleDateRangeFields);
   toggleDateRangeFields();
@@ -1087,21 +1091,24 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('entryForm').addEventListener('submit', e => {
     e.preventDefault();
     const loai = document.getElementById('f-loai').value;
-    const isOpenEnded = loai === 'KB' || loai === 'D';
+    const isD = loai === 'D';
+    const isKb = loai === 'KB';
+    const denngayInput = document.getElementById('f-denngay').value;
     const ngaynop = document.getElementById('f-ngaynop').value;
     const entry = {
       id: counter++,
       ten: tenInput.value.trim(),
       loai,
       tungay: document.getElementById('f-tungay').value,
-      denngay: isOpenEnded ? OPEN_ENDED_DATE : document.getElementById('f-denngay').value,
+      // D: ẩn hẳn ô "đến ngày" nên luôn vô thời hạn. KB: ô "đến ngày" vẫn hiện nhưng TUỲ CHỌN —
+      // biết ngay thì dùng đúng ngày đó, chưa biết (để trống) thì cũng vô thời hạn như D.
+      denngay: isD ? OPEN_ENDED_DATE : (isKb && !denngayInput) ? OPEN_ENDED_DATE : denngayInput,
       ngaynop,
       ghichu: document.getElementById('f-ghichu').value.trim(),
     };
     if (!entry.ten){ alert('Chọn/gõ tên lái xe.'); return; }
-    if (isOpenEnded){
-      if (!entry.tungay){ alert('Chọn "Từ ngày" (ngày bắt đầu nghỉ).'); return; }
-    } else if (!entry.tungay || !entry.denngay || entry.denngay < entry.tungay){
+    if (!entry.tungay){ alert('Chọn "Từ ngày" (ngày bắt đầu nghỉ).'); return; }
+    if (!isD && !(isKb && !denngayInput) && (!entry.denngay || entry.denngay < entry.tungay)){
       alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
     }
     entries.push(entry);
