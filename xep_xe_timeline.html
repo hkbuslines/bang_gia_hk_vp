@@ -188,7 +188,6 @@ button.ghost:hover{background:var(--page);}
 .lane .label .crew{font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .lane .label .lastloc{font-size:10px; color:var(--warn); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600;}
 .lane.has-gara .label{background:var(--warn-fill); box-shadow:inset 3px 0 0 var(--warn);}
-.lane.has-leave .label{background:var(--danger-fill); box-shadow:inset 3px 0 0 var(--danger);}
 .gicon{flex-shrink:0; font-size:14px; cursor:default; border:0; background:none; padding:0; line-height:1;}
 button.gicon:hover{transform:scale(1.15);}
 .block.maint{color:#fff; cursor:default;}
@@ -238,6 +237,16 @@ table.dotable{width:100%; border-collapse:collapse; font-size:13px;}
 table.dotable th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 12px; border-bottom:1px solid var(--line-strong);}
 table.dotable td{padding:9px 12px; border-bottom:0.5px solid var(--line); vertical-align:top;}
 table.dotable tr:last-child td{border-bottom:0;}
+table.canhbaotable{width:100%; border-collapse:collapse; font-size:13px;}
+table.canhbaotable th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:9px 12px; border-bottom:1.5px solid var(--line-strong); background:var(--surface-2);}
+table.canhbaotable td{padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top;}
+table.canhbaotable tr:last-child td{border-bottom:0;}
+table.canhbaotable tbody tr:nth-child(even){background:var(--surface-2);}
+table.canhbaotable td:first-child{white-space:nowrap;}
+table.canhbaotable td:nth-child(2){white-space:nowrap; color:var(--ink-muted);}
+table.canhbaotable td:last-child{box-shadow:inset 3px 0 0 var(--danger); padding-left:9px;}
+.canhbao-rules{list-style:none; margin:0 0 0 0; padding:0; display:flex; flex-direction:column; gap:3px;}
+.canhbao-rules li{padding-left:1.4em; text-indent:-1.4em;}
 .doreason{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--ink-muted);}
 .doreason.leave{background:var(--danger-fill); color:var(--danger);}
 .doreason.working{background:var(--ok-fill); color:var(--ok);}
@@ -367,6 +376,7 @@ html.pw-locked #pwGate{display:flex;}
     <button class="tabbtn" id="tabDriversOff" type="button">Lái xe <span id="tabDriversOffCount"></span></button>
     <button class="tabbtn" id="tabBusCrew" type="button">Định biên xe</button>
     <button class="tabbtn" id="tabLenh" type="button">Đóng lệnh <span id="tabLenhCount"></span></button>
+    <button class="tabbtn" id="tabCanhBao" type="button">Cảnh báo <span id="tabCanhBaoCount"></span></button>
   </div>
 
   <div style="display:flex; gap:8px; margin-bottom:12px;">
@@ -461,6 +471,21 @@ html.pw-locked #pwGate{display:flex;}
       <div class="tray-head">Đóng lệnh Hà Nội - Sa Pa — 9 xe cố định, cần đủ <span id="lenhReqText"></span> khung/ngày</div>
       <div class="sub" style="padding:8px 14px 0;">Chỉ tính xe thuộc nhóm "Cố định Hà Nội - Sa Pa" đang thật sự chạy chuyến hôm nay (không tính xe rảnh cả ngày), về đúng bến ít nhất 15 phút trước giờ đóng lệnh và còn ở đó tới giờ đóng — về sớm hơn bao lâu cũng được.</div>
       <div id="lenhTabWrap" style="padding:14px; overflow-x:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB 6: cảnh báo quy định lái xe ============ -->
+  <div class="tabpane" id="paneCanhBao">
+    <div class="card">
+      <div class="tray-head">Cảnh báo quy định nghỉ ngơi lái xe — ngày <span id="canhBaoDateText"></span></div>
+      <ul class="canhbao-rules sub" style="padding:8px 14px 0;">
+        <li>1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt (cả 2 chặng liền nhau đều 1 lái).</li>
+        <li>2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX, hoặc ít nhất 2 lượt có LX chạy đỡ cùng.</li>
+        <li>3) Chuyến xuất bến 23h→1h mà LX không đủ nghỉ (cả 2 chặng liền nhau đều 1 lái) thì bắt buộc có LX chạy đỡ cho chặng đó.</li>
+        <li>4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.</li>
+        <li>5) Chặng chạy qua đêm (00:00-05:00) mà chỉ 1 lái — cân nhắc bố trí LX chạy đỡ.</li>
+      </ul>
+      <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
   </div>
 
@@ -1158,6 +1183,113 @@ html.pw-locked #pwGate{display:flex;}
     return (computeBksIssues(date, bks)[tripId]) || [];
   }
 
+  // ---- Cảnh báo quy định nghỉ ngơi lái xe (theo yêu cầu 2026-09-02) ----
+  // 1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt.
+  // 2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ (lái 2) cùng.
+  // 3) Chuyến xuất bến từ 23h đến 1h mà LX không đủ nghỉ (theo mốc 2 tiếng ở mục 1) thì bắt buộc
+  //    phải có LX chạy đỡ (lái 2) cho đúng chặng đó để lái chính được nghỉ.
+  // 4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm bố trí chạy 1 lái cho CẢ 2 lượt trong ngày.
+  const REST_MIN_SINGLE = 120; // phút — nghỉ tối thiểu giữa 2 lượt khi chạy 1 lái
+  const LATE_WINDOW_START = 23 * 60; // 23:00
+  const LATE_WINDOW_END = 60;        // 01:00 (hôm sau, đã nằm trong dữ liệu của ngày đó nếu dep < 60)
+  const HL_NB_SAPA_ROUTES = new Set(['Hạ Long - Sa Pa', 'Sa Pa - Hạ Long', 'Ninh Bình - Sa Pa', 'Sa Pa - Ninh Bình']);
+  function vehicleLegsWithDrivers(date, bks){
+    const st = ensureState(date);
+    const tripById = ensureTripMap(date);
+    const ids = [...st.assignments[bks]].sort((a,b) => tripById[a].dep - tripById[b].dep);
+    return ids.map(id => {
+      const t = tripById[id];
+      const drv = st.drivers[id] || {};
+      return { id, dep: t.dep, arr: effArr(t), route: t.route, depStr: t.depStr, arrStr: t.arrStr,
+               lai1: (drv.lai1 || '').trim(), lai2: (drv.lai2 || '').trim() };
+    });
+  }
+  function computeDriverRestWarnings(date){
+    const st = ensureState(date);
+    const garaBroken = garaBrokenSetFor(date);
+    const bksList = Object.keys(st.assignments).filter(bks => !st.broken.has(bks) && !garaBroken.has(bks) && st.assignments[bks].length);
+    const warnings = [];
+    bksList.forEach(bks => {
+      const legs = vehicleLegsWithDrivers(date, bks);
+      if (!legs.length) return;
+      // Rule 1 & 3: nghỉ giữa 2 lượt liên tiếp
+      for (let i = 0; i < legs.length - 1; i++){
+        const a = legs[i], b = legs[i+1];
+        const gap = b.dep - a.arr;
+        const soloB = !b.lai2; // lượt sau đang chạy 1 lái (không có lái 2 cùng)
+        if (soloB && !a.lai2 && gap < REST_MIN_SINGLE){
+          warnings.push({ bks, tripId: b.id, rule: 1, dep: b.dep,
+            message: `LX 1 lái "${b.lai1 || '—'}" chỉ nghỉ ${gap}p trước lượt ${b.depStr} (${b.route}) — cần ≥ ${REST_MIN_SINGLE}p (2 tiếng)` });
+        }
+        const lateNight = b.dep >= LATE_WINDOW_START || b.dep < LATE_WINDOW_END;
+        if (lateNight && gap < REST_MIN_SINGLE && !b.lai2 && !a.lai2){
+          warnings.push({ bks, tripId: b.id, rule: 3, dep: b.dep,
+            message: `Chuyến ${b.depStr} (${b.route}) xuất bến trong khung 23h-1h mà LX chỉ nghỉ ${gap}p — bắt buộc tăng cường LX chạy đỡ chặng này` });
+        }
+      }
+      // Rule 2: xe chạy từ 3 lượt/ngày trở lên phải có ≥ 2 lượt có lái 2.
+      // Chỉ báo nguyên văn "cả X lượt 1 mình" khi ĐÚNG LÀ không lượt nào có lái đẩy; nếu có đúng 1
+      // lượt có lái đẩy và đó là lượt CUỐI thì vẫn cảnh báo (vẫn thiếu, chưa đủ 2 lượt) nhưng ghi rõ
+      // "chặng cuối có lái đẩy" để phân biệt — đỡ nhầm là hoàn toàn không có ai hỗ trợ.
+      if (legs.length >= 3){
+        const withCoDriver = legs.filter(L => L.lai2).length;
+        if (withCoDriver < 2){
+          const lastHasCo = legs[legs.length - 1].lai2;
+          const msg = withCoDriver === 0
+            ? `Xe chạy ${legs.length} lượt/ngày nhưng CẢ ${legs.length} lượt đều chạy 1 mình — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng`
+            : (withCoDriver === 1 && lastHasCo
+              ? `Xe chạy ${legs.length} lượt/ngày, chỉ chặng cuối có lái đẩy — ${legs.length - 1} chặng đầu chạy 1 mình, cần thêm LX chạy đỡ cho ít nhất 1 chặng nữa`
+              : `Xe chạy ${legs.length} lượt/ngày nhưng chỉ ${withCoDriver} lượt có LX chạy đỡ — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng`);
+          warnings.push({ bks, tripId: legs[0].id, rule: 2, dep: legs[0].dep, message: msg });
+        }
+      }
+      // Rule 5: chạy qua đêm (chặng chạm khung 00:00-05:00, hôm nay hoặc rạng sáng hôm sau) mà chỉ
+      // có 1 lái — cảnh báo riêng từng chặng, không cần xét khoảng nghỉ với chặng trước/sau.
+      legs.forEach(L => {
+        if (L.lai2) return;
+        const overlapsNight = [[0, 300], [1440, 1740]].some(([s, e]) => L.dep < e && L.arr > s);
+        if (overlapsNight){
+          warnings.push({ bks, tripId: L.id, rule: 5, dep: L.dep,
+            message: `LX 1 lái "${L.lai1 || '—'}" chạy qua đêm 1 mình chặng ${L.depStr}-${L.arrStr} (${L.route}) — cân nhắc bố trí LX chạy đỡ` });
+        }
+      });
+      // Rule 4: Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt
+      const hlNbLegs = legs.filter(L => HL_NB_SAPA_ROUTES.has(L.route));
+      if (hlNbLegs.length >= 2 && hlNbLegs.every(L => !L.lai2)){
+        warnings.push({ bks, tripId: hlNbLegs[0].id, rule: 4, dep: hlNbLegs[0].dep,
+          message: `Xe chạy Hạ Long/Ninh Bình - Sa Pa đang bố trí 1 lái cho cả ${hlNbLegs.length} lượt — nghiêm cấm, phải có LX chạy đỡ` });
+      }
+    });
+    return warnings.sort((x, y) => x.dep - y.dep);
+  }
+  function renderCanhBaoTab(){
+    const day = dayFor(currentDate);
+    document.getElementById('canhBaoDateText').textContent = day.date;
+    const warnings = computeDriverRestWarnings(day.date);
+    const wrap = document.getElementById('canhBaoWrap');
+    if (!warnings.length){
+      wrap.innerHTML = '<div class="empty">✓ Không có cảnh báo nào cho ngày này.</div>';
+      return;
+    }
+    const rows = warnings.map(w => `
+      <tr>
+        <td class="tabular" style="font-weight:700;">${escHtml(w.bks)}</td>
+        <td class="tabular">${String(Math.floor(w.dep/60)%24).padStart(2,'0')}:${String(w.dep%60).padStart(2,'0')}</td>
+        <td>${escHtml(w.message)}</td>
+      </tr>`).join('');
+    wrap.innerHTML = `<table class="canhbaotable">
+      <thead><tr><th>BKS</th><th>Giờ</th><th>Cảnh báo</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+  function updateCanhBaoCount(){
+    const day = dayFor(currentDate);
+    const n = computeDriverRestWarnings(day.date).length;
+    const el = document.getElementById('tabCanhBaoCount');
+    el.textContent = n ? `(${n})` : '';
+    el.style.color = n ? 'var(--danger)' : '';
+  }
+
   // chuyến của hôm qua chạy qua nửa đêm sang hôm nay (arr > 1440) — chỉ hiển thị, không tính cảnh báo
   function getCarryover(dateStr, bks){
     const prevDate = addDays(dateStr, -1);
@@ -1233,11 +1365,13 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('tabDriversOff').classList.toggle('active', t === 'driversoff');
     document.getElementById('tabBusCrew').classList.toggle('active', t === 'buscrew');
     document.getElementById('tabLenh').classList.toggle('active', t === 'lenh');
+    document.getElementById('tabCanhBao').classList.toggle('active', t === 'canhbao');
     document.getElementById('paneSlots').classList.toggle('active', t === 'slots');
     document.getElementById('paneBoard').classList.toggle('active', t === 'board');
     document.getElementById('paneDriversOff').classList.toggle('active', t === 'driversoff');
     document.getElementById('paneBusCrew').classList.toggle('active', t === 'buscrew');
     document.getElementById('paneLenh').classList.toggle('active', t === 'lenh');
+    document.getElementById('paneCanhBao').classList.toggle('active', t === 'canhbao');
     renderAll();
   }
 
@@ -2156,9 +2290,11 @@ html.pw-locked #pwGate{display:flex;}
       label.appendChild(icon);
     });
 
+    // Lái định biên (b.lai1) đang nghỉ phép chỉ còn ghi chú trong tooltip, không tô khung đỏ nữa —
+    // vì lái THẬT của từng chuyến hôm nay (st.drivers) đã tự động thay người khác rồi, tô đỏ theo
+    // định biên tĩnh gây cảnh báo giả không cần thiết. Cảnh báo THẬT xem ở tab "Cảnh báo".
     const leave1 = driverLeaveFor(b.lai1, day.date);
     if (leave1){
-      lane.classList.add('has-leave');
       label.title = leaveTooltip(b, leave1, day.date) + ' — ' + label.title;
     }
 
@@ -2669,11 +2805,13 @@ html.pw-locked #pwGate{display:flex;}
     renderIdleZone();
     renderLenhTab();
     updateDriversOffCount();
+    updateCanhBaoCount();
     renderBusTray();
     if (activeTab === 'slots') renderSlotList();
     else if (activeTab === 'board') { renderUnassignedTray(); renderBoard(); }
     else if (activeTab === 'buscrew') renderBusCrewTab();
     else if (activeTab === 'driversoff') renderDriversOffTab();
+    else if (activeTab === 'canhbao') renderCanhBaoTab();
     updateStats();
   }
 
@@ -2709,6 +2847,7 @@ html.pw-locked #pwGate{display:flex;}
   });
   document.getElementById('tabBusCrew').addEventListener('click', () => setTab('buscrew'));
   document.getElementById('tabLenh').addEventListener('click', () => setTab('lenh'));
+  document.getElementById('tabCanhBao').addEventListener('click', () => setTab('canhbao'));
   document.getElementById('exportPdfBtn').addEventListener('click', exportSchedulePDF);
   document.getElementById('exportCsvBtn').addEventListener('click', exportScheduleCSV);
   document.getElementById('exportCsvByBksBtn').addEventListener('click', exportScheduleCSVByBks);

@@ -237,6 +237,16 @@ table.dotable{width:100%; border-collapse:collapse; font-size:13px;}
 table.dotable th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 12px; border-bottom:1px solid var(--line-strong);}
 table.dotable td{padding:9px 12px; border-bottom:0.5px solid var(--line); vertical-align:top;}
 table.dotable tr:last-child td{border-bottom:0;}
+table.canhbaotable{width:100%; border-collapse:collapse; font-size:13px;}
+table.canhbaotable th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:9px 12px; border-bottom:1.5px solid var(--line-strong); background:var(--surface-2);}
+table.canhbaotable td{padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top;}
+table.canhbaotable tr:last-child td{border-bottom:0;}
+table.canhbaotable tbody tr:nth-child(even){background:var(--surface-2);}
+table.canhbaotable td:first-child{white-space:nowrap;}
+table.canhbaotable td:nth-child(2){white-space:nowrap; color:var(--ink-muted);}
+table.canhbaotable td:last-child{box-shadow:inset 3px 0 0 var(--danger); padding-left:9px;}
+.canhbao-rules{list-style:none; margin:0 0 0 0; padding:0; display:flex; flex-direction:column; gap:3px;}
+.canhbao-rules li{padding-left:1.4em; text-indent:-1.4em;}
 .doreason{display:inline-flex; align-items:center; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700; background:var(--surface-2); color:var(--ink-muted);}
 .doreason.leave{background:var(--danger-fill); color:var(--danger);}
 .doreason.working{background:var(--ok-fill); color:var(--ok);}
@@ -468,10 +478,13 @@ html.pw-locked #pwGate{display:flex;}
   <div class="tabpane" id="paneCanhBao">
     <div class="card">
       <div class="tray-head">Cảnh báo quy định nghỉ ngơi lái xe — ngày <span id="canhBaoDateText"></span></div>
-      <div class="sub" style="padding:8px 14px 0;">
-        1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt. 2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX, hoặc ít nhất 2 lượt có LX chạy đỡ cùng.
-        3) Chuyến xuất bến 23h→1h mà LX không đủ nghỉ thì bắt buộc có LX chạy đỡ cho chặng đó. 4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.
-      </div>
+      <ul class="canhbao-rules sub" style="padding:8px 14px 0;">
+        <li>1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt (cả 2 chặng liền nhau đều 1 lái).</li>
+        <li>2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX, hoặc ít nhất 2 lượt có LX chạy đỡ cùng.</li>
+        <li>3) Chuyến xuất bến 23h→1h mà LX không đủ nghỉ (cả 2 chặng liền nhau đều 1 lái) thì bắt buộc có LX chạy đỡ cho chặng đó.</li>
+        <li>4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.</li>
+        <li>5) Chặng chạy qua đêm (00:00-05:00) mà chỉ 1 lái — cân nhắc bố trí LX chạy đỡ.</li>
+      </ul>
       <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
   </div>
@@ -1209,19 +1222,37 @@ html.pw-locked #pwGate{display:flex;}
             message: `LX 1 lái "${b.lai1 || '—'}" chỉ nghỉ ${gap}p trước lượt ${b.depStr} (${b.route}) — cần ≥ ${REST_MIN_SINGLE}p (2 tiếng)` });
         }
         const lateNight = b.dep >= LATE_WINDOW_START || b.dep < LATE_WINDOW_END;
-        if (lateNight && gap < REST_MIN_SINGLE && !b.lai2){
+        if (lateNight && gap < REST_MIN_SINGLE && !b.lai2 && !a.lai2){
           warnings.push({ bks, tripId: b.id, rule: 3, dep: b.dep,
             message: `Chuyến ${b.depStr} (${b.route}) xuất bến trong khung 23h-1h mà LX chỉ nghỉ ${gap}p — bắt buộc tăng cường LX chạy đỡ chặng này` });
         }
       }
-      // Rule 2: xe chạy từ 3 lượt/ngày trở lên phải có ≥ 2 lượt có lái 2
+      // Rule 2: xe chạy từ 3 lượt/ngày trở lên phải có ≥ 2 lượt có lái 2.
+      // Chỉ báo nguyên văn "cả X lượt 1 mình" khi ĐÚNG LÀ không lượt nào có lái đẩy; nếu có đúng 1
+      // lượt có lái đẩy và đó là lượt CUỐI thì vẫn cảnh báo (vẫn thiếu, chưa đủ 2 lượt) nhưng ghi rõ
+      // "chặng cuối có lái đẩy" để phân biệt — đỡ nhầm là hoàn toàn không có ai hỗ trợ.
       if (legs.length >= 3){
         const withCoDriver = legs.filter(L => L.lai2).length;
         if (withCoDriver < 2){
-          warnings.push({ bks, tripId: legs[0].id, rule: 2, dep: legs[0].dep,
-            message: `Xe chạy ${legs.length} lượt/ngày nhưng chỉ ${withCoDriver} lượt có LX chạy đỡ — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng` });
+          const lastHasCo = legs[legs.length - 1].lai2;
+          const msg = withCoDriver === 0
+            ? `Xe chạy ${legs.length} lượt/ngày nhưng CẢ ${legs.length} lượt đều chạy 1 mình — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng`
+            : (withCoDriver === 1 && lastHasCo
+              ? `Xe chạy ${legs.length} lượt/ngày, chỉ chặng cuối có lái đẩy — ${legs.length - 1} chặng đầu chạy 1 mình, cần thêm LX chạy đỡ cho ít nhất 1 chặng nữa`
+              : `Xe chạy ${legs.length} lượt/ngày nhưng chỉ ${withCoDriver} lượt có LX chạy đỡ — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng`);
+          warnings.push({ bks, tripId: legs[0].id, rule: 2, dep: legs[0].dep, message: msg });
         }
       }
+      // Rule 5: chạy qua đêm (chặng chạm khung 00:00-05:00, hôm nay hoặc rạng sáng hôm sau) mà chỉ
+      // có 1 lái — cảnh báo riêng từng chặng, không cần xét khoảng nghỉ với chặng trước/sau.
+      legs.forEach(L => {
+        if (L.lai2) return;
+        const overlapsNight = [[0, 300], [1440, 1740]].some(([s, e]) => L.dep < e && L.arr > s);
+        if (overlapsNight){
+          warnings.push({ bks, tripId: L.id, rule: 5, dep: L.dep,
+            message: `LX 1 lái "${L.lai1 || '—'}" chạy qua đêm 1 mình chặng ${L.depStr}-${L.arrStr} (${L.route}) — cân nhắc bố trí LX chạy đỡ` });
+        }
+      });
       // Rule 4: Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt
       const hlNbLegs = legs.filter(L => HL_NB_SAPA_ROUTES.has(L.route));
       if (hlNbLegs.length >= 2 && hlNbLegs.every(L => !L.lai2)){
@@ -1246,7 +1277,7 @@ html.pw-locked #pwGate{display:flex;}
         <td class="tabular">${String(Math.floor(w.dep/60)%24).padStart(2,'0')}:${String(w.dep%60).padStart(2,'0')}</td>
         <td>${escHtml(w.message)}</td>
       </tr>`).join('');
-    wrap.innerHTML = `<table>
+    wrap.innerHTML = `<table class="canhbaotable">
       <thead><tr><th>BKS</th><th>Giờ</th><th>Cảnh báo</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
