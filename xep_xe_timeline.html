@@ -478,7 +478,6 @@ html.pw-locked #pwGate{display:flex;}
   <div class="tabpane" id="paneCanhBao">
     <div class="card">
       <div class="tray-head">Cảnh báo quy định nghỉ ngơi lái xe — ngày <span id="canhBaoDateText"></span></div>
-<<<<<<< HEAD
       <ul class="canhbao-rules sub" style="padding:8px 14px 0;">
         <li>1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt (cả 2 chặng liền nhau đều 1 lái).</li>
         <li>2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX, hoặc ít nhất 2 lượt có LX chạy đỡ cùng.</li>
@@ -486,12 +485,6 @@ html.pw-locked #pwGate{display:flex;}
         <li>4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.</li>
         <li>5) Chặng chạy qua đêm (00:00-05:00) mà chỉ 1 lái — cân nhắc bố trí LX chạy đỡ.</li>
       </ul>
-=======
-      <div class="sub" style="padding:8px 14px 0;">
-        1) LX chạy 1 lái phải nghỉ ≥ 2 tiếng giữa 2 lượt. 2) Xe chạy ≥ 3 lượt/ngày phải có 2 LX, hoặc ít nhất 2 lượt có LX chạy đỡ cùng.
-        3) Chuyến xuất bến 23h→1h mà LX không đủ nghỉ thì bắt buộc có LX chạy đỡ cho chặng đó. 4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.
-      </div>
->>>>>>> 3240a730e0d46cc4c6f8e8db85caa979e533c64c
       <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
   </div>
@@ -569,13 +562,17 @@ html.pw-locked #pwGate{display:flex;}
     { name: '23:45', station: 'Sa Pa', min: 23*60+45, city: 'Sa Pa' },
   ];
   // tuyến này thực tế chỉ chạy hết ngần này phút — chặn bớt arr nếu dữ liệu ghi dài hơn thực tế,
-  // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan
+  // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan. Thời lượng chuẩn theo điều
+  // hành xác nhận (2026-09-02) — khớp với ROUTE_DUR trong xepxe.py.
   const ROUTE_DURATION_CAP_MIN = {
     'Hà Nội - Sa Pa': 360, 'Sa Pa - Hà Nội': 360,
     'Ninh Bình - Sa Pa': 480, 'Sa Pa - Ninh Bình': 480,
     'Hạ Long - Sa Pa': 480, 'Sa Pa - Hạ Long': 480,
-    'Hà Nội - Huế': 660, 'Huế - Hà Nội': 660,
-    'Hà Nội - Hội An': 840, 'Hội An - Hà Nội': 840,
+    'Hà Nội - Huế': 720, 'Huế - Hà Nội': 720,
+    'Hà Nội - Hội An': 900, 'Hội An - Hà Nội': 900,
+    'Hà Nội - Nha Trang': 1440, 'Nha Trang - Hà Nội': 1440,
+    'Quảng Ninh - Hội An': 840, 'Hội An - Quảng Ninh': 840,
+    'Nha Trang - Huế': 720, 'Huế - Nha Trang': 720,
   };
   function effArr(t){
     const cap = ROUTE_DURATION_CAP_MIN[t.route];
@@ -1229,16 +1226,11 @@ html.pw-locked #pwGate{display:flex;}
             message: `LX 1 lái "${b.lai1 || '—'}" chỉ nghỉ ${gap}p trước lượt ${b.depStr} (${b.route}) — cần ≥ ${REST_MIN_SINGLE}p (2 tiếng)` });
         }
         const lateNight = b.dep >= LATE_WINDOW_START || b.dep < LATE_WINDOW_END;
-<<<<<<< HEAD
         if (lateNight && gap < REST_MIN_SINGLE && !b.lai2 && !a.lai2){
-=======
-        if (lateNight && gap < REST_MIN_SINGLE && !b.lai2){
->>>>>>> 3240a730e0d46cc4c6f8e8db85caa979e533c64c
           warnings.push({ bks, tripId: b.id, rule: 3, dep: b.dep,
             message: `Chuyến ${b.depStr} (${b.route}) xuất bến trong khung 23h-1h mà LX chỉ nghỉ ${gap}p — bắt buộc tăng cường LX chạy đỡ chặng này` });
         }
       }
-<<<<<<< HEAD
       // Rule 2: xe chạy từ 3 lượt/ngày trở lên phải có ≥ 2 lượt có lái 2.
       // Chỉ báo nguyên văn "cả X lượt 1 mình" khi ĐÚNG LÀ không lượt nào có lái đẩy; nếu có đúng 1
       // lượt có lái đẩy và đó là lượt CUỐI thì vẫn cảnh báo (vẫn thiếu, chưa đủ 2 lượt) nhưng ghi rõ
@@ -1265,16 +1257,6 @@ html.pw-locked #pwGate{display:flex;}
             message: `LX 1 lái "${L.lai1 || '—'}" chạy qua đêm 1 mình chặng ${L.depStr}-${L.arrStr} (${L.route}) — cân nhắc bố trí LX chạy đỡ` });
         }
       });
-=======
-      // Rule 2: xe chạy từ 3 lượt/ngày trở lên phải có ≥ 2 lượt có lái 2
-      if (legs.length >= 3){
-        const withCoDriver = legs.filter(L => L.lai2).length;
-        if (withCoDriver < 2){
-          warnings.push({ bks, tripId: legs[0].id, rule: 2, dep: legs[0].dep,
-            message: `Xe chạy ${legs.length} lượt/ngày nhưng chỉ ${withCoDriver} lượt có LX chạy đỡ — cần 2 LX cả ngày, hoặc ít nhất 2 lượt có LX chạy đỡ cùng` });
-        }
-      }
->>>>>>> 3240a730e0d46cc4c6f8e8db85caa979e533c64c
       // Rule 4: Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt
       const hlNbLegs = legs.filter(L => HL_NB_SAPA_ROUTES.has(L.route));
       if (hlNbLegs.length >= 2 && hlNbLegs.every(L => !L.lai2)){
@@ -1299,11 +1281,7 @@ html.pw-locked #pwGate{display:flex;}
         <td class="tabular">${String(Math.floor(w.dep/60)%24).padStart(2,'0')}:${String(w.dep%60).padStart(2,'0')}</td>
         <td>${escHtml(w.message)}</td>
       </tr>`).join('');
-<<<<<<< HEAD
     wrap.innerHTML = `<table class="canhbaotable">
-=======
-    wrap.innerHTML = `<table>
->>>>>>> 3240a730e0d46cc4c6f8e8db85caa979e533c64c
       <thead><tr><th>BKS</th><th>Giờ</th><th>Cảnh báo</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;

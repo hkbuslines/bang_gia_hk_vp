@@ -562,13 +562,17 @@ html.pw-locked #pwGate{display:flex;}
     { name: '23:45', station: 'Sa Pa', min: 23*60+45, city: 'Sa Pa' },
   ];
   // tuyến này thực tế chỉ chạy hết ngần này phút — chặn bớt arr nếu dữ liệu ghi dài hơn thực tế,
-  // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan
+  // để chuyến quay đầu đủ khoảng cách thật không bị báo trùng giờ oan. Thời lượng chuẩn theo điều
+  // hành xác nhận (2026-09-02) — khớp với ROUTE_DUR trong xepxe.py.
   const ROUTE_DURATION_CAP_MIN = {
     'Hà Nội - Sa Pa': 360, 'Sa Pa - Hà Nội': 360,
     'Ninh Bình - Sa Pa': 480, 'Sa Pa - Ninh Bình': 480,
     'Hạ Long - Sa Pa': 480, 'Sa Pa - Hạ Long': 480,
-    'Hà Nội - Huế': 660, 'Huế - Hà Nội': 660,
-    'Hà Nội - Hội An': 840, 'Hội An - Hà Nội': 840,
+    'Hà Nội - Huế': 720, 'Huế - Hà Nội': 720,
+    'Hà Nội - Hội An': 900, 'Hội An - Hà Nội': 900,
+    'Hà Nội - Nha Trang': 1440, 'Nha Trang - Hà Nội': 1440,
+    'Quảng Ninh - Hội An': 840, 'Hội An - Quảng Ninh': 840,
+    'Nha Trang - Huế': 720, 'Huế - Nha Trang': 720,
   };
   function effArr(t){
     const cap = ROUTE_DURATION_CAP_MIN[t.route];
