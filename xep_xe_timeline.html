@@ -1415,7 +1415,7 @@ html.pw-locked #pwGate{display:flex;}
         const pendingCount = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong' && !e.scheduled).length;
         const leave1 = driverLeaveFor(b.lai1, day.date);
         const chip = document.createElement('div');
-        chip.className = 'bchip' + (pendingCount ? ' pending' : '') + (leave1 ? ' leave' : '');
+        chip.className = 'bchip' + (pendingCount ? ' pending' : '');
         chip.draggable = true;
         chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}`;
         let chipTitle = (b.cap_lai_nha || '');
