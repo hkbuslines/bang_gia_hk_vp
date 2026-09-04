@@ -484,6 +484,7 @@ html.pw-locked #pwGate{display:flex;}
         <li>3) Chuyến xuất bến 23h→1h mà LX không đủ nghỉ (cả 2 chặng liền nhau đều 1 lái) thì bắt buộc có LX chạy đỡ cho chặng đó.</li>
         <li>4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.</li>
         <li>5) Chặng chạy qua đêm (00:00-05:00) mà chỉ 1 lái — cân nhắc bố trí LX chạy đỡ.</li>
+        <li>6) Đêm nay chạy 1 mình thì sáng hôm sau (chặng ngay sau) không được xếp 1 mình nữa.</li>
       </ul>
       <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
@@ -1262,6 +1263,17 @@ html.pw-locked #pwGate{display:flex;}
       if (hlNbLegs.length >= 2 && hlNbLegs.every(L => !L.lai2)){
         warnings.push({ bks, tripId: hlNbLegs[0].id, rule: 4, dep: hlNbLegs[0].dep,
           message: `Xe chạy Hạ Long/Ninh Bình - Sa Pa đang bố trí 1 lái cho cả ${hlNbLegs.length} lượt — nghiêm cấm, phải có LX chạy đỡ` });
+      }
+      // Rule 6: chặng chạy đêm (chạm khung 00:00-05:00) mà 1 lái, thì chặng NGAY SAU (sáng hôm sau)
+      // cũng đang 1 lái — không được, vì LX đã chạy đêm 1 mình rồi thì lượt sáng phải có LX chạy đỡ.
+      for (let i = 0; i < legs.length - 1; i++){
+        const a = legs[i], b = legs[i+1];
+        if (a.lai2 || b.lai2) continue;
+        const aOverlapsNight = [[0, 300], [1440, 1740]].some(([s, e]) => a.dep < e && a.arr > s);
+        if (aOverlapsNight){
+          warnings.push({ bks, tripId: b.id, rule: 6, dep: b.dep,
+            message: `LX 1 lái "${a.lai1 || '—'}" vừa chạy đêm 1 mình chặng ${a.depStr}-${a.arrStr} (${a.route}) — lượt sáng hôm sau ${b.depStr} (${b.route}) không được xếp 1 mình nữa, cần LX chạy đỡ` });
+        }
       }
     });
     return warnings.sort((x, y) => x.dep - y.dep);
