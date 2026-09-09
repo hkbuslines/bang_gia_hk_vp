@@ -485,6 +485,7 @@ html.pw-locked #pwGate{display:flex;}
         <li>4) Xe chạy Hạ Long/Ninh Bình - Sa Pa cấm chạy 1 lái cả 2 lượt.</li>
         <li>5) Chặng chạy qua đêm (00:00-05:00) mà chỉ 1 lái — cân nhắc bố trí LX chạy đỡ.</li>
         <li>6) Đêm nay chạy 1 mình thì sáng hôm sau (chặng ngay sau) không được xếp 1 mình nữa.</li>
+        <li>7) Lái xe (kể cả khi đổi xe giữa 2 chặng) phải đủ giờ quay đầu và đúng vị trí — điểm đến chặng trước phải khớp điểm đi chặng sau (hoặc đủ giờ chạy rỗng), kể cả nối sang ngày hôm trước.</li>
       </ul>
       <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
@@ -1209,6 +1210,107 @@ html.pw-locked #pwGate{display:flex;}
                lai1: (drv.lai1 || '').trim(), lai2: (drv.lai2 || '').trim() };
     });
   }
+  // ---- kiểm tra "duration"/vị trí của LÁI XE (không chỉ xe) — lái 2 có thể đảo giữa các xe khác
+  // nhau nên phải dò theo TỪNG NGƯỜI (không chỉ theo BKS): quay đầu đủ giờ, điểm đến chặng trước
+  // phải khớp điểm đi chặng sau (hoặc có deadhead đủ giờ), và nối cả sang ngày hôm trước — y hệt
+  // logic đã áp dụng cho BKS, chỉ khác đơn vị theo dõi là tên lái thay vì biển số.
+  const DRIVER_DEADHEAD = {
+    'HN|NB':90, 'NB|HN':90, 'HA|HUE':180, 'HUE|HA':180,
+    'HL|SP':480, 'SP|HL':480, 'NB|SP':480, 'SP|NB':480,
+    'HN|HUE':720, 'HUE|HN':720, 'HN|HA':900, 'HA|HN':900,
+    'HN|NT':1440, 'NT|HN':1440, 'HL|HA':840, 'HA|HL':840,
+    'NT|HUE':720, 'HUE|NT':720, 'HL|HN':150, 'HN|HL':150,
+    'HN|SP':360, 'SP|HN':360,
+  };
+  function driverBuf(a, b){ return ((a === 'HN' && b === 'SP') || (a === 'SP' && b === 'HN')) ? 0 : 10; }
+  function routeEndpoints(route){
+    const parts = (route || '').replace(/\s*\(.*?\)\s*/g, '').trim().split(' - ');
+    return [cityAbbr(parts[0] || ''), cityAbbr(parts[1] || parts[0] || '')];
+  }
+  // {tên lái: [chặng...]} đã sort theo giờ đi — mỗi chặng giữ luôn BKS để biết có đổi xe không
+  function buildDriverChains(dateStr){
+    const st = ensureState(dateStr);
+    const tripMap = ensureTripMap(dateStr);
+    const chains = {};
+    Object.entries(st.assignments).forEach(([bks, ids]) => {
+      ids.forEach(id => {
+        const t = tripMap[id];
+        if (!t) return;
+        const d = st.drivers[id] || {};
+        const [depc, arrc] = routeEndpoints(t.route);
+        const arr = effArr(t);
+        [['lai1', d.lai1], ['lai2', d.lai2]].forEach(([role, nameRaw]) => {
+          const name = (nameRaw || '').trim();
+          if (!name) return;
+          (chains[name] = chains[name] || []).push({
+            dep: t.dep, arr, depc, arrc, route: t.route, depStr: t.depStr, arrStr: t.arrStr,
+            bks, tripId: id, role,
+          });
+        });
+      });
+    });
+    Object.values(chains).forEach(legs => legs.sort((a, b) => a.dep - b.dep));
+    return chains;
+  }
+  function computeDriverPositionWarnings(dateStr){
+    const chains = buildDriverChains(dateStr);
+    const prevChains = buildDriverChains(addDays(dateStr, -1));
+    const warnings = [];
+    Object.entries(chains).forEach(([name, legs]) => {
+      for (let i = 0; i < legs.length - 1; i++){
+        const a = legs[i], b = legs[i + 1];
+        const swapNote = a.bks !== b.bks ? ` — đổi xe ${a.bks}→${b.bks}` : '';
+        if (a.arrc === b.depc){
+          const need = driverBuf(a.arrc, b.depc);
+          const gap = b.dep - a.arr;
+          if (gap < need){
+            warnings.push({ name, tripId: b.tripId, dep: b.dep,
+              message: `Lái quay đầu chỉ ${gap}p (cần ≥${need}p): ${a.route} ${a.depStr}→${a.arrStr} (${a.bks}) rồi ${b.route} ${b.depStr} (${b.bks})${swapNote}` });
+          }
+        } else {
+          const dh = DRIVER_DEADHEAD[a.arrc + '|' + b.depc];
+          const gap = b.dep - a.arr;
+          if (dh == null){
+            warnings.push({ name, tripId: b.tripId, dep: b.dep,
+              message: `SAI VỊ TRÍ: vừa xong ${a.route} tại ${a.arrc} (${a.arrStr}, xe ${a.bks}), nhưng chặng sau ${b.route} ${b.depStr} lại xuất phát từ ${b.depc} (xe ${b.bks})${swapNote} — không có tuyến/deadhead nối 2 điểm` });
+          } else if (gap < dh){
+            warnings.push({ name, tripId: b.tripId, dep: b.dep,
+              message: `THIẾU GIỜ di chuyển: ${a.route} kết thúc tại ${a.arrc} (${a.arrStr}), chặng sau ${b.route} ${b.depStr} từ ${b.depc} cần ${dh}p nhưng chỉ có ${gap}p${swapNote}` });
+          }
+        }
+      }
+      const prevLegs = prevChains[name];
+      if (legs.length && prevLegs && prevLegs.length){
+        const prevLast = prevLegs[prevLegs.length - 1];
+        const first = legs[0];
+        const prevEndOnToday = prevLast.arr > 1440 ? prevLast.arr - 1440 : null;
+        if (prevLast.arrc === first.depc){
+          if (prevEndOnToday != null){
+            const need = driverBuf(prevLast.arrc, first.depc);
+            const gap = first.dep - prevEndOnToday;
+            if (gap < need){
+              warnings.push({ name, tripId: first.tripId, dep: first.dep,
+                message: `Hôm qua về ${prevLast.arrc} lúc ${prevLast.arrStr}(+1) xe ${prevLast.bks}, hôm nay xuất bến ${first.route} ${first.depStr} xe ${first.bks} — chỉ cách ${gap}p` });
+            }
+          }
+        } else {
+          const dh = DRIVER_DEADHEAD[prevLast.arrc + '|' + first.depc];
+          const endOnToday = prevLast.arr > 1440 ? prevLast.arr - 1440 : 0;
+          if (dh == null){
+            warnings.push({ name, tripId: first.tripId, dep: first.dep,
+              message: `SAI VỊ TRÍ (nối ngày): hôm qua kết thúc ${prevLast.route} tại ${prevLast.arrc} (xe ${prevLast.bks}), hôm nay xuất bến ${first.route} ${first.depStr} lại từ ${first.depc} (xe ${first.bks}) — không có tuyến nối` });
+          } else {
+            const gap = first.dep - endOnToday;
+            if (gap < dh){
+              warnings.push({ name, tripId: first.tripId, dep: first.dep,
+                message: `THIẾU GIỜ (nối ngày): hôm qua kết thúc tại ${prevLast.arrc}, hôm nay xuất bến ${first.route} ${first.depStr} từ ${first.depc}, cần ${dh}p nhưng chỉ có ${gap}p` });
+            }
+          }
+        }
+      }
+    });
+    return warnings.sort((x, y) => x.dep - y.dep);
+  }
   function computeDriverRestWarnings(date){
     const st = ensureState(date);
     const garaBroken = garaBrokenSetFor(date);
@@ -1275,6 +1377,11 @@ html.pw-locked #pwGate{display:flex;}
             message: `LX 1 lái "${a.lai1 || '—'}" vừa chạy đêm 1 mình chặng ${a.depStr}-${a.arrStr} (${a.route}) — lượt sáng hôm sau ${b.depStr} (${b.route}) không được xếp 1 mình nữa, cần LX chạy đỡ` });
         }
       }
+    });
+    // Rule 7: lái xe (nhất là lái 2, hay bị đảo giữa các xe) sai vị trí/thiếu giờ quay đầu — dò
+    // riêng theo TỪNG NGƯỜI vì lái có thể đổi xe giữa 2 chặng, khác với 6 rule trên vốn dò theo BKS.
+    computeDriverPositionWarnings(date).forEach(w => {
+      warnings.push({ bks: `LX ${w.name}`, tripId: w.tripId, rule: 7, dep: w.dep, message: w.message });
     });
     return warnings.sort((x, y) => x.dep - y.dep);
   }
