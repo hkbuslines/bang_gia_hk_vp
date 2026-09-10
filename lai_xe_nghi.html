@@ -95,6 +95,7 @@ button.ghost:hover{background:var(--surface-2);}
 table{width:100%; border-collapse:collapse; font-size:13px;}
 th{text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-muted); padding:8px 10px; border-bottom:1px solid var(--line-strong);}
 td{padding:9px 10px; border-bottom:0.5px solid var(--line); vertical-align:top;}
+td:first-child{white-space:nowrap;}
 tr:last-child td{border-bottom:0;}
 .tag{display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:999px; font-size:11.5px; font-weight:700;}
 .tag.p{background:var(--ok-fill); color:var(--ok);}
@@ -639,6 +640,16 @@ html.pw-locked #pwGate{display:flex;}
       return { d, count, byType };
     }).sort((a, b) => b.count - a.count || a.d.ten.localeCompare(b.d.ten));
     const dayHeaders = days.map(d => `<th class="tabular" style="text-align:center;">${weekdayOf(d)}<br>${fmtDM(d)}</th>`).join('');
+    // đếm số lái xe nghỉ trong từng ngày của tuần (không phân biệt loại nghỉ), để thấy ngay
+    // ngày nào thiếu hụt lái xe nhiều nhất mà không cần đếm tay từng cột
+    const dayCounts = days.map(dateStr =>
+      rows.filter(({d}) => entries.some(x => x.ten === d.ten && x.tungay <= dateStr && dateStr <= x.denngay)).length
+    );
+    const totalRow = `
+        <tr style="font-weight:700; background:var(--surface-2);">
+          <td colspan="3">Số người nghỉ trong ngày</td>
+          ${dayCounts.map(c => `<td class="tabular" style="text-align:center;">${c}</td>`).join('')}
+        </tr>`;
     const body = rows.map(({d, count}) => {
       const dayCells = days.map(dateStr => {
         const e = entries.find(x => x.ten === d.ten && x.tungay <= dateStr && dateStr <= x.denngay);
@@ -656,7 +667,7 @@ html.pw-locked #pwGate{display:flex;}
     }).join('');
     document.getElementById('weeklyWrap').innerHTML = `<div class="note" style="margin-bottom:8px;">Tuần ${fmtDM(weekStart)} - ${fmtDM(weekEnd)} · ${DRIVERS.length} lái xe</div><div style="overflow-x:auto;"><table>
       <thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th>${dayHeaders}</tr></thead>
-      <tbody>${body}</tbody>
+      <tbody>${totalRow}${body}</tbody>
     </table></div>`;
   }
 
