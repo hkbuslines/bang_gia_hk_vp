@@ -75,14 +75,14 @@
     "refDate": null
   },
   "2026-09-11": {
-    "kip": 117,
+    "kip": 115,
     "real": true,
     "refDate": null
   },
   "2026-09-12": {
-    "kip": 101,
-    "real": false,
-    "refDate": "2026-09-05"
+    "kip": 114,
+    "real": true,
+    "refDate": null
   },
   "2026-09-13": {
     "kip": 100,
