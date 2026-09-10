@@ -4,7 +4,7 @@
   // khoá trang bằng mật khẩu đơn giản — chỉ chặn người lạ vô tình vào nhầm link, không phải bảo
   // mật thật sự (đây là trang tĩnh không có server riêng, ai đọc được code đều thấy mật khẩu).
   // Thêm class TRƯỚC khi phần còn lại của trang được parse để tránh hiện chớp nội dung ra ngoài.
-  if (localStorage.getItem('pwOkGara') !== '1') document.documentElement.classList.add('pw-locked');
+  if (localStorage.getItem('pwOkGaraV2') !== '1') document.documentElement.classList.add('pw-locked');
 </script>
 <style>
 :root{
@@ -138,8 +138,8 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('pwForm').addEventListener('submit', function(e){
     e.preventDefault();
     const val = document.getElementById('pwInput').value;
-    if (val === 'garabaoduong'){
-      localStorage.setItem('pwOkGara', '1');
+    if (val === 'hkgara2026v2'){
+      localStorage.setItem('pwOkGaraV2', '1');
       document.documentElement.classList.remove('pw-locked');
     } else {
       document.getElementById('pwErr').textContent = 'Sai mật khẩu, thử lại.';
