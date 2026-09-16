@@ -173,6 +173,7 @@ html.pw-locked #pwGate{display:flex;}
   <div class="tabbar">
     <button class="tabbtn active" id="tabNhap" type="button">Nhập &amp; theo dõi</button>
     <button class="tabbtn" id="tabTuan" type="button">Nghỉ theo tuần</button>
+    <button class="tabbtn" id="tabTraCuu" type="button">Tra cứu lái xe</button>
     <button class="tabbtn" id="tabQuanLy" type="button">Quản lý lái xe</button>
     <button class="tabbtn" id="tabLuuTru" type="button">Lưu trữ</button>
   </div>
@@ -280,6 +281,28 @@ html.pw-locked #pwGate{display:flex;}
     </div>
   </div>
 
+  <div class="tabpane" id="paneTraCuu">
+    <div class="card">
+      <h2>Tra cứu nghỉ theo lái xe</h2>
+      <div class="cardsub">Chọn 1 lái xe và 1 tháng để xem toàn bộ ngày nghỉ của người đó trong tháng — cả quá khứ
+      (đã nghỉ) lẫn tương lai (đã đăng ký), dựa thẳng trên dữ liệu ở tab "Nhập &amp; theo dõi" (không phân biệt đã
+      lưu trữ hay chưa).</div>
+      <div style="display:flex; align-items:flex-end; gap:14px; flex-wrap:wrap; margin-bottom:14px;">
+        <div class="field" style="position:relative; min-width:220px;">
+          <label for="tc-ten">Lái xe (gõ vài chữ để chọn)</label>
+          <input type="text" id="tc-ten" placeholder="Gõ tên lái xe" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="tc-thang">Tháng</label>
+          <input type="month" id="tc-thang">
+        </div>
+        <button type="button" class="ghost" id="tc-prevBtn">‹ Tháng trước</button>
+        <button type="button" class="ghost" id="tc-nextBtn">Tháng sau ›</button>
+      </div>
+      <div id="tcBody"></div>
+    </div>
+  </div>
+
   <div class="tabpane" id="paneQuanLy">
     <div class="card">
       <h2>Thêm lái xe mới</h2>
@@ -383,6 +406,7 @@ html.pw-locked #pwGate{display:flex;}
       renderArchive();
       renderSummary();
       renderWeeklyTable();
+      renderTraCuu();
     } catch(err){
       statusEl.textContent = 'Không tải được dữ liệu cũ (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
     }
@@ -425,6 +449,7 @@ html.pw-locked #pwGate{display:flex;}
       renderDriverMgmt();
       renderWeeklyTable();
       renderSummary();
+      renderTraCuu();
     } catch(err){
       statusEl.textContent = 'Không tải được danh sách đã lưu (mạng lỗi hoặc chưa từng lưu) — đang dùng danh sách gốc.';
       renderDriverMgmt();
@@ -585,18 +610,22 @@ html.pw-locked #pwGate{display:flex;}
   function setTab(t){
     document.getElementById('tabNhap').classList.toggle('active', t === 'nhap');
     document.getElementById('tabTuan').classList.toggle('active', t === 'tuan');
+    document.getElementById('tabTraCuu').classList.toggle('active', t === 'tracuu');
     document.getElementById('tabQuanLy').classList.toggle('active', t === 'quanly');
     document.getElementById('tabLuuTru').classList.toggle('active', t === 'luutru');
     document.getElementById('paneNhap').classList.toggle('active', t === 'nhap');
     document.getElementById('paneTuan').classList.toggle('active', t === 'tuan');
+    document.getElementById('paneTraCuu').classList.toggle('active', t === 'tracuu');
     document.getElementById('paneQuanLy').classList.toggle('active', t === 'quanly');
     document.getElementById('paneLuuTru').classList.toggle('active', t === 'luutru');
     if (t === 'tuan') renderWeeklyTable();
+    if (t === 'tracuu') renderTraCuu();
     if (t === 'quanly') renderDriverMgmt();
     if (t === 'luutru') renderArchive();
   }
   document.getElementById('tabNhap').addEventListener('click', () => setTab('nhap'));
   document.getElementById('tabTuan').addEventListener('click', () => setTab('tuan'));
+  document.getElementById('tabTraCuu').addEventListener('click', () => setTab('tracuu'));
   document.getElementById('tabQuanLy').addEventListener('click', () => setTab('quanly'));
   document.getElementById('tabLuuTru').addEventListener('click', () => setTab('luutru'));
 
@@ -669,6 +698,122 @@ html.pw-locked #pwGate{display:flex;}
       <thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th>${dayHeaders}</tr></thead>
       <tbody>${totalRow}${body}</tbody>
     </table></div>`;
+  }
+
+  // ---------------- tab "Tra cứu lái xe" — chọn 1 người + 1 tháng, xem lịch tháng + danh sách các
+  // đơn nghỉ chồng vào tháng đó (không phân biệt quá khứ/tương lai/đã lưu trữ hay chưa — đọc thẳng
+  // "entries" toàn bộ) ----------------
+  let tcMonth = todayISO().slice(0, 7);
+  let tcSelectedName = '';
+  const tcTenInput = document.getElementById('tc-ten');
+  const tcMonthInput = document.getElementById('tc-thang');
+  tcMonthInput.value = tcMonth;
+  let tcBox = null;
+  function tcCloseBox(){ if (tcBox){ tcBox.remove(); tcBox = null; } }
+  function tcOpenBox(list){
+    tcCloseBox();
+    if (!list.length) return;
+    tcBox = document.createElement('div');
+    tcBox.className = 'suggest';
+    list.forEach(name => {
+      const opt = document.createElement('div');
+      opt.className = 'opt';
+      opt.textContent = name;
+      opt.addEventListener('mousedown', e => { e.preventDefault(); tcTenInput.value = name; tcSelectedName = name; tcCloseBox(); renderTraCuu(); });
+      tcBox.appendChild(opt);
+    });
+    tcTenInput.parentElement.appendChild(tcBox);
+  }
+  // gợi ý gộp cả lái xe đang biên chế lẫn tên bất kỳ đã từng có đơn nghỉ (kể cả người đã nghỉ việc
+  // hẳn) — tra cứu lịch sử thì không nên giới hạn theo DRIVER_POOL (vốn chỉ lọc người còn đang làm).
+  function tcAllNames(){
+    const set = new Set(DRIVERS.map(d => d.ten));
+    entries.forEach(e => set.add(e.ten));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+  }
+  tcTenInput.addEventListener('input', () => {
+    tcSelectedName = '';
+    const q = normName(tcTenInput.value);
+    if (!q){ tcCloseBox(); renderTraCuu(); return; }
+    tcOpenBox(tcAllNames().filter(n => normName(n).includes(q)).slice(0, 8));
+    renderTraCuu();
+  });
+  tcTenInput.addEventListener('focus', () => { if (tcTenInput.value) tcTenInput.dispatchEvent(new Event('input')); });
+  tcTenInput.addEventListener('blur', () => setTimeout(tcCloseBox, 150));
+  tcTenInput.addEventListener('keydown', e => { if (e.key === 'Escape') tcCloseBox(); });
+  function tcShiftMonth(n){
+    const [y, m] = tcMonth.split('-').map(Number);
+    const d = new Date(Date.UTC(y, m - 1 + n, 1));
+    tcMonth = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+    tcMonthInput.value = tcMonth;
+    renderTraCuu();
+  }
+  document.getElementById('tc-prevBtn').addEventListener('click', () => tcShiftMonth(-1));
+  document.getElementById('tc-nextBtn').addEventListener('click', () => tcShiftMonth(1));
+  tcMonthInput.addEventListener('change', () => {
+    if (tcMonthInput.value){ tcMonth = tcMonthInput.value; renderTraCuu(); }
+  });
+  function daysInMonth(ym){ const [y, m] = ym.split('-').map(Number); return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+  // offset để lưới bắt đầu từ Thứ 2 (Mon-first), khớp với "Nghỉ theo tuần" ở trên
+  function firstMondayOffset(ym){
+    const [y, m] = ym.split('-').map(Number);
+    const wd = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    return wd === 0 ? 6 : wd - 1;
+  }
+  function renderTraCuu(){
+    const body = document.getElementById('tcBody');
+    const name = tcSelectedName || tcTenInput.value.trim();
+    if (!name){
+      body.innerHTML = '<div class="empty">Gõ/chọn tên lái xe ở trên để xem lịch nghỉ.</div>';
+      return;
+    }
+    const monthStart = `${tcMonth}-01`;
+    const nDays = daysInMonth(tcMonth);
+    const monthEnd = `${tcMonth}-${String(nDays).padStart(2, '0')}`;
+    // đơn "không có ngày kết thúc" (OPEN_ENDED_DATE) vẫn so sánh chuỗi bình thường vì đó là ngày rất
+    // xa trong tương lai, luôn >= monthEnd của bất kỳ tháng nào đang tra cứu
+    const overlapping = entries.filter(e => e.ten === name && e.tungay <= monthEnd && e.denngay >= monthStart)
+      .sort((a, b) => a.tungay.localeCompare(b.tungay));
+    const dayOf = {};
+    overlapping.forEach(e => {
+      for (let i = 1; i <= nDays; i++){
+        const dateStr = `${tcMonth}-${String(i).padStart(2, '0')}`;
+        if (e.tungay <= dateStr && dateStr <= e.denngay) dayOf[dateStr] = e;
+      }
+    });
+    const totalDaysOff = Object.keys(dayOf).length;
+    const offset = firstMondayOffset(tcMonth);
+    const headerCells = ['T2','T3','T4','T5','T6','T7','CN'].map(w => `<div style="text-align:center; font-size:11px; font-weight:700; color:var(--ink-muted); padding:4px 0;">${w}</div>`).join('');
+    let cells = '';
+    for (let i = 0; i < offset; i++) cells += '<div></div>';
+    for (let d = 1; d <= nDays; d++){
+      const dateStr = `${tcMonth}-${String(d).padStart(2, '0')}`;
+      const e = dayOf[dateStr];
+      const isToday = dateStr === todayISO();
+      const style = `border-radius:6px; padding:6px 4px; min-height:44px; text-align:center; font-size:12px;` +
+        (isToday ? ' outline:1.5px solid var(--accent); outline-offset:-1.5px;' : '');
+      const bg = e ? `background:var(--${ {P:'ok',DX:'warn',KB:'danger',D:'accent'}[e.loai] }-fill);` : 'background:var(--surface-2);';
+      const tag = e ? `<div style="margin-top:2px;"><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span></div>` : '';
+      cells += `<div style="${style} ${bg}" title="${e ? (LOAI_LABEL[e.loai] + (e.ghichu ? ' — ' + e.ghichu : '')).replace(/"/g,'&quot;') : ''}">` +
+        `<div class="tabular" style="font-weight:${isToday ? '800' : '600'};">${d}</div>${tag}</div>`;
+    }
+    const calHtml = `<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:4px;">${headerCells}${cells}</div>`;
+    const listRows = overlapping.map(e => `
+      <tr>
+        <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
+        <td class="tabular">${fmtRange(e)}</td>
+        <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
+        <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
+      </tr>`).join('');
+    const listHtml = overlapping.length
+      ? `<table><thead><tr><th>Loại nghỉ</th><th>Thời gian (toàn bộ đơn)</th><th>Ngày nộp đơn</th><th>Ghi chú</th></tr></thead><tbody>${listRows}</tbody></table>`
+      : '<div class="note">Tháng này không có ngày nghỉ nào.</div>';
+    body.innerHTML =
+      `<div class="statgrid" style="grid-template-columns:1fr;">
+        <div class="statbox"><div class="statnum">${totalDaysOff}</div><div class="statlabel">Ngày nghỉ trong tháng ${tcMonth}</div></div>
+      </div>
+      <div style="margin-top:14px;">${calHtml}</div>
+      <div style="margin-top:16px;">${listHtml}</div>`;
   }
 
   function fmtRange(e){
@@ -1044,6 +1189,7 @@ html.pw-locked #pwGate{display:flex;}
     renderArchive();
     renderSummary();
     renderWeeklyTable();
+    renderTraCuu();
     const editBtn = document.getElementById('editAllBtn');
     const saveBtn = document.getElementById('saveAllBtn');
     const cancelBtn = document.getElementById('cancelAllBtn');
@@ -1214,6 +1360,7 @@ html.pw-locked #pwGate{display:flex;}
   renderArchive();
   renderSummary();
   renderWeeklyTable();
+  renderTraCuu();
   renderDriverMgmt();
   loadFromGithub();
   loadDriversFromSheet();

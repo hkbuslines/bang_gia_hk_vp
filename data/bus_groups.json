@@ -1,6 +1,19 @@
 {
   "buses": [
     {
+      "bks": "29H-688.28",
+      "tuyen_chinh": "NHA TRANG",
+      "cap_lai_nha": "",
+      "phan_loai": "HỢP ĐỒNG",
+      "limo": false,
+      "group_key": "HD_NT",
+      "group_label": "HĐ NT",
+      "group_name": "Hợp đồng Hà Nội - Nha Trang (NVS)",
+      "group_color": "#00897b",
+      "lai1": "",
+      "lai2": ""
+    },
+    {
       "bks": "29K-079.90",
       "tuyen_chinh": "SAPA",
       "cap_lai_nha": "Nguyễn Văn Dương + Lương Văn Trường",
