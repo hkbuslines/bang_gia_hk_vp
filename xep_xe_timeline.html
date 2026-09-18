@@ -284,6 +284,7 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .dtl-gap{position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-muted); pointer-events:none; overflow:hidden; white-space:nowrap;}
 .dtl-gap.bad{color:var(--danger); font-weight:700;}
 .dtl-gap.tail{justify-content:flex-start; padding-left:6px;}
+.block.carryover.dtl .chiptext{overflow:hidden;}
 .block.dtl{cursor:default;}
 .block.leave{cursor:default; color:#3b2a00; background-color:var(--warn-fill); border:1px solid var(--warn); background-image:repeating-linear-gradient(45deg, rgba(181,112,30,0.25) 0 6px, transparent 6px 13px);}
 .lane .label.dtl-label{cursor:default;}
@@ -2901,6 +2902,35 @@ html.pw-locked #pwGate{display:flex;}
       const needed = label.scrollWidth + 14;
       if (needed > block.offsetWidth) block.style.width = needed + 'px';
     });
+    layoutDriverGaps(inner);
+  }
+  let _dtlCtx = null;
+  function dtlTextWidth(t){
+    if (!_dtlCtx) _dtlCtx = document.createElement('canvas').getContext('2d');
+    _dtlCtx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    return _dtlCtx.measureText(t).width;
+  }
+  // sau khi các thanh chuyến đã nới rộng theo chữ: đặt lại từng khoảng trống nằm khít giữa 2 thanh liền kề
+  // và chọn bản chữ dài nhất còn vừa — tránh chữ bị che hoặc đè lên thanh khác
+  function layoutDriverGaps(inner){
+    inner.querySelectorAll('.lane').forEach(lane => {
+      if (lane._carry){
+        const w = lane._carry.offsetWidth - 14;
+        const txt = lane._carry.querySelector('.chiptext');
+        lane._carry.style.overflow = 'hidden';
+        const pick = lane._carry._texts.find(t => dtlTextWidth(t) + 4 <= w);
+        txt.textContent = pick || '';
+      }
+      (lane._gaps || []).forEach(g => {
+        const left = g._prev ? g._prev.offsetLeft + g._prev.offsetWidth : g._from * PX_PER_MIN;
+        const right = g._next ? g._next.offsetLeft : (g._to * PX_PER_MIN);
+        const width = Math.max(0, right - left);
+        g.style.left = left + 'px';
+        g.style.width = width + 'px';
+        const pick = g._texts.find(t => dtlTextWidth(t) + 10 <= width);
+        g.textContent = pick || '';
+      });
+    });
   }
   function buildDriverLane(r, day, warnByTrip, warnByName, maByName){
     const lane = document.createElement('div');
@@ -2938,38 +2968,43 @@ html.pw-locked #pwGate{display:flex;}
       lane.appendChild(track);
       return lane;
     }
-    const addGap = (from, to, text, bad, tail, title) => {
-      if (to - from <= 0) return;
+    // chữ khoảng trống được chọn lại SAU khi dựng xong (layoutDriverGaps) theo độ rộng thật còn lại giữa
+    // 2 thanh chuyến — thử lần lượt bản dài → ngắn, vừa thì hiện, không vừa thì bỏ (rê chuột vẫn xem đủ).
+    const gapEls = [];
+    const addGap = (from, to, texts, bad, tail, title, prevEl) => {
+      if (to - from <= 0) return null;
       const g = document.createElement('div');
       g.className = 'dtl-gap' + (bad ? ' bad' : '') + (tail ? ' tail' : '');
+      g._texts = Array.isArray(texts) ? texts : [texts];
+      g._from = from; g._to = to; g._prev = prevEl || null; g._next = null;
       g.style.left = (from * PX_PER_MIN) + 'px';
       g.style.width = ((to - from) * PX_PER_MIN) + 'px';
-      if ((to - from) * PX_PER_MIN >= 44) g.textContent = text;
-      g.title = title || text;
+      g.title = title || g._texts[0];
       track.appendChild(g);
+      gapEls.push(g);
+      return g;
     };
     const legs = r.legs;
     let cursor = 0;
+    let carryEl = null;
     if (r.carryEnd != null && r.prev){
-      const el = carryoverBlockEl({ route: r.prev.route, depStr: r.prev.depStr }, r.carryEnd);
-      el.classList.add('dtl');
-      el.title = `Đêm qua chạy ${r.prev.route} (xe ${r.prev.bks}), về ${r.prev.arrc} lúc ${fmtHM(r.carryEnd)} hôm nay mới rảnh.`;
-      track.appendChild(el);
+      carryEl = carryoverBlockEl({ route: r.prev.route, depStr: r.prev.depStr }, r.carryEnd);
+      carryEl.classList.add('dtl');
+      carryEl._texts = [`⇢ ${routeCode(r.prev.route)} về ${fmtHM(r.carryEnd)}`, `⇢ về ${fmtHM(r.carryEnd)}`, '⇢'];
+      carryEl.title = `Đêm qua chạy ${r.prev.route} (xe ${r.prev.bks}), về ${r.prev.arrc} lúc ${fmtHM(r.carryEnd)} hôm nay mới rảnh.`;
+      track.appendChild(carryEl);
       cursor = r.carryEnd;
-    } else if (r.prev && legs.length){
-      // đã rảnh từ trước 0h — ghi vị trí ngay đầu hàng
     }
     if (r.status === 'idle'){
-      addGap(cursor, AXIS_END, r.prev ? `rảnh · ${r.prev.arrc}` : 'rảnh', false, true,
-        r.prev ? `Chưa có chuyến hôm nay — lần cuối ở ${r.prev.arrc} (xe ${r.prev.bks}${r.carryEnd != null ? ', về ' + fmtHM(r.carryEnd) : ''})` : 'Chưa có chuyến hôm nay');
+      addGap(cursor, AXIS_END, r.prev ? [`rảnh · ${r.prev.arrc}`, r.prev.arrc] : ['rảnh'], false, true,
+        r.prev ? `Chưa có chuyến hôm nay — lần cuối ở ${r.prev.arrc} (xe ${r.prev.bks}${r.carryEnd != null ? ', về ' + fmtHM(r.carryEnd) : ''})` : 'Chưa có chuyến hôm nay', carryEl);
       lane.appendChild(track);
       return lane;
     }
-    // đoạn trước chuyến đầu tiên
     const first = legs[0];
-    const badFirst = (warnByTrip[r.name + '|' + first.tripId] || []).length > 0;
-    addGap(cursor, first.dep, `${first.depc} · chờ ${fmtDur(first.dep - cursor)}`, false, false,
-      `Ở ${first.depc} từ ${fmtHM(cursor)} đến ${first.depStr} (xuất bến ${first.route})`);
+    let pendingGap = addGap(cursor, first.dep, [`${first.depc} · chờ ${fmtDur(first.dep - cursor)}`, `${first.depc} ${fmtDur(first.dep - cursor)}`, first.depc], false, false,
+      `Ở ${first.depc} từ ${fmtHM(cursor)} đến ${first.depStr} (xuất bến ${first.route})`, carryEl);
+    let prevBlock = null;
     legs.forEach((leg, i) => {
       const idx = routeIdx(leg.route);
       const el = document.createElement('div');
@@ -2984,24 +3019,31 @@ html.pw-locked #pwGate{display:flex;}
       el.appendChild(lbl);
       el.title = [`${leg.depStr}→${leg.arrStr} ${leg.route}`, `Xe ${leg.bks} — ${leg.role === 'lai2' ? 'Lái 2' : 'Lái 1'}`, ...warnMsgs].join('\n');
       track.appendChild(el);
+      if (pendingGap) pendingGap._next = el;
+      pendingGap = null;
       const next = legs[i + 1];
       if (next){
         const gap = next.dep - leg.arr;
-        const swap = leg.bks !== next.bks ? ` · đổi xe ${leg.bks.slice(-6)}→${next.bks.slice(-6)}` : '';
+        const swapFull = leg.bks !== next.bks ? ` · đổi xe ${leg.bks.slice(-6)}→${next.bks.slice(-6)}` : '';
+        const swapMark = swapFull ? ' ⇄' : '';
         const nextWarn = (warnByTrip[r.name + '|' + next.tripId] || []).length > 0;
         if (leg.arrc === next.depc){
-          addGap(leg.arr, next.dep, `${leg.arrc} · nghỉ ${fmtDur(gap)}${swap}`, gap < 0 || nextWarn, false,
-            `Ở ${leg.arrc}, nghỉ ${fmtDur(gap)} giữa ${leg.arrStr} và ${next.depStr}${swap}`);
+          pendingGap = addGap(leg.arr, next.dep,
+            [`${leg.arrc} · nghỉ ${fmtDur(gap)}${swapFull}`, `${leg.arrc} · nghỉ ${fmtDur(gap)}${swapMark}`, `${leg.arrc} ${fmtDur(gap)}${swapMark}`, `${fmtDur(gap)}${swapMark}`],
+            gap < 0 || nextWarn, false,
+            `Ở ${leg.arrc}, nghỉ ${fmtDur(gap)} giữa ${leg.arrStr} và ${next.depStr}${swapFull}`, el);
         } else {
-          addGap(leg.arr, next.dep, `△ ${leg.arrc}→${next.depc}`, true, false,
-            `Sai vị trí: xong tại ${leg.arrc} (${leg.arrStr}) nhưng chặng sau xuất bến từ ${next.depc} (${next.depStr})`);
+          pendingGap = addGap(leg.arr, next.dep, [`△ ${leg.arrc}→${next.depc}`, '△'], true, false,
+            `Sai vị trí: xong tại ${leg.arrc} (${leg.arrStr}) nhưng chặng sau xuất bến từ ${next.depc} (${next.depStr})`, el);
         }
       }
+      prevBlock = el;
     });
     const last = legs[legs.length - 1];
     if (last.arr < AXIS_END){
-      addGap(last.arr, AXIS_END, `tại ${last.arrc}`, false, true, `Kết thúc tại ${last.arrc} lúc ${last.arrStr}, sau đó chưa có chuyến hôm nay`);
+      addGap(last.arr, AXIS_END, [`tại ${last.arrc}`, last.arrc], false, true, `Kết thúc tại ${last.arrc} lúc ${last.arrStr}, sau đó chưa có chuyến hôm nay`, prevBlock);
     }
+    lane._gaps = gapEls; lane._carry = carryEl;
     lane.appendChild(track);
     return lane;
   }
