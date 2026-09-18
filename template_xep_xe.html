@@ -281,6 +281,14 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
+.dtl-gap{position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-muted); pointer-events:none; overflow:hidden; white-space:nowrap;}
+.dtl-gap.bad{color:var(--danger); font-weight:700;}
+.dtl-gap.tail{justify-content:flex-start; padding-left:6px;}
+.block.dtl{cursor:default;}
+.block.leave{cursor:default; color:#3b2a00; background-color:var(--warn-fill); border:1px solid var(--warn); background-image:repeating-linear-gradient(45deg, rgba(181,112,30,0.25) 0 6px, transparent 6px 13px);}
+.lane .label.dtl-label{cursor:default;}
+.lane .label .warnbadge{flex-shrink:0; background:var(--danger); color:#fff; border-radius:999px; font-size:10px; font-weight:700; padding:1px 6px;}
+
 .block.carryover{cursor:default; opacity:0.8; background-image:repeating-linear-gradient(45deg, rgba(255,255,255,0.4) 0 6px, transparent 6px 13px); border:1px dashed rgba(255,255,255,0.65);}
 
 footer.note{margin-top:16px; font-size:12px; color:var(--ink-faint); max-width:78ch; line-height:1.6;}
@@ -374,6 +382,7 @@ html.pw-locked #pwGate{display:flex;}
     <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
     <button class="tabbtn" id="tabBoard" type="button">Theo xe</button>
     <button class="tabbtn" id="tabDriversOff" type="button">Lái xe <span id="tabDriversOffCount"></span></button>
+    <button class="tabbtn" id="tabDriverTL" type="button">Timeline lái</button>
     <button class="tabbtn" id="tabBusCrew" type="button">Định biên xe</button>
     <button class="tabbtn" id="tabLenh" type="button">Đóng lệnh <span id="tabLenhCount"></span></button>
     <button class="tabbtn" id="tabCanhBao" type="button">Cảnh báo <span id="tabCanhBaoCount"></span></button>
@@ -471,6 +480,37 @@ html.pw-locked #pwGate{display:flex;}
       <div class="tray-head">Đóng lệnh Hà Nội - Sa Pa — 9 xe cố định, cần đủ <span id="lenhReqText"></span> khung/ngày</div>
       <div class="sub" style="padding:8px 14px 0;">Chỉ tính xe thuộc nhóm "Cố định Hà Nội - Sa Pa" đang thật sự chạy chuyến hôm nay (không tính xe rảnh cả ngày), về đúng bến ít nhất 15 phút trước giờ đóng lệnh và còn ở đó tới giờ đóng — về sớm hơn bao lâu cũng được.</div>
       <div id="lenhTabWrap" style="padding:14px; overflow-x:auto;"></div>
+    </div>
+  </div>
+
+  <!-- ============ TAB: timeline theo lái xe ============ -->
+  <div class="tabpane" id="paneDriverTL">
+    <div class="card" style="margin-bottom:10px;">
+      <div style="display:flex; flex-wrap:wrap; gap:10px; align-items:center; padding:10px 14px;">
+        <input type="search" id="dtlSearch" placeholder="Tìm tên lái…" style="padding:6px 10px; border:0.5px solid var(--line-strong); border-radius:6px; background:var(--surface); color:var(--ink); min-width:170px;">
+        <label class="sub" style="display:flex; gap:6px; align-items:center;">Hiện
+          <select id="dtlFilter" style="padding:5px 8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
+            <option value="all">Tất cả lái</option>
+            <option value="working">Chỉ lái đang chạy</option>
+            <option value="idle">Chỉ lái trống</option>
+            <option value="leave">Chỉ lái nghỉ phép</option>
+            <option value="warn">Chỉ lái có cảnh báo</option>
+          </select>
+        </label>
+        <label class="sub" style="display:flex; gap:6px; align-items:center;">Sắp xếp
+          <select id="dtlSort" style="padding:5px 8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
+            <option value="first">Giờ xuất bến đầu</option>
+            <option value="name">Tên A→Z</option>
+            <option value="warn">Cảnh báo trước</option>
+            <option value="trips">Nhiều chuyến trước</option>
+          </select>
+        </label>
+        <div id="dtlSummary" class="sub" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
+      </div>
+      <div class="sub" style="padding:0 14px 10px;">Mỗi hàng là 1 lái: thanh màu = chuyến (kèm biển xe), chữ nhạt giữa các chuyến = đang ở đâu + nghỉ bao lâu, sọc chéo đầu hàng = chuyến đêm qua chưa về kịp, thanh vàng sọc = nghỉ phép, khung đỏ ⚠ = sai vị trí / thiếu giờ di chuyển.</div>
+    </div>
+    <div class="board">
+      <div class="board-inner" id="dtlInner"></div>
     </div>
   </div>
 
@@ -1486,12 +1526,14 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('tabSlots').classList.toggle('active', t === 'slots');
     document.getElementById('tabBoard').classList.toggle('active', t === 'board');
     document.getElementById('tabDriversOff').classList.toggle('active', t === 'driversoff');
+    document.getElementById('tabDriverTL').classList.toggle('active', t === 'drivertl');
     document.getElementById('tabBusCrew').classList.toggle('active', t === 'buscrew');
     document.getElementById('tabLenh').classList.toggle('active', t === 'lenh');
     document.getElementById('tabCanhBao').classList.toggle('active', t === 'canhbao');
     document.getElementById('paneSlots').classList.toggle('active', t === 'slots');
     document.getElementById('paneBoard').classList.toggle('active', t === 'board');
     document.getElementById('paneDriversOff').classList.toggle('active', t === 'driversoff');
+    document.getElementById('paneDriverTL').classList.toggle('active', t === 'drivertl');
     document.getElementById('paneBusCrew').classList.toggle('active', t === 'buscrew');
     document.getElementById('paneLenh').classList.toggle('active', t === 'lenh');
     document.getElementById('paneCanhBao').classList.toggle('active', t === 'canhbao');
@@ -2758,6 +2800,213 @@ html.pw-locked #pwGate{display:flex;}
     if (parts.length < 2) return clean;
     return `${cityAbbr(parts[0])}-${cityAbbr(parts[1])}`;
   }
+  // ---------------- Timeline theo lái xe: mỗi hàng 1 lái, thanh chuyến kèm BKS, khoảng giữa 2 chuyến ghi rõ
+  // đang ở đâu + nghỉ bao lâu; dùng lại buildDriverChains/computeDriverPositionWarnings (Rule 7) ----------------
+  function fmtHM(min){
+    const m = ((Math.round(min) % 1440) + 1440) % 1440;
+    return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+  }
+  function fmtDur(min){
+    const h = Math.floor(min / 60), m = Math.round(min % 60);
+    return h ? (m ? `${h}h${String(m).padStart(2, '0')}` : `${h}h`) : `${m}p`;
+  }
+  function renderDriverTimeline(){
+    const day = dayFor(currentDate);
+    const inner = document.getElementById('dtlInner');
+    if (!inner) return;
+    const chains = buildDriverChains(day.date);
+    const prevChains = buildDriverChains(addDays(day.date, -1));
+    const warns = computeDriverPositionWarnings(day.date);
+    const warnByName = {}, warnByTrip = {};
+    warns.forEach(w => {
+      (warnByName[w.name] = warnByName[w.name] || []).push(w);
+      (warnByTrip[w.name + '|' + w.tripId] = warnByTrip[w.name + '|' + w.tripId] || []).push(w.message);
+    });
+    const q = (document.getElementById('dtlSearch').value || '').trim().toLowerCase();
+    const filter = document.getElementById('dtlFilter').value;
+    const sortBy = document.getElementById('dtlSort').value;
+
+    const nameSet = new Set(DRIVERS_FULL.filter(d => d.trang_thai !== 'Đã nghỉ').map(d => d.ten));
+    Object.keys(chains).forEach(n => nameSet.add(n));
+    const maByName = {};
+    DRIVERS_FULL.forEach(d => { maByName[d.ten] = d.ma_nv; });
+
+    const rows = [...nameSet].map(name => {
+      const legs = chains[name] || [];
+      const leave = driverLeaveFor(name, day.date);
+      const prev = (prevChains[name] || []).slice(-1)[0] || null;
+      const status = legs.length ? 'working' : (leave ? 'leave' : 'idle');
+      const carryEnd = prev && prev.arr > 1440 ? prev.arr - 1440 : null;
+      const loc = legs.length ? legs[0].depc : (prev ? prev.arrc : '');
+      return { name, legs, leave, prev, status, carryEnd, loc, nWarn: (warnByName[name] || []).length };
+    }).filter(r => {
+      if (q && !r.name.toLowerCase().includes(q)) return false;
+      if (filter === 'working') return r.status === 'working';
+      if (filter === 'idle') return r.status === 'idle';
+      if (filter === 'leave') return r.status === 'leave';
+      if (filter === 'warn') return r.nWarn > 0;
+      return true;
+    });
+
+    const cmpName = (a, b) => a.name.localeCompare(b.name, 'vi');
+    const cmpWork = sortBy === 'name' ? cmpName
+      : sortBy === 'warn' ? (a, b) => (b.nWarn - a.nWarn) || (a.legs[0].dep - b.legs[0].dep)
+      : sortBy === 'trips' ? (a, b) => (b.legs.length - a.legs.length) || cmpName(a, b)
+      : (a, b) => (a.legs[0].dep - b.legs[0].dep) || cmpName(a, b);
+    const working = rows.filter(r => r.status === 'working').sort(cmpWork);
+    const idle = rows.filter(r => r.status === 'idle').sort(cmpName);
+    const onLeave = rows.filter(r => r.status === 'leave').sort(cmpName);
+
+    const totalAll = [...nameSet];
+    const nWork = totalAll.filter(n => (chains[n] || []).length).length;
+    const nLeave = totalAll.filter(n => !(chains[n] || []).length && driverLeaveFor(n, day.date)).length;
+    const nIdle = totalAll.length - nWork - nLeave;
+    document.getElementById('dtlSummary').innerHTML =
+      `<span><b>${nWork}</b> đang chạy</span><span><b>${nIdle}</b> trống</span><span><b>${nLeave}</b> nghỉ phép</span>` +
+      `<span style="color:${warns.length ? 'var(--danger)' : 'inherit'};"><b>${warns.length}</b> cảnh báo vị trí</span>`;
+
+    inner.innerHTML = '';
+    const rulerRow = document.createElement('div');
+    rulerRow.className = 'ruler-row';
+    const corner = document.createElement('div');
+    corner.className = 'corner';
+    corner.textContent = 'Lái xe';
+    rulerRow.appendChild(corner);
+    rulerRow.appendChild(buildRuler());
+    inner.appendChild(rulerRow);
+
+    const section = (title, list, color) => {
+      if (!list.length) return;
+      const gh = document.createElement('div');
+      gh.className = 'grouphead';
+      gh.innerHTML = `<div class="label" style="color:${color};">${title} (${list.length})</div><div class="rest"></div>`;
+      inner.appendChild(gh);
+      const lanes = document.createElement('div');
+      lanes.className = 'lanes';
+      list.forEach(r => lanes.appendChild(buildDriverLane(r, day, warnByTrip, warnByName, maByName)));
+      inner.appendChild(lanes);
+    };
+    section('✔ Đang chạy', working, 'var(--ok)');
+    section('Lái trống — chưa có chuyến', idle, 'var(--ink-muted)');
+    section('Nghỉ phép', onLeave, 'var(--warn)');
+    if (!rows.length){
+      const e = document.createElement('div');
+      e.className = 'sub';
+      e.style.padding = '14px';
+      e.textContent = 'Không có lái nào khớp bộ lọc.';
+      inner.appendChild(e);
+    }
+    inner.querySelectorAll('.block.dtl .chiptext').forEach(label => {
+      const block = label.parentElement;
+      const needed = label.scrollWidth + 14;
+      if (needed > block.offsetWidth) block.style.width = needed + 'px';
+    });
+  }
+  function buildDriverLane(r, day, warnByTrip, warnByName, maByName){
+    const lane = document.createElement('div');
+    lane.className = 'lane';
+    const label = document.createElement('div');
+    label.className = 'label dtl-label';
+    const info = document.createElement('div');
+    info.className = 'info';
+    const sub = r.status === 'working'
+      ? `${r.legs.length} chuyến · ${[...new Set(r.legs.map(l => l.bks.slice(-6)))].join(', ')}`
+      : r.status === 'leave' ? `Nghỉ ${r.leave.loai} (${fmtLeaveRange(r.leave)})`
+      : (r.prev ? `Đang ở ${r.prev.arrc}${r.carryEnd != null ? ' · về ' + fmtHM(r.carryEnd) : ''}` : 'Chưa rõ vị trí');
+    info.innerHTML = `<div class="bks" style="font-size:12px;">${r.name}</div><div class="crew">${(maByName[r.name] || '')}${maByName[r.name] ? ' · ' : ''}${sub}</div>`;
+    label.appendChild(info);
+    if (r.nWarn){
+      const b = document.createElement('span');
+      b.className = 'warnbadge';
+      b.textContent = '⚠ ' + r.nWarn;
+      b.title = (warnByName[r.name] || []).map(w => w.message).join('\n');
+      label.appendChild(b);
+    }
+    lane.appendChild(label);
+
+    const track = document.createElement('div');
+    track.className = 'track';
+    track.style.minWidth = laneWidth + 'px';
+    if (r.status === 'leave'){
+      const el = document.createElement('div');
+      el.className = 'block leave dtl';
+      el.style.left = '0px';
+      el.style.width = laneWidth + 'px';
+      el.innerHTML = `<span class="chiptext">Nghỉ phép ${r.leave.loai}${r.leave.ghichu ? ' — ' + r.leave.ghichu : ''}</span>`;
+      el.title = `${LOAI_NGHI_LABEL_DTL[r.leave.loai] || r.leave.loai}: ${fmtLeaveRange(r.leave)}${r.leave.ghichu ? ' — ' + r.leave.ghichu : ''}`;
+      track.appendChild(el);
+      lane.appendChild(track);
+      return lane;
+    }
+    const addGap = (from, to, text, bad, tail, title) => {
+      if (to - from <= 0) return;
+      const g = document.createElement('div');
+      g.className = 'dtl-gap' + (bad ? ' bad' : '') + (tail ? ' tail' : '');
+      g.style.left = (from * PX_PER_MIN) + 'px';
+      g.style.width = ((to - from) * PX_PER_MIN) + 'px';
+      if ((to - from) * PX_PER_MIN >= 44) g.textContent = text;
+      g.title = title || text;
+      track.appendChild(g);
+    };
+    const legs = r.legs;
+    let cursor = 0;
+    if (r.carryEnd != null && r.prev){
+      const el = carryoverBlockEl({ route: r.prev.route, depStr: r.prev.depStr }, r.carryEnd);
+      el.classList.add('dtl');
+      el.title = `Đêm qua chạy ${r.prev.route} (xe ${r.prev.bks}), về ${r.prev.arrc} lúc ${fmtHM(r.carryEnd)} hôm nay mới rảnh.`;
+      track.appendChild(el);
+      cursor = r.carryEnd;
+    } else if (r.prev && legs.length){
+      // đã rảnh từ trước 0h — ghi vị trí ngay đầu hàng
+    }
+    if (r.status === 'idle'){
+      addGap(cursor, AXIS_END, r.prev ? `rảnh · ${r.prev.arrc}` : 'rảnh', false, true,
+        r.prev ? `Chưa có chuyến hôm nay — lần cuối ở ${r.prev.arrc} (xe ${r.prev.bks}${r.carryEnd != null ? ', về ' + fmtHM(r.carryEnd) : ''})` : 'Chưa có chuyến hôm nay');
+      lane.appendChild(track);
+      return lane;
+    }
+    // đoạn trước chuyến đầu tiên
+    const first = legs[0];
+    const badFirst = (warnByTrip[r.name + '|' + first.tripId] || []).length > 0;
+    addGap(cursor, first.dep, `${first.depc} · chờ ${fmtDur(first.dep - cursor)}`, false, false,
+      `Ở ${first.depc} từ ${fmtHM(cursor)} đến ${first.depStr} (xuất bến ${first.route})`);
+    legs.forEach((leg, i) => {
+      const idx = routeIdx(leg.route);
+      const el = document.createElement('div');
+      const warnMsgs = warnByTrip[r.name + '|' + leg.tripId] || [];
+      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '');
+      el.style.backgroundColor = `var(--rt${idx})`;
+      el.style.left = (leg.dep * PX_PER_MIN) + 'px';
+      el.style.width = Math.max(8, leg.arr - leg.dep) * PX_PER_MIN + 'px';
+      const lbl = document.createElement('span');
+      lbl.className = 'chiptext';
+      lbl.textContent = `${leg.depStr} ${routeCode(leg.route)} · ${leg.bks.slice(-6)}${leg.role === 'lai2' ? ' (L2)' : ''}`;
+      el.appendChild(lbl);
+      el.title = [`${leg.depStr}→${leg.arrStr} ${leg.route}`, `Xe ${leg.bks} — ${leg.role === 'lai2' ? 'Lái 2' : 'Lái 1'}`, ...warnMsgs].join('\n');
+      track.appendChild(el);
+      const next = legs[i + 1];
+      if (next){
+        const gap = next.dep - leg.arr;
+        const swap = leg.bks !== next.bks ? ` · đổi xe ${leg.bks.slice(-6)}→${next.bks.slice(-6)}` : '';
+        const nextWarn = (warnByTrip[r.name + '|' + next.tripId] || []).length > 0;
+        if (leg.arrc === next.depc){
+          addGap(leg.arr, next.dep, `${leg.arrc} · nghỉ ${fmtDur(gap)}${swap}`, gap < 0 || nextWarn, false,
+            `Ở ${leg.arrc}, nghỉ ${fmtDur(gap)} giữa ${leg.arrStr} và ${next.depStr}${swap}`);
+        } else {
+          addGap(leg.arr, next.dep, `△ ${leg.arrc}→${next.depc}`, true, false,
+            `Sai vị trí: xong tại ${leg.arrc} (${leg.arrStr}) nhưng chặng sau xuất bến từ ${next.depc} (${next.depStr})`);
+        }
+      }
+    });
+    const last = legs[legs.length - 1];
+    if (last.arr < AXIS_END){
+      addGap(last.arr, AXIS_END, `tại ${last.arrc}`, false, true, `Kết thúc tại ${last.arrc} lúc ${last.arrStr}, sau đó chưa có chuyến hôm nay`);
+    }
+    lane.appendChild(track);
+    return lane;
+  }
+  const LOAI_NGHI_LABEL_DTL = {P:'Theo đơn phép', DX:'Đột xuất có báo', KB:'Đột xuất KHÔNG báo', D:'Nghỉ dài ngày'};
+
   function computeDriverStatuses(){
     const day = dayFor(currentDate);
     const st = ensureState(day.date);
@@ -2934,6 +3183,7 @@ html.pw-locked #pwGate{display:flex;}
     else if (activeTab === 'board') { renderUnassignedTray(); renderBoard(); }
     else if (activeTab === 'buscrew') renderBusCrewTab();
     else if (activeTab === 'driversoff') renderDriversOffTab();
+    else if (activeTab === 'drivertl') renderDriverTimeline();
     else if (activeTab === 'canhbao') renderCanhBaoTab();
     updateStats();
   }
@@ -2959,6 +3209,11 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('tabSlots').addEventListener('click', () => setTab('slots'));
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('tabDriversOff').addEventListener('click', () => setTab('driversoff'));
+  document.getElementById('tabDriverTL').addEventListener('click', () => setTab('drivertl'));
+  ['dtlSearch','dtlFilter','dtlSort'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener(id === 'dtlSearch' ? 'input' : 'change', () => { if (activeTab === 'drivertl') renderDriverTimeline(); });
+  });
   document.getElementById('addDriverForm').addEventListener('submit', e => {
     e.preventDefault();
     const ten = document.getElementById('newDriverTen').value.trim();
