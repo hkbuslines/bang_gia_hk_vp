@@ -281,6 +281,14 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
+/* Tab "Theo xe": khung = đúng 1 màn hình (ghim khi cuộn tới), khay nốt chưa xếp ở trên, bảng xe bên dưới cuộn riêng
+   với hàng tiêu đề đóng băng — tránh 2 lớp sticky (khay + tiêu đề) đè lên nhau */
+#paneBoard.active{position:sticky; top:0; height:calc(100vh - 80px); display:flex; flex-direction:column; padding-top:6px; box-sizing:border-box;}
+#paneBoard .card.trayCard{position:static; flex:0 0 auto; box-shadow:none;}
+#paneBoard .tray-body{max-height:130px;}
+#paneBoard > .card{flex:0 0 auto;}
+#paneBoard .board{flex:1 1 auto; min-height:0; max-height:none; margin-top:8px;}
+
 .cnthead,.cnt{display:flex; flex-shrink:0; width:138px; padding:0 10px 0 0; margin:0 -10px 0 0; box-sizing:border-box; position:sticky; left:0; z-index:4; background:var(--page);}
 .cnthead span{width:32px; text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.03em; cursor:help;}
 .cnt span{width:32px; text-align:center; font-size:11.5px; padding:8px 0; font-variant-numeric:tabular-nums;}
@@ -553,21 +561,6 @@ html.pw-locked #pwGate{display:flex;}
       <div id="canhBaoWrap" style="padding:14px; overflow-x:auto;"></div>
     </div>
   </div>
-
-  <footer class="note">
-    <b>Cách dùng:</b> tab "Theo nốt giờ" là nơi xếp chính — kéo 1 xe (BKS) từ khay thả vào ô chấm chấm cạnh nốt giờ
-    muốn xếp; kéo xe đã xếp sang nốt khác để đổi, kéo lại vào khay để gỡ. Hệ thống tự cảnh báo 3 kiểu (không chặn,
-    chỉ báo để bạn cân nhắc): <b>trùng giờ</b> (xe đang bận chuyến khác cùng lúc), <b>không đủ thời gian quay đầu</b>
-    (khoảng cách giữa 2 chuyến liên tiếp của cùng 1 xe quá ngắn), và <b>sai vị trí</b> (điểm đến chuyến trước không
-    trùng điểm đi chuyến sau — nghĩa là xe không thể có mặt đúng chỗ). Tab "Theo xe" xem lại lịch chạy đầy đủ của
-    từng xe trong ngày dạng thanh thời gian 24h, kéo thả được y hệt tab kia vì dùng chung dữ liệu. Xe hỏng (kéo tay
-    hoặc do Gara báo) tự loại khỏi khay và khỏi lịch xếp đúng ngày đó. Ngày có nhãn <b>✓ xanh</b> (chấm strip trên
-    cùng) là lịch <b>thật lấy trực tiếp từ Odoo</b> tại thời điểm dựng trang này — xe/tài nào Odoo đã gán sẵn thì
-    trang này tự nhận đúng luôn (không cần xếp lại). Ngày nhãn <b>≈ vàng</b> là Odoo <b>chưa có lịch thật</b> (đặt vé
-    sát ngày mới có), nên tạm dùng nề nếp 1 ngày cùng thứ trong quá khứ làm ước tính — sẽ cập nhật thành thật khi có
-    dữ liệu, báo tôi dựng lại trang gần ngày hơn để lấy đúng lịch thật. Dữ liệu là ảnh chụp tại lúc tạo trang, không
-    tự làm mới — bản dựng thử để bạn góp ý trước khi làm chính thức.
-  </footer>
 </div>
 
 <div id="printArea"></div>
