@@ -281,6 +281,14 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
+.cnthead,.cnt{display:flex; flex-shrink:0; width:128px; position:sticky; left:200px; z-index:3; background:var(--page);}
+.cnthead span{width:32px; text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.03em; cursor:help;}
+.cnt span{width:32px; text-align:center; font-size:11.5px; padding:8px 0; font-variant-numeric:tabular-nums;}
+.cnt span.z{color:var(--ink-faint);}
+.cnt span.tot{font-weight:800; background:var(--surface-2); border-radius:6px; margin-left:2px; width:30px;}
+.loadbar{display:flex; gap:10px; align-items:center; padding:8px 14px; font-size:12px; color:var(--ink-muted); flex-wrap:wrap;}
+.loadbar select{padding:5px 8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
+
 .dtl-gap{position:absolute; top:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:10px; color:var(--ink-muted); pointer-events:none; overflow:hidden; white-space:nowrap;}
 .dtl-gap.bad{color:var(--danger); font-weight:700;}
 .dtl-gap.tail{justify-content:flex-start; padding-left:6px;}
@@ -440,6 +448,11 @@ html.pw-locked #pwGate{display:flex;}
       <div class="tray-head">Nốt giờ chưa xếp — kéo thả vào xe bên dưới, hoặc kéo 1 chuyến từ xe thả ngược lại đây để bỏ xếp</div>
       <div class="tray-body" id="unassignedTray"></div>
     </div>
+    <div class="card" style="margin-bottom:10px;"><div class="loadbar">
+      <b>Đếm lượt để cân bằng:</b>
+      <label>Phạm vi <select id="loadScopeBoard"><option value="day">Ngày đang xem</option><option value="week">Cả tuần (T2–CN)</option><option value="month">Cả tháng</option></select></label>
+      <span>Cột: <b>B</b> = lượt Miền Bắc (×1) · <b>T</b> = Miền Trung (×2) · <b>NT</b> = Nha Trang (×3) · <b>Σ</b> = tổng điểm = B + 2T + 3NT (đếm cả lái 1 và lái 2)</span>
+    </div></div>
     <div class="board">
       <div class="board-inner" id="boardInner"></div>
     </div>
@@ -504,6 +517,13 @@ html.pw-locked #pwGate{display:flex;}
             <option value="name">Tên A→Z</option>
             <option value="warn">Cảnh báo trước</option>
             <option value="trips">Nhiều chuyến trước</option>
+            <option value="load">Tổng điểm nhiều trước</option>
+            <option value="loadasc">Tổng điểm ít trước</option>
+          </select>
+        </label>
+        <label class="sub" style="display:flex; gap:6px; align-items:center;">Đếm lượt
+          <select id="loadScopeDtl" style="padding:5px 8px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);">
+            <option value="day">Ngày đang xem</option><option value="week">Cả tuần (T2–CN)</option><option value="month">Cả tháng</option>
           </select>
         </label>
         <div id="dtlSummary" class="sub" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
@@ -2478,6 +2498,7 @@ html.pw-locked #pwGate{display:flex;}
       }
     }
     lane.appendChild(label);
+    lane.appendChild(loadCellEl(LOAD.byBks[b.bks]));
 
     const track = document.createElement('div');
     track.className = 'track';
@@ -2563,6 +2584,7 @@ html.pw-locked #pwGate{display:flex;}
     const tripById = ensureTripMap(day.date);
     const board = document.getElementById('boardInner');
     board.innerHTML = '';
+    computeLoad();
 
     const rulerRow = document.createElement('div');
     rulerRow.className = 'ruler-row';
@@ -2570,6 +2592,7 @@ html.pw-locked #pwGate{display:flex;}
     corner.className = 'corner';
     corner.textContent = 'BKS';
     rulerRow.appendChild(corner);
+    rulerRow.appendChild(loadHeadEl());
     rulerRow.appendChild(buildRuler());
     board.appendChild(rulerRow);
 
@@ -2803,6 +2826,63 @@ html.pw-locked #pwGate{display:flex;}
   }
   // ---------------- Timeline theo lái xe: mỗi hàng 1 lái, thanh chuyến kèm BKS, khoảng giữa 2 chuyến ghi rõ
   // đang ở đâu + nghỉ bao lâu; dùng lại buildDriverChains/computeDriverPositionWarnings (Rule 7) ----------------
+  // ---------------- Đếm lượt để cân bằng: Miền Bắc =1, Miền Trung =2, Nha Trang =3 (cho cả xe và lái) ----------------
+  const REGION_W = { MB: 1, MT: 2, NT: 3 };
+  let loadScope = 'day';
+  let LOAD = { byBks: {}, byDriver: {} };
+  function regionOf(route){
+    const s = (route || '').toLowerCase();
+    if (/nha trang/.test(s)) return 'NT';
+    if (/hội an|huế|hue|hoi an/.test(s)) return 'MT';
+    return 'MB';
+  }
+  function loadDates(){
+    if (loadScope === 'week'){ const m = mondayOfISO(currentDate); return Array.from({length: 7}, (_, i) => addDays(m, i)); }
+    if (loadScope === 'month'){
+      const [y, mo] = currentDate.split('-').map(Number);
+      const n = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+      return Array.from({length: n}, (_, i) => `${y}-${String(mo).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`);
+    }
+    return [currentDate];
+  }
+  function computeLoad(){
+    const byBks = {}, byDriver = {};
+    const bump = (obj, k, r) => { const o = obj[k] || (obj[k] = { MB: 0, MT: 0, NT: 0 }); o[r]++; };
+    loadDates().forEach(d => {
+      const st = ensureState(d), tm = ensureTripMap(d);
+      Object.entries(st.assignments).forEach(([bks, ids]) => ids.forEach(id => {
+        const t = tm[id]; if (!t) return;
+        const r = regionOf(t.route);
+        bump(byBks, bks, r);
+        const dr = st.drivers[id] || {};
+        [dr.lai1, dr.lai2].forEach(n => { n = (n || '').trim(); if (n) bump(byDriver, n, r); });
+      }));
+    });
+    LOAD = { byBks, byDriver };
+  }
+  function loadTotal(c){ return c ? c.MB * REGION_W.MB + c.MT * REGION_W.MT + c.NT * REGION_W.NT : 0; }
+  function loadCellEl(c){
+    const el = document.createElement('div');
+    el.className = 'cnt';
+    const v = c || { MB: 0, MT: 0, NT: 0 };
+    const cell = (n, tip) => `<span class="${n ? '' : 'z'}" title="${tip}">${n || '·'}</span>`;
+    const tot = loadTotal(v);
+    el.innerHTML = cell(v.MB, 'Lượt Miền Bắc (×1)') + cell(v.MT, 'Lượt Miền Trung (×2)') + cell(v.NT, 'Lượt Nha Trang (×3)') +
+      `<span class="tot ${tot ? '' : 'z'}" title="Tổng điểm = ${v.MB}×1 + ${v.MT}×2 + ${v.NT}×3 (${v.MB + v.MT + v.NT} lượt)">${tot || '·'}</span>`;
+    return el;
+  }
+  function loadHeadEl(){
+    const el = document.createElement('div');
+    el.className = 'cnthead';
+    el.innerHTML = '<span title="Lượt Miền Bắc (×1)">B</span><span title="Lượt Miền Trung (×2)">T</span><span title="Lượt Nha Trang (×3)">NT</span><span title="Tổng điểm = B + 2T + 3NT" style="width:30px;margin-left:2px;">Σ</span>';
+    return el;
+  }
+  function setLoadScope(v){
+    loadScope = v;
+    ['loadScopeBoard', 'loadScopeDtl'].forEach(id => { const e = document.getElementById(id); if (e) e.value = v; });
+    renderAll();
+  }
+
   function fmtHM(min){
     const m = ((Math.round(min) % 1440) + 1440) % 1440;
     return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
@@ -2815,6 +2895,7 @@ html.pw-locked #pwGate{display:flex;}
     const day = dayFor(currentDate);
     const inner = document.getElementById('dtlInner');
     if (!inner) return;
+    computeLoad();
     const chains = buildDriverChains(day.date);
     const prevChains = buildDriverChains(addDays(day.date, -1));
     const warns = computeDriverPositionWarnings(day.date);
@@ -2853,6 +2934,8 @@ html.pw-locked #pwGate{display:flex;}
     const cmpWork = sortBy === 'name' ? cmpName
       : sortBy === 'warn' ? (a, b) => (b.nWarn - a.nWarn) || (a.legs[0].dep - b.legs[0].dep)
       : sortBy === 'trips' ? (a, b) => (b.legs.length - a.legs.length) || cmpName(a, b)
+      : sortBy === 'load' ? (a, b) => (loadTotal(LOAD.byDriver[b.name]) - loadTotal(LOAD.byDriver[a.name])) || cmpName(a, b)
+      : sortBy === 'loadasc' ? (a, b) => (loadTotal(LOAD.byDriver[a.name]) - loadTotal(LOAD.byDriver[b.name])) || cmpName(a, b)
       : (a, b) => (a.legs[0].dep - b.legs[0].dep) || cmpName(a, b);
     const working = rows.filter(r => r.status === 'working').sort(cmpWork);
     const idle = rows.filter(r => r.status === 'idle').sort(cmpName);
@@ -2873,6 +2956,7 @@ html.pw-locked #pwGate{display:flex;}
     corner.className = 'corner';
     corner.textContent = 'Lái xe';
     rulerRow.appendChild(corner);
+    rulerRow.appendChild(loadHeadEl());
     rulerRow.appendChild(buildRuler());
     inner.appendChild(rulerRow);
 
@@ -2953,6 +3037,7 @@ html.pw-locked #pwGate{display:flex;}
       label.appendChild(b);
     }
     lane.appendChild(label);
+    lane.appendChild(loadCellEl(LOAD.byDriver[r.name]));
 
     const track = document.createElement('div');
     track.className = 'track';
@@ -3252,6 +3337,7 @@ html.pw-locked #pwGate{display:flex;}
   document.getElementById('tabBoard').addEventListener('click', () => setTab('board'));
   document.getElementById('tabDriversOff').addEventListener('click', () => setTab('driversoff'));
   document.getElementById('tabDriverTL').addEventListener('click', () => setTab('drivertl'));
+  ['loadScopeBoard','loadScopeDtl'].forEach(id => document.getElementById(id).addEventListener('change', e => setLoadScope(e.target.value)));
   ['dtlSearch','dtlFilter','dtlSort'].forEach(id => {
     const el = document.getElementById(id);
     el.addEventListener(id === 'dtlSearch' ? 'input' : 'change', () => { if (activeTab === 'drivertl') renderDriverTimeline(); });
