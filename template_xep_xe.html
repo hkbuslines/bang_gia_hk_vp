@@ -58,7 +58,7 @@
 *{box-sizing:border-box;}
 body{margin:0; background:var(--page); color:var(--ink); font-family:var(--font-ui); font-size:14px;}
 .tabular{font-family:var(--font-mono); font-variant-numeric:tabular-nums;}
-.wrap{max-width:1500px; margin:0 auto; padding:20px 20px 60px;}
+.wrap{max-width:1800px; margin:0 auto; padding:20px 20px 60px;}
 h1{font-size:19px; font-weight:600; margin:0;}
 .sub{font-size:13px; color:var(--ink-muted); margin-top:2px;}
 
@@ -168,20 +168,20 @@ button.ghost:hover{background:var(--page);}
 .board{overflow:auto; margin-top:14px; max-height:calc(100vh - 70px);}
 .board-inner{min-width:1180px;}
 .ruler-row{display:flex; gap:10px; margin-bottom:6px; position:sticky; top:0; z-index:6; background:var(--page); padding:4px 0 2px; border-bottom:0.5px solid var(--line);}
-.ruler-row .corner{width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;
-  position:sticky; left:0; z-index:4; background:var(--page);}
+.ruler-row .corner{margin-left:0; width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;
+  position:sticky; left:138px; z-index:4; background:var(--page);}
 .ruler{position:relative; flex:1; height:18px; border-bottom:0.5px solid var(--line);}
 .ruler .tick{position:absolute; top:0; font-size:10.5px; color:var(--ink-faint); transform:translateX(-50%);}
 
-.grouphead{display:flex; gap:10px; margin:10px 0 4px;}
+.grouphead{display:flex; gap:10px; margin:10px 0 4px; padding-left:138px;}
 .grouphead .label{width:190px; flex-shrink:0; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted); padding-top:4px;
-  position:sticky; left:0; z-index:3; background:var(--page);}
+  position:sticky; left:138px; z-index:3; background:var(--page);}
 .grouphead .rest{flex:1; border-top:0.5px solid var(--line); margin-top:9px;}
 
 .lanes{display:flex; flex-direction:column; gap:6px;}
 .lane{display:flex; gap:10px; align-items:center;}
 .lane .label{width:190px; flex-shrink:0; display:flex; align-items:center; gap:6px; padding:6px 8px 6px 10px; background:var(--surface-2); border-radius:var(--radius); cursor:grab;
-  position:sticky; left:0; z-index:3; box-shadow:2px 0 4px -2px rgba(0,0,0,0.15);}
+  position:sticky; left:138px; z-index:3; box-shadow:2px 0 4px -2px rgba(0,0,0,0.15);}
 .lane .label:active{cursor:grabbing;}
 .lane .label .info{flex:1; min-width:0; display:flex; flex-direction:column;}
 .lane .label .bks{font-weight:700; font-size:12.5px;}
@@ -281,7 +281,7 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
-.cnthead,.cnt{display:flex; flex-shrink:0; width:148px; padding:0 10px; margin:0 -10px; box-sizing:border-box; position:sticky; left:190px; z-index:3; background:var(--page);}
+.cnthead,.cnt{display:flex; flex-shrink:0; width:138px; padding:0 10px 0 0; margin:0 -10px 0 0; box-sizing:border-box; position:sticky; left:0; z-index:4; background:var(--page);}
 .cnthead span{width:32px; text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.03em; cursor:help;}
 .cnt span{width:32px; text-align:center; font-size:11.5px; padding:8px 0; font-variant-numeric:tabular-nums;}
 .cnt span.z{color:var(--ink-faint);}
@@ -984,7 +984,10 @@ html.pw-locked #pwGate{display:flex;}
     if (typeof updateDriversOffCount === 'function') updateDriversOffCount();
   }
   function addNoteFromDriver(name){
-    DRIVER_NOTES.push({ id: noteUid(), driver: name, text: '' });
+    // lái này từng có ghi chú đã "trả về" bảng bên phải (parked) → khôi phục lại đúng ghi chú cũ, không tạo mới
+    const parked = DRIVER_NOTES.find(n => n.parked && n.driver === name);
+    if (parked) delete parked.parked;
+    else DRIVER_NOTES.push({ id: noteUid(), driver: name, text: '' });
     renderDriverNotesPanel();
     refreshDriversOffTab();
     saveDriverNotes();
@@ -997,8 +1000,18 @@ html.pw-locked #pwGate{display:flex;}
     const ta = document.querySelector(`textarea[data-noteid="${n.id}"]`);
     if (ta) ta.focus();
   }
+  // bấm × trên thẻ ghi chú của 1 lái: KHÔNG xoá — chỉ "trả" lái về lại bảng bên phải (ghi chú vẫn giữ, kéo lái
+  // vào lại khung này là hiện lại đúng nội dung cũ). Thẻ ghi chú không gắn tên lái thì không có chỗ để trả
+  // về nên mới xoá hẳn (hỏi xác nhận nếu đã có chữ).
   function deleteNote(id){
-    DRIVER_NOTES = DRIVER_NOTES.filter(n => n.id !== id);
+    const n = DRIVER_NOTES.find(x => x.id === id);
+    if (!n) return;
+    if (n.driver){
+      n.parked = true;
+    } else {
+      if ((n.text || '').trim() && !confirm('Ghi chú này không gắn với lái nào nên xoá là mất hẳn. Xoá?')) return;
+      DRIVER_NOTES = DRIVER_NOTES.filter(x => x.id !== id);
+    }
     renderDriverNotesPanel();
     refreshDriversOffTab();
     saveDriverNotes();
@@ -1018,14 +1031,15 @@ html.pw-locked #pwGate{display:flex;}
     if (countEl) countEl.textContent = `(${noteDriverNames().size})`;
     const dl = document.getElementById('driverNamesDatalist');
     if (dl) dl.innerHTML = DRIVER_NAME_POOL.map(n => `<option value="${escHtml(n)}">`).join('');
-    if (!DRIVER_NOTES.length){
+    const shown = DRIVER_NOTES.filter(n => !n.parked);
+    if (!shown.length){
       wrap.innerHTML = '<div class="doempty" style="padding:0;">Kéo 1 lái xe từ bảng bên cạnh thả vào đây, hoặc bấm "+ Thêm ghi chú" bên dưới.</div>';
     } else {
-      wrap.innerHTML = DRIVER_NOTES.map(n => `
+      wrap.innerHTML = shown.map(n => `
         <div class="notecard">
           <div class="notecard-head">
             <input type="text" class="notecard-driver" data-noteid="${n.id}" list="driverNamesDatalist" placeholder="Tên lái xe (không bắt buộc)" value="${escHtml(n.driver || '')}">
-            <button type="button" class="rowbtn" data-delnote="${n.id}" title="Xoá ghi chú">×</button>
+            <button type="button" class="rowbtn" data-delnote="${n.id}" title="${n.driver ? 'Trả lái này về bảng bên phải (ghi chú vẫn được giữ)' : 'Xoá ghi chú'}">×</button>
           </div>
           <textarea class="notecard-text" data-noteid="${n.id}" placeholder="Ghi chú...">${escHtml(n.text)}</textarea>
         </div>`).join('');
@@ -2499,8 +2513,8 @@ html.pw-locked #pwGate{display:flex;}
         if (info) info.appendChild(locEl);
       }
     }
-    lane.appendChild(label);
     lane.appendChild(loadCellEl(LOAD.byBks[b.bks]));
+    lane.appendChild(label);
 
     const track = document.createElement('div');
     track.className = 'track';
@@ -2593,8 +2607,8 @@ html.pw-locked #pwGate{display:flex;}
     const corner = document.createElement('div');
     corner.className = 'corner';
     corner.textContent = 'BKS';
-    rulerRow.appendChild(corner);
     rulerRow.appendChild(loadHeadEl());
+    rulerRow.appendChild(corner);
     rulerRow.appendChild(buildRuler());
     board.appendChild(rulerRow);
 
@@ -2615,6 +2629,7 @@ html.pw-locked #pwGate{display:flex;}
       board.appendChild(gh);
       const lanes = document.createElement('div');
       lanes.className = 'lanes';
+      { const cmp = loadCmp(b => LOAD.byBks[b.bks]); if (cmp) idleBuses.sort(cmp); }
       idleBuses.forEach(b => lanes.appendChild(buildLaneEl(b, day, st, tripById, garaBroken)));
       board.appendChild(lanes);
     }
@@ -2629,7 +2644,9 @@ html.pw-locked #pwGate{display:flex;}
 
       const lanes = document.createElement('div');
       lanes.className = 'lanes';
-      activeBuses.filter(b => corridorOf(b) === g).forEach(b => lanes.appendChild(buildLaneEl(b, day, st, tripById, garaBroken)));
+      const inGroup = activeBuses.filter(b => corridorOf(b) === g);
+      { const cmp = loadCmp(b => LOAD.byBks[b.bks]); if (cmp) inGroup.sort(cmp); }
+      inGroup.forEach(b => lanes.appendChild(buildLaneEl(b, day, st, tripById, garaBroken)));
       board.appendChild(lanes);
     });
 
@@ -2802,7 +2819,7 @@ html.pw-locked #pwGate{display:flex;}
   // hẳn (không còn thuộc biên chế); người chưa xếp/đang nghỉ được ghim lên đầu để dễ thấy
   // tên đã có mặt bên khung "Cần trao đổi" thì ẩn khỏi bảng danh sách bên cạnh — 1 tên chỉ hiện 1 chỗ
   function noteDriverNames(){
-    return new Set(DRIVER_NOTES.filter(n => n.driver).map(n => n.driver));
+    return new Set(DRIVER_NOTES.filter(n => n.driver && !n.parked).map(n => n.driver));
   }
   // tuyến miền Trung/xa (Huế, Hội An, Nha Trang) vốn chỉ chạy 1 lượt/ngày (không có lượt về cùng ngày
   // như Sa Pa) — cảnh báo "chỉ 1 lượt" không áp dụng cho các tuyến này
@@ -2880,10 +2897,40 @@ html.pw-locked #pwGate{display:flex;}
       `<span class="tot ${tot ? '' : 'z'}" title="Tổng điểm = ${v.MB}×1 + ${v.MT}×2 + ${v.NT}×3 (${v.MB + v.MT + v.NT} lượt)">${tot || '·'}</span>`;
     return el;
   }
+  // bấm tiêu đề cột B / T / NT / Σ để sắp xếp: bấm 1 lần = nhiều→ít, bấm lần 2 = ít→nhiều, lần 3 = bỏ sắp xếp
+  let loadSort = { col: '', dir: 0 };
+  function loadVal(c, col){
+    c = c || { MB: 0, MT: 0, NT: 0 };
+    return col === 'B' ? c.MB : col === 'T' ? c.MT : col === 'NT' ? c.NT : loadTotal(c);
+  }
+  function loadCmp(getC){
+    if (!loadSort.col) return null;
+    return (a, b) => {
+      const ca = getC(a), cb = getC(b);
+      return (loadVal(ca, loadSort.col) - loadVal(cb, loadSort.col)) * loadSort.dir
+        || ((ca ? ca.MB + ca.MT + ca.NT : 0) - (cb ? cb.MB + cb.MT + cb.NT : 0)) * loadSort.dir;
+    };
+  }
   function loadHeadEl(){
     const el = document.createElement('div');
     el.className = 'cnthead';
-    el.innerHTML = '<span title="Lượt Miền Bắc (×1)">B</span><span title="Lượt Miền Trung (×2)">T</span><span title="Lượt Nha Trang (×3)">NT</span><span title="Tổng điểm = B + 2T + 3NT" style="width:30px;margin-left:2px;">Σ</span>';
+    const defs = [['B', 'B', 'Lượt Miền Bắc (×1)'], ['T', 'T', 'Lượt Miền Trung (×2)'], ['NT', 'NT', 'Lượt Nha Trang (×3)'], ['S', 'Σ', 'Tổng điểm = B + 2T + 3NT']];
+    defs.forEach(([col, txt, tip]) => {
+      const sp = document.createElement('span');
+      const on = loadSort.col === col;
+      sp.textContent = txt + (on ? (loadSort.dir < 0 ? '▼' : '▲') : '');
+      sp.title = tip + ' — bấm để sắp xếp theo cột này';
+      sp.style.cursor = 'pointer';
+      if (col === 'S'){ sp.style.width = '30px'; sp.style.marginLeft = '2px'; }
+      if (on) sp.style.color = 'var(--ink)';
+      sp.addEventListener('click', () => {
+        if (loadSort.col !== col) loadSort = { col, dir: -1 };
+        else if (loadSort.dir < 0) loadSort = { col, dir: 1 };
+        else loadSort = { col: '', dir: 0 };
+        renderAll();
+      });
+      el.appendChild(sp);
+    });
     return el;
   }
   function setLoadScope(v){
@@ -2946,9 +2993,11 @@ html.pw-locked #pwGate{display:flex;}
       : sortBy === 'load' ? (a, b) => (loadTotal(LOAD.byDriver[b.name]) - loadTotal(LOAD.byDriver[a.name])) || cmpName(a, b)
       : sortBy === 'loadasc' ? (a, b) => (loadTotal(LOAD.byDriver[a.name]) - loadTotal(LOAD.byDriver[b.name])) || cmpName(a, b)
       : (a, b) => (a.legs[0].dep - b.legs[0].dep) || cmpName(a, b);
-    const working = rows.filter(r => r.status === 'working').sort(cmpWork);
+    const lcmp = loadCmp(r => LOAD.byDriver[r.name]);
+    const working = rows.filter(r => r.status === 'working').sort(lcmp || cmpWork);
     const idle = rows.filter(r => r.status === 'idle').sort(cmpName);
     const onLeave = rows.filter(r => r.status === 'leave').sort(cmpName);
+    if (lcmp){ idle.sort(lcmp); onLeave.sort(lcmp); }
 
     const totalAll = [...nameSet];
     const nWork = totalAll.filter(n => (chains[n] || []).length).length;
@@ -2964,8 +3013,8 @@ html.pw-locked #pwGate{display:flex;}
     const corner = document.createElement('div');
     corner.className = 'corner';
     corner.textContent = 'Lái xe';
-    rulerRow.appendChild(corner);
     rulerRow.appendChild(loadHeadEl());
+    rulerRow.appendChild(corner);
     rulerRow.appendChild(buildRuler());
     inner.appendChild(rulerRow);
 
@@ -3045,8 +3094,8 @@ html.pw-locked #pwGate{display:flex;}
       b.title = (warnByName[r.name] || []).map(w => w.message).join('\n');
       label.appendChild(b);
     }
-    lane.appendChild(label);
     lane.appendChild(loadCellEl(LOAD.byDriver[r.name]));
+    lane.appendChild(label);
 
     const track = document.createElement('div');
     track.className = 'track';
@@ -3240,9 +3289,11 @@ html.pw-locked #pwGate{display:flex;}
       } else {
         statusHtml = `<span class="doreason">Chưa xếp</span>`;
       }
+      const parkedNote = DRIVER_NOTES.find(n => n.parked && n.driver === name && (n.text || '').trim());
+      const noteMark = parkedNote ? ` <span title="Ghi chú đã lưu: ${escHtml(parkedNote.text)}&#10;(kéo lái vào khung 'Cần trao đổi' để hiện lại)" style="cursor:help;">📝</span>` : '';
       return `<tr draggable="true" data-drivername="${name.replace(/"/g, '&quot;')}" title="Kéo thả để thêm vào khung 'Cần trao đổi'">
         <td class="tabular note">${i + 1}</td>
-        <td style="font-weight:700;">${name}</td>
+        <td style="font-weight:700;">${name}${noteMark}</td>
         <td class="tabular note">${ma_nv || ''}</td>
         <td>${statusHtml}</td>
         <td class="tabular note">${tripCount || 0}</td>
