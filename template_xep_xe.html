@@ -165,9 +165,9 @@ button.ghost:hover{background:var(--page);}
 .slotrow .issues span{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 
 /* ---- board (Theo xe) ---- */
-.board{overflow-x:auto; margin-top:14px;}
+.board{overflow:auto; margin-top:14px; max-height:calc(100vh - 70px);}
 .board-inner{min-width:1180px;}
-.ruler-row{display:flex; gap:10px; margin-bottom:6px;}
+.ruler-row{display:flex; gap:10px; margin-bottom:6px; position:sticky; top:0; z-index:6; background:var(--page); padding:4px 0 2px; border-bottom:0.5px solid var(--line);}
 .ruler-row .corner{width:190px; flex-shrink:0; display:flex; align-items:center; font-size:11px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:0.05em;
   position:sticky; left:0; z-index:4; background:var(--page);}
 .ruler{position:relative; flex:1; height:18px; border-bottom:0.5px solid var(--line);}
