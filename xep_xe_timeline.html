@@ -451,6 +451,7 @@ html.pw-locked #pwGate{display:flex;}
     <div class="card" style="margin-bottom:10px;"><div class="loadbar">
       <b>Đếm lượt để cân bằng:</b>
       <label>Phạm vi <select id="loadScopeBoard"><option value="day">Ngày đang xem</option><option value="week">Cả tuần (T2–CN)</option><option value="month">Cả tháng</option></select></label>
+      <span id="loadCoverBoard"></span>
       <span>Cột: <b>B</b> = lượt Miền Bắc (×1) · <b>T</b> = Miền Trung (×2) · <b>NT</b> = Nha Trang (×3) · <b>Σ</b> = tổng điểm = B + 2T + 3NT (đếm cả lái 1 và lái 2)</span>
     </div></div>
     <div class="board">
@@ -526,6 +527,7 @@ html.pw-locked #pwGate{display:flex;}
             <option value="day">Ngày đang xem</option><option value="week">Cả tuần (T2–CN)</option><option value="month">Cả tháng</option>
           </select>
         </label>
+        <span id="loadCoverDtl" class="sub"></span>
         <div id="dtlSummary" class="sub" style="display:flex; gap:12px; flex-wrap:wrap;"></div>
       </div>
       <div class="sub" style="padding:0 14px 10px;">Mỗi hàng là 1 lái: thanh màu = chuyến (kèm biển xe), chữ nhạt giữa các chuyến = đang ở đâu + nghỉ bao lâu, sọc chéo đầu hàng = chuyến đêm qua chưa về kịp, thanh vàng sọc = nghỉ phép, khung đỏ ⚠ = sai vị trí / thiếu giờ di chuyển.</div>
@@ -2858,7 +2860,14 @@ html.pw-locked #pwGate{display:flex;}
         [dr.lai1, dr.lai2].forEach(n => { n = (n || '').trim(); if (n) bump(byDriver, n, r); });
       }));
     });
-    LOAD = { byBks, byDriver };
+    const dates = loadDates();
+    const have = dates.filter(d => dayByDate[d] && dayByDate[d].real).length;
+    LOAD = { byBks, byDriver, have, total: dates.length, from: dates[0], to: dates[dates.length - 1] };
+    const txt = loadScope === 'day' ? '' :
+      (have < dates.length
+        ? `⚠ Chỉ có dữ liệu Odoo thật ${have}/${dates.length} ngày (${ddOf(dates[0])}–${ddOf(dates[dates.length - 1])}) — số đếm chưa đủ, chờ trang tự cập nhật thêm ngày.`
+        : `Đủ dữ liệu ${dates.length} ngày (${ddOf(dates[0])}–${ddOf(dates[dates.length - 1])}).`);
+    ['loadCoverBoard', 'loadCoverDtl'].forEach(id => { const e = document.getElementById(id); if (e){ e.textContent = txt; e.style.color = have < dates.length ? 'var(--danger)' : 'var(--ink-muted)'; } });
   }
   function loadTotal(c){ return c ? c.MB * REGION_W.MB + c.MT * REGION_W.MT + c.NT * REGION_W.NT : 0; }
   function loadCellEl(c){

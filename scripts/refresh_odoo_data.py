@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(HERE)  # script nằm ở scripts/, repo root là thư mục cha
 
 WINDOW_DAYS = 14       # tổng số ngày hiển thị về tương lai, tính từ hôm nay
-HISTORY_DAYS = 14      # số ngày quá khứ vẫn giữ lại lịch thật trong trang (không bị mất khi qua ngày)
+HISTORY_DAYS = 14      # tối thiểu số ngày quá khứ giữ lại lịch thật; thực tế lùi tới ĐẦU THÁNG TRƯỚC để tab đếm lượt "cả tháng" luôn đủ dữ liệu
 LOOKBACK_DAYS = 28      # phạm vi quét quá khứ để tìm ngày tham chiếu cùng thứ (phải >= HISTORY_DAYS)
 MIN_REF_TRIPS = 50      # 1 ngày quá khứ được coi là "đủ dữ liệu" để làm mẫu nếu có >= số chuyến này
 
@@ -109,9 +109,13 @@ def build_trip(t):
 def main():
     call = odoo_call()
     today = vn_today()
-    window_start = today - datetime.timedelta(days=HISTORY_DAYS)
-    window_end = today + datetime.timedelta(days=WINDOW_DAYS - 1)
-    lookback_start = today - datetime.timedelta(days=LOOKBACK_DAYS)
+    # lùi tới ngày 1 của THÁNG TRƯỚC (nếu xa hơn HISTORY_DAYS): đủ 2 tháng liền để xem/đếm lượt cả tháng
+    prev_month_first = (today.replace(day=1) - datetime.timedelta(days=1)).replace(day=1)
+    window_start = min(today - datetime.timedelta(days=HISTORY_DAYS), prev_month_first)
+    next_month_first = (today.replace(day=28) + datetime.timedelta(days=4)).replace(day=1)
+    month_end = next_month_first - datetime.timedelta(days=1)
+    window_end = max(today + datetime.timedelta(days=WINDOW_DAYS - 1), month_end)   # luôn phủ hết tháng hiện tại
+    lookback_start = min(today - datetime.timedelta(days=LOOKBACK_DAYS), window_start)
 
     rows = call("vexere.trip", "search_read",
                 [["date", ">=", lookback_start.isoformat()], ["date", "<=", window_end.isoformat()]],
