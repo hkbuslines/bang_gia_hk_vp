@@ -193,11 +193,29 @@ export function buildVietQRUrl(bankName, account, amount, addInfo, accountName) 
 // ---- Gọi API Apps Script ----
 // Lưu ý: dùng Content-Type "text/plain" khi POST để tránh trình duyệt gửi
 // preflight OPTIONS (Apps Script Web App không xử lý preflight tốt).
+function sleep_(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Apps Script gắn với Google Sheet chỉ cho chạy 1 số lượt request đồng thời
+// giới hạn — nhiều người dùng cùng lúc (đặc biệt khi Sheet đã nhiều dữ liệu)
+// có thể khiến 1 request bị "xếp hàng" quá lâu rồi lỗi/treo. Tải danh sách
+// là thao tác CHỈ ĐỌC nên tự thử lại an toàn — không áp dụng cho apiPost
+// (ghi dữ liệu) vì tự gửi lại có thể tạo trùng đơn/duyệt trùng nếu request
+// trước đó thực ra đã tới server, chỉ lỗi lúc nhận phản hồi.
 export async function apiList() {
-  const res = await fetch(API_URL + "?action=list");
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "Lỗi tải dữ liệu");
-  return json.data;
+  const attempts = 3;
+  let lastErr;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(API_URL + "?action=list");
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || "Lỗi tải dữ liệu");
+      return json.data;
+    } catch (e) {
+      lastErr = e;
+      if (i < attempts - 1) await sleep_(1000 * (i + 1)); // 1s rồi 2s trước khi thử lại
+    }
+  }
+  throw lastErr;
 }
 export async function apiPost(payload) {
   const res = await fetch(API_URL, {

@@ -150,12 +150,16 @@ function renderDeptView() {
     </div>`).join("") : '<div class="empty-note">Không có đơn nào.</div>';
 
   app.innerHTML = `
-    <div class="req-list no-print">
-      <div class="back-link" id="backLink">← Tất cả văn phòng</div>
-      <div class="tabs">${tabsHtml}</div>
-      <div id="listContainer">${listHtml}</div>
+    <div class="duyet-split">
+      <div class="req-list no-print">
+        <div class="back-link" id="backLink">← Tất cả văn phòng</div>
+        <div class="tabs">${tabsHtml}</div>
+        <div id="listContainer">${listHtml}</div>
+      </div>
+      <div id="detailContainer" class="detail-pane">
+        <div class="detail-placeholder no-print">← Chọn 1 đơn bên trái để xem chi tiết</div>
+      </div>
     </div>
-    <div id="detailContainer"></div>
   `;
 
   document.getElementById("backLink").addEventListener("click", () => { currentDept = null; render(); });
