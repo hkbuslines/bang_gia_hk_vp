@@ -188,6 +188,7 @@ button.ghost:hover{background:var(--page);}
 .lane .label .crew{font-size:10px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .lane .label .lastloc{font-size:10px; color:var(--warn); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-weight:600;}
 .lane.has-gara .label{background:var(--warn-fill); box-shadow:inset 3px 0 0 var(--warn);}
+.lane.has-gara-conflict .label{background:var(--danger-fill); box-shadow:inset 3px 0 0 var(--danger);}
 .gicon{flex-shrink:0; font-size:14px; cursor:default; border:0; background:none; padding:0; line-height:1;}
 button.gicon:hover{transform:scale(1.15);}
 .block.maint{color:#fff; cursor:default;}
@@ -2457,6 +2458,14 @@ html.pw-locked #pwGate{display:flex;}
     });
     label.addEventListener('dragend', () => { label.style.opacity = '1'; });
 
+    if (garaBroken && garaBroken.has(b.bks) && st.assignments[b.bks].length){
+      lane.classList.add('has-gara-conflict');
+      const warn = document.createElement('span');
+      warn.className = 'gicon';
+      warn.textContent = '⚠';
+      warn.title = `LẮP LỖI: xe ${b.bks} đang được Gara báo HỎNG nhưng vẫn bị xếp ${st.assignments[b.bks].length} chuyến hôm nay — kiểm tra lại (gỡ chuyến ra hoặc bấm xe khỏi Gara nếu đã sửa xong).`;
+      label.appendChild(warn);
+    }
     const garaBD = garaEntriesFor(b.bks, day.date).filter(e => e.loai === 'baoduong');
     const pending = garaBD.filter(e => !e.scheduled);
     const scheduledToday = garaBD.filter(e => e.scheduled && e.scheduled.date === day.date);
@@ -2618,7 +2627,10 @@ html.pw-locked #pwGate{display:flex;}
     board.appendChild(rulerRow);
 
     const garaBroken = garaBrokenSetFor(day.date);
-    const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
+    // Xe Gara báo hỏng vẫn ẩn khỏi bảng NHƯ CŨ khi rảnh — nhưng nếu lỡ vẫn bị xếp chuyến (lắp lỗi:
+    // gán cho xe đang hỏng) thì PHẢI hiện ra ở đúng nhóm tuyến của nó, tô đỏ cảnh báo, để bắt lỗi
+    // ngay trên bảng — ẩn hẳn sẽ khiến lỗi này vô hình, không ai phát hiện được.
+    const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && (!garaBroken.has(b.bks) || st.assignments[b.bks].length));
     const present = new Set(activeBuses.map(corridorOf));
     const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
 
