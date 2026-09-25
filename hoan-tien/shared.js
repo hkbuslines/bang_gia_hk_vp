@@ -37,7 +37,7 @@ export const STATUS_LABEL = {
   cho_duyet: "Chờ duyệt",
   da_duyet: "Đã duyệt",
   tu_choi: "Từ chối",
-  da_chi: "Đã chi"
+  da_chi: "Hoàn thành"
 };
 
 // Nhãn trạng thái hiện đúng thực tế: nếu đơn có ít nhất 1 dòng bị từ chối
