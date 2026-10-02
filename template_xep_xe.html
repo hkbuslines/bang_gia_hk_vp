@@ -3179,6 +3179,19 @@ html.pw-locked #pwGate{display:flex;}
       lbl.className = 'chiptext';
       lbl.textContent = `${leg.depStr} ${routeCode(leg.route)} · ${leg.bks.slice(-6)}${leg.role === 'lai2' ? ' (L2)' : ''}`;
       el.appendChild(lbl);
+      // nút × gỡ TÊN LÁI NÀY khỏi chuyến (chỉ xoá lái ở chuyến này, không xoá chuyến, không đụng xe hay lái khác);
+      // chuyến vẫn còn trên xe, ô lái để trống để lắp người khác
+      const delBtn = document.createElement('button');
+      delBtn.className = 'del'; delBtn.type = 'button'; delBtn.textContent = '×';
+      delBtn.title = `Gỡ ${r.name} khỏi chuyến ${leg.depStr} ${leg.route} (xe ${leg.bks})`;
+      delBtn.addEventListener('mousedown', e => e.stopPropagation());
+      delBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        if (confirm(`Gỡ lái "${r.name}" khỏi chuyến ${leg.depStr} ${leg.route} (xe ${leg.bks})?\nChuyến vẫn giữ trên xe, chỉ để trống chỗ lái.`)){
+          setTripDriver(day.date, leg.tripId, leg.role, '');
+        }
+      });
+      el.appendChild(delBtn);
       el.title = [`${leg.depStr}→${leg.arrStr} ${leg.route}`, `Xe ${leg.bks} — ${leg.role === 'lai2' ? 'Lái 2' : 'Lái 1'}`, ...warnMsgs].join('\n');
       track.appendChild(el);
       if (pendingGap) pendingGap._next = el;
