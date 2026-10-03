@@ -7,8 +7,8 @@
       "phan_loai": "HỢP ĐỒNG",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "",
       "lai2": ""
@@ -436,8 +436,8 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "Nguyễn Minh Tuấn",
       "lai2": "Lê Ngọc Lân"
@@ -527,8 +527,8 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "Trần Văn Sơn",
       "lai2": ""
@@ -579,8 +579,8 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "Phạm Đình Hải",
       "lai2": ""
@@ -657,8 +657,8 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "Nhâm Gia Đạt",
       "lai2": "Mai Ngọc Biên"
@@ -670,8 +670,8 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP",
-      "group_name": "Xe VIP",
+      "group_label": "VIP Royal",
+      "group_name": "VIP Royal",
       "group_color": "#b8860b",
       "lai1": "",
       "lai2": ""
@@ -796,12 +796,12 @@
   ],
   "group_order": [
     "CD_HNSP",
-    "VIP",
     "CD_HL",
     "CD_NB",
     "HD_MB",
     "CD_MT",
     "HD_NVS",
+    "VIP",
     "HD_NT",
     "LIMO"
   ],
@@ -847,8 +847,8 @@
       "color": "#f57c00"
     },
     "VIP": {
-      "label": "VIP",
-      "name": "Xe VIP",
+      "label": "VIP Royal",
+      "name": "VIP Royal",
       "color": "#b8860b"
     }
   }
