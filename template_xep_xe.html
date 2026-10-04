@@ -2868,6 +2868,8 @@ html.pw-locked #pwGate{display:flex;}
   let LOAD = { byBks: {}, byDriver: {} };
   function regionOf(route){
     const s = (route || '').toLowerCase();
+    // Huế ↔ Nha Trang (2 chiều) tính là 1 lượt MIỀN TRUNG (×2), không phải Nha Trang (×3)
+    if (/nha trang/.test(s) && /huế|hue/.test(s)) return 'MT';
     if (/nha trang/.test(s)) return 'NT';
     if (/hội an|huế|hue|hoi an/.test(s)) return 'MT';
     return 'MB';
