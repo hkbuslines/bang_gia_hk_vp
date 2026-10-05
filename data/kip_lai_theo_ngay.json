@@ -180,9 +180,9 @@
     "refDate": null
   },
   "2026-10-07": {
-    "kip": 113,
-    "real": false,
-    "refDate": "2026-09-30"
+    "kip": 125,
+    "real": true,
+    "refDate": null
   },
   "2026-10-08": {
     "kip": 118,
