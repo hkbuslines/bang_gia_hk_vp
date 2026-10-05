@@ -433,6 +433,17 @@ html.pw-locked #pwGate{display:flex;}
   // ---------------- tab "Quản lý lái xe" — thêm/sửa/xoá, lưu qua Sheet key 'drivers' để bên xếp xe
   // và các máy khác cũng thấy đúng danh sách mới nhất khi tải lại trang ----------------
   const DRIVERS_SHEET_KEY = 'drivers';
+  // cùng 1 tên mà có 2 dòng (vd. lỡ thêm 2 lần, rồi mới đổi 1 dòng sang "Đã nghỉ") → chỉ giữ 1 dòng:
+  // ưu tiên dòng có mã NV, sau đó dòng "Đã nghỉ" (thông tin mới hơn), còn lại giữ dòng đầu
+  function dedupeDrivers(list){
+    const rank = d => (d.ma_nv ? 2 : 0) + (d.trang_thai === 'Đã nghỉ' ? 1 : 0);
+    const best = new Map();
+    list.forEach(d => {
+      const k = normName(d.ten);
+      if (!best.has(k) || rank(d) > rank(best.get(k))) best.set(k, d);
+    });
+    return list.filter(d => best.get(normName(d.ten)) === d);
+  }
   async function loadDriversFromSheet(){
     const statusEl = document.getElementById('driverGhStatus');
     try{
@@ -440,7 +451,7 @@ html.pw-locked #pwGate{display:flex;}
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
       if (data.list && data.list.length){
-        DRIVERS = data.list;
+        DRIVERS = dedupeDrivers(data.list);
         rebuildDriverIndexes();
         statusEl.textContent = `Đã tải ${DRIVERS.length} lái xe (cập nhật lần cuối: ${data.updated_at || '—'}).`;
       } else {
@@ -631,10 +642,10 @@ html.pw-locked #pwGate{display:flex;}
 
   // điều hướng tuần cho bảng "Nghỉ theo tuần" — nút ‹/› + nhãn tuần in đậm + lịch chọn đúng ngày
   let weeklyStart = mondayOfISO(todayISO());
-  function fmtDMY(isoStr){ const [y,m,d] = isoStr.split('-'); return `${d}/${m}/${y}`; }
+  function fmtDMY(isoStr){ if (!isoStr) return ''; const [y,m,d] = isoStr.split('-'); return `${d}/${m}/${y}`; }
   function updateWeekLabel(){
     const end = addDaysISO(weeklyStart, 6);
-    document.getElementById('w-weekLabel').textContent = `Tuần ${fmtDM(weeklyStart)} – ${fmtDMY(end)}`;
+    document.getElementById('w-weekLabel').textContent = `Tuần ${fmtDMY(weeklyStart)} – ${fmtDMY(end)}`;
     document.getElementById('w-dateJump').value = weeklyStart;
   }
   function setWeeklyStart(dateStr){
@@ -694,7 +705,7 @@ html.pw-locked #pwGate{display:flex;}
           ${dayCells}
         </tr>`;
     }).join('');
-    document.getElementById('weeklyWrap').innerHTML = `<div class="note" style="margin-bottom:8px;">Tuần ${fmtDM(weekStart)} - ${fmtDM(weekEnd)} · ${DRIVERS.length} lái xe</div><div style="overflow-x:auto;"><table>
+    document.getElementById('weeklyWrap').innerHTML = `<div class="note" style="margin-bottom:8px;">Tuần ${fmtDMY(weekStart)} - ${fmtDMY(weekEnd)} · ${DRIVERS.length} lái xe</div><div style="overflow-x:auto;"><table>
       <thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th>${dayHeaders}</tr></thead>
       <tbody>${totalRow}${body}</tbody>
     </table></div>`;
@@ -802,7 +813,7 @@ html.pw-locked #pwGate{display:flex;}
       <tr>
         <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
         <td class="tabular">${fmtRange(e)}</td>
-        <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
+        <td class="tabular">${e.ngaynop ? fmtDMY(e.ngaynop) : '<span class="note">—</span>'}</td>
         <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
       </tr>`).join('');
     const listHtml = overlapping.length
@@ -810,15 +821,15 @@ html.pw-locked #pwGate{display:flex;}
       : '<div class="note">Tháng này không có ngày nghỉ nào.</div>';
     body.innerHTML =
       `<div class="statgrid" style="grid-template-columns:1fr;">
-        <div class="statbox"><div class="statnum">${totalDaysOff}</div><div class="statlabel">Ngày nghỉ trong tháng ${tcMonth}</div></div>
+        <div class="statbox"><div class="statnum">${totalDaysOff}</div><div class="statlabel">Ngày nghỉ trong tháng ${tcMonth.slice(5)}/${tcMonth.slice(0,4)}</div></div>
       </div>
       <div style="margin-top:14px;">${calHtml}</div>
       <div style="margin-top:16px;">${listHtml}</div>`;
   }
 
   function fmtRange(e){
-    if (e.denngay === OPEN_ENDED_DATE) return `${e.tungay} → chưa xác định`;
-    return e.tungay === e.denngay ? e.tungay : `${e.tungay} → ${e.denngay}`;
+    if (e.denngay === OPEN_ENDED_DATE) return `${fmtDMY(e.tungay)} → chưa xác định`;
+    return e.tungay === e.denngay ? fmtDMY(e.tungay) : `${fmtDMY(e.tungay)} → ${fmtDMY(e.denngay)}`;
   }
 
   function downloadBlob(blob, filename){
@@ -1055,7 +1066,7 @@ html.pw-locked #pwGate{display:flex;}
 
   function exportListCSV(){
     const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay))
-      .map(e => [e.ten, e.loai, LOAI_LABEL[e.loai] || '', fmtRange(e), e.ngaynop || '', e.ghichu || '']);
+      .map(e => [e.ten, e.loai, LOAI_LABEL[e.loai] || '', fmtRange(e), fmtDMY(e.ngaynop), e.ghichu || '']);
     const header = ['Lái xe', 'Mã loại', 'Loại nghỉ', 'Thời gian', 'Ngày nộp đơn', 'Ghi chú'];
     downloadXlsx(`xin_nghi_${todayISO()}.xlsx`, [
       { name: 'Xin nghỉ', header, rows, colWidths: [22, 10, 20, 22, 16, 30] },
@@ -1063,7 +1074,7 @@ html.pw-locked #pwGate{display:flex;}
   }
   function exportListPDF(){
     const rows = entries.slice().sort((a,b) => a.tungay.localeCompare(b.tungay));
-    const body = rows.map(e => `<tr><td>${e.ten}</td><td>${e.loai} — ${LOAI_LABEL[e.loai] || ''}</td><td>${fmtRange(e)}</td><td>${e.ngaynop || '—'}</td><td>${e.ghichu || '—'}</td></tr>`).join('');
+    const body = rows.map(e => `<tr><td>${e.ten}</td><td>${e.loai} — ${LOAI_LABEL[e.loai] || ''}</td><td>${fmtRange(e)}</td><td>${e.ngaynop ? fmtDMY(e.ngaynop) : '—'}</td><td>${e.ghichu || '—'}</td></tr>`).join('');
     document.getElementById('printArea').innerHTML =
       `<h2>Danh sách xin nghỉ lái xe — ${new Date().toLocaleDateString('vi-VN')}</h2>` +
       `<table><thead><tr><th>Lái xe</th><th>Loại nghỉ</th><th>Thời gian</th><th>Ngày nộp đơn</th><th>Ghi chú</th></tr></thead><tbody>${body}</tbody></table>`;
@@ -1092,7 +1103,7 @@ html.pw-locked #pwGate{display:flex;}
       return `<tr><td>${d.ten}</td><td>${d.ma_nv}</td><td>${count}</td><td>${chi}</td></tr>`;
     }).join('');
     document.getElementById('printArea').innerHTML =
-      `<h2>Nghỉ theo tuần — ${fmtDM(weeklyStart)} - ${fmtDM(weekEnd)}</h2>` +
+      `<h2>Nghỉ theo tuần — ${fmtDMY(weeklyStart)} - ${fmtDMY(weekEnd)}</h2>` +
       `<table><thead><tr><th>Lái xe</th><th>Mã NV</th><th>Số ngày nghỉ</th><th>Chi tiết loại nghỉ</th></tr></thead><tbody>${body}</tbody></table>`;
     window.print();
   }
@@ -1124,7 +1135,7 @@ html.pw-locked #pwGate{display:flex;}
           <td style="font-weight:700;">${e.ten}</td>
           <td><span class="tag ${e.loai.toLowerCase()}">${e.loai}</span> <span class="note">${LOAI_LABEL[e.loai] || ''}</span></td>
           <td class="tabular">${fmtRange(e)}</td>
-          <td class="tabular">${e.ngaynop || '<span class="note">—</span>'}</td>
+          <td class="tabular">${e.ngaynop ? fmtDMY(e.ngaynop) : '<span class="note">—</span>'}</td>
           <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
           <td>${backBtn}</td>
           <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
@@ -1161,7 +1172,7 @@ html.pw-locked #pwGate{display:flex;}
         // đơn chưa tới ngày bắt đầu (đăng ký nghỉ tương lai) mà bấm "đã đi làm lại" thì coi như huỷ
         // hẳn đơn đó, khỏi tạo ra khoảng ngày ngược (đến ngày < từ ngày)
         if (entry.tungay > todayISO()){
-          if (!confirm(`Đơn này chưa tới ngày bắt đầu nghỉ (${entry.tungay}). Huỷ hẳn đơn nghỉ của "${entry.ten}"?`)) return;
+          if (!confirm(`Đơn này chưa tới ngày bắt đầu nghỉ (${fmtDMY(entry.tungay)}). Huỷ hẳn đơn nghỉ của "${entry.ten}"?`)) return;
           entries = entries.filter(e => e.id !== entry.id);
         } else {
           entry.denngay = todayISO();
