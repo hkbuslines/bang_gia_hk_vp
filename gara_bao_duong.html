@@ -1,5 +1,5 @@
 <meta charset="utf-8">
-<title>Gara Báo Bảo Dưỡng</title>
+<title>Gara Báo Xe Hỏng</title>
 <script>
   // khoá trang bằng mật khẩu đơn giản — chỉ chặn người lạ vô tình vào nhầm link, không phải bảo
   // mật thật sự (đây là trang tĩnh không có server riêng, ai đọc được code đều thấy mật khẩu).
@@ -92,9 +92,13 @@ tr:last-child td{border-bottom:0;}
 .tag.danger{background:var(--danger-fill); color:var(--danger);}
 .state{display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:999px; font-size:11.5px; font-weight:600; font-family:var(--font-ui); border:0; cursor:pointer; appearance:none; -webkit-appearance:none;}
 .state:focus{outline:2px solid var(--accent); outline-offset:1px;}
-.state.wait{background:var(--surface-2); color:var(--ink-muted);}
-.state.doing{background:var(--warn-fill); color:var(--warn);}
+.state.wait{background:var(--danger-fill); color:var(--danger);}
+.state.arranged{background:var(--warn-fill); color:var(--warn);}
 .state.done{background:var(--ok-fill); color:var(--ok);}
+tr.pri td{background:var(--danger-fill);}
+.pri-chk{display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-weight:600; font-size:12.5px;}
+.pri-chk input{width:16px; height:16px; accent-color:var(--danger); cursor:pointer;}
+.formgrid.g2{grid-template-columns:1fr 2fr auto; align-items:end;}
 .note{font-size:12px; color:var(--ink-faint); max-width:60ch;}
 .empty{color:var(--ink-faint); font-size:13px; padding:16px 4px;}
 .rowbtn{border:0; background:none; cursor:pointer; font-size:14px; padding:2px 5px; border-radius:4px; color:var(--ink-faint);}
@@ -151,56 +155,27 @@ html.pw-locked #pwGate{display:flex;}
 
 <div class="wrap">
   <div>
-    <h1>Gara — báo xe bảo dưỡng / hỏng trong tuần</h1>
-    <div class="sub">Điền từng xe cần xử lý bên dưới. "Bảo dưỡng" chỉ cần báo <b>trong khoảng tuần nào</b> (từ ngày–đến ngày) và
-    <b>mất bao nhiêu tiếng</b> — không cần biết trước ngày/giờ chính xác, vì bên Xếp xe sẽ tự chọn đúng lúc xe rảnh trong
-    tuần đó để xếp giờ cụ thể (bạn sẽ thấy dòng "đã xếp ngày... lúc..." hiện lên ở đây khi họ xếp xong). "Hỏng — cắt hẳn"
-    chọn từ ngày nào đến ngày nào, xe sẽ nghỉ hẳn những ngày đó. Trạng thái mặc định là "Chờ xử lý" khi thêm mới, đổi trực
-    tiếp trong danh sách khi bắt đầu làm hoặc xong. Nhớ bấm "Lưu lên GitHub" sau khi thêm/sửa để bên Xếp xe thấy thay đổi.</div>
+    <h1>Gara — báo xe hỏng</h1>
+    <div class="sub">Chỉ cần ghi <b>xe nào hỏng gì</b>, tick <b>Ưu tiên</b> nếu cần xử lý gấp, rồi đổi trạng thái khi có tiến triển:
+    <b>Đang chờ xử lý</b> (bên Xếp xe hiện <b style="color:var(--danger);">đỏ</b>) → <b>Đã xếp</b> (hiện <b style="color:var(--warn);">vàng</b>)
+    → <b>Hoàn thành</b> (về lại bình thường, xe chạy lại được). Xe <b>ưu tiên</b> hiện đỏ đậm bên Xếp xe. Mọi thay đổi tự động lưu.</div>
   </div>
 
   <div class="card">
-    <h2>Thêm mục mới</h2>
+    <h2>Báo xe hỏng</h2>
     <form id="entryForm">
-      <div class="formgrid">
+      <div class="formgrid g2">
         <div class="field">
           <label for="f-bks">Biển số xe</label>
           <input type="text" id="f-bks" list="bksList" placeholder="Gõ để tìm biển số..." autocomplete="off" required>
           <datalist id="bksList"></datalist>
         </div>
-        <div class="field full" style="grid-column:span 3;">
-          <label>Loại xử lý</label>
-          <div class="toggle">
-            <label class="warn-opt"><input type="radio" name="loai" value="baoduong" checked><span>🔧 Bảo dưỡng (báo theo tuần)</span></label>
-            <label class="danger-opt"><input type="radio" name="loai" value="hong"><span>🚫 Hỏng — cắt hẳn xe (theo ngày)</span></label>
-          </div>
-        </div>
-
         <div class="field">
-          <label for="f-weekQuick">Chọn nhanh tuần</label>
-          <select id="f-weekQuick"><option value="">— hoặc chọn tuần —</option></select>
+          <label for="f-noidung">Hỏng gì</label>
+          <input type="text" id="f-noidung" placeholder="Ví dụ: hỏng điều hoà, nổ lốp, thay hộp số..." autocomplete="off">
         </div>
-        <div class="field" id="f-ngaybd-wrap">
-          <label for="f-ngaybd" id="f-ngaybd-label">Từ ngày (đầu tuần)</label>
-          <input type="date" id="f-ngaybd" required>
-        </div>
-        <div class="field" id="f-ngaykt-wrap">
-          <label for="f-ngaykt" id="f-ngaykt-label">Đến ngày (cuối tuần)</label>
-          <input type="date" id="f-ngaykt" required>
-          <div class="note" id="f-ngaykt-hint" style="display:none; margin-top:4px;">Để trống = cắt hẳn vô thời hạn (chưa xác định ngày sửa xong)</div>
-        </div>
-        <div class="field" id="f-sogio-wrap">
-          <label for="f-sogio">Mất bao nhiêu tiếng</label>
-          <input type="number" id="f-sogio" min="0.5" max="48" step="0.5" value="6">
-        </div>
-
-        <div class="field full">
-          <label for="f-noidung">Nội dung sửa chữa (sửa gì, làm gì)</label>
-          <textarea id="f-noidung" placeholder="Ví dụ: Bảo dưỡng cấp 2 — thay dầu, kiểm tra phanh, đảo lốp"></textarea>
-        </div>
-        <div class="field full" style="grid-column:span 4;">
-          <label for="f-ghichu">Ghi chú</label>
-          <input type="text" id="f-ghichu" placeholder="Không bắt buộc">
+        <div class="field">
+          <label class="pri-chk" style="padding:8px 0;"><input type="checkbox" id="f-uutien"> 🔥 Ưu tiên</label>
         </div>
       </div>
       <div class="btnrow">
@@ -210,20 +185,14 @@ html.pw-locked #pwGate{display:flex;}
   </div>
 
   <div class="card">
-    <h2>Danh sách đã báo (<span id="countLabel">0</span>)</h2>
+    <h2>Danh sách xe báo hỏng (<span id="countLabel">0</span>)</h2>
     <div class="btnrow" style="justify-content:flex-start; margin-bottom:10px;">
       <button type="button" class="ghost" id="exportPdfBtn">🖨 Xuất PDF</button>
       <button type="button" class="ghost" id="exportCsvBtn">📊 Xuất Excel</button>
+      <label class="pri-chk" style="margin-left:auto; font-weight:500;"><input type="checkbox" id="showDone"> Hiện cả xe đã hoàn thành</label>
     </div>
     <div id="listWrap"></div>
-  </div>
-
-  <div class="card">
-    <h2>Đồng bộ với bảng xếp xe</h2>
-    <div class="note" id="ghStatus">Chưa lưu lần nào trong phiên này.</div>
-    <div class="btnrow" style="justify-content:flex-start; margin-top:10px;">
-      <button type="button" class="primary" id="ghSaveBtn">💾 Lưu (để bên xếp xe thấy)</button>
-    </div>
+    <div class="note" id="ghStatus" style="margin-top:10px;">Đang tải…</div>
   </div>
 </div>
 
@@ -233,31 +202,42 @@ html.pw-locked #pwGate{display:flex;}
 <script>
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
-  const STATE_LABEL = {wait:'Chờ xử lý', doing:'Đang làm', done:'Hoàn thành'};
-  // Google Sheet (qua Apps Script Web App) giữ dữ liệu dùng chung — không trang nào cần token
+  // wait = đang chờ xử lý (đỏ bên xếp xe) · arranged = đã xếp (vàng) · done = hoàn thành (trở lại bình thường)
+  const STATE_LABEL = {wait:'Đang chờ xử lý', arranged:'Đã xếp', done:'Hoàn thành'};
   const SHEET_API_URL = 'https://script.google.com/macros/s/AKfycbx-ZuB1sby0hp77b4tj4UY_3JUwAEUkA92GgXN8lQC4pLV7gVL3XPvO1xfDhNFF5nG6LQ/exec';
   const SHEET_KEY = 'gara';
   let entries = [];
   let counter = 1;
+  let loadedOk = false;   // chỉ tự lưu khi đã tải được dữ liệu cũ — tránh ghi đè Sheet bằng danh sách rỗng khi mạng lỗi
 
-  async function loadFromGithub(){
+  function todayISO(){
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+  // dữ liệu cũ (có ngày, loại, trạng thái "doing") → quy về mẫu đơn giản; mục bảo dưỡng cũ không còn dùng nên bỏ
+  function normalizeEntry(e){
+    const tt = e.trangthai === 'doing' ? 'arranged' : (STATE_LABEL[e.trangthai] ? e.trangthai : 'wait');
+    return { id: e.id, bks: e.bks, noidung: e.noidung || '', uutien: !!e.uutien, trangthai: tt };
+  }
+
+  async function loadFromSheet(){
     const statusEl = document.getElementById('ghStatus');
     try {
       const res = await fetch(`${SHEET_API_URL}?key=${SHEET_KEY}&t=${Date.now()}`, {cache: 'no-store'});
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      entries = data.entries || [];
-      counter = (data.entries || []).reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
-      statusEl.textContent = entries.length
-        ? `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}).`
-        : 'Chưa có dữ liệu nào — đây sẽ là lần lưu đầu tiên.';
+      entries = (data.entries || []).filter(e => e.loai !== 'baoduong').map(normalizeEntry);
+      counter = entries.reduce((m,e)=>Math.max(m,e.id||0), 0) + 1;
+      loadedOk = true;
+      statusEl.textContent = `Đã tải ${entries.length} mục (cập nhật lần cuối: ${data.updated_at || '—'}). Thay đổi tự động lưu.`;
       render();
     } catch(err){
-      statusEl.textContent = 'Không tải được dữ liệu cũ (có thể do mạng, hoặc chưa từng lưu). Bạn vẫn nhập mới bình thường.';
+      statusEl.textContent = 'Không tải được dữ liệu cũ (mạng lỗi?) — tải lại trang trước khi nhập để tránh mất dữ liệu.';
     }
   }
 
-  // Xe hỏng sửa xong (bấm xoá mục "hỏng") — xe luôn được sửa ở Hà Nội, nên khi thả ra chạy lại,
+  // Xe sửa xong (chuyển sang Hoàn thành, hoặc xoá mục) — xe luôn được sửa ở Hà Nội, nên khi thả ra chạy lại,
   // báo sang bên Xếp xe (Sheet key "xepxe") 1 chuyến tay để hệ thống biết đúng vị trí thật khi
   // tính lịch cho ngày kế tiếp — không cần đợi ai đó xếp/lắp tay lại từ đầu.
   async function returnVehicleToHanoi(bks){
@@ -291,8 +271,9 @@ html.pw-locked #pwGate{display:flex;}
     }
   }
 
-  async function saveToGithub(){
+  async function save(){
     const statusEl = document.getElementById('ghStatus');
+    if (!loadedOk){ statusEl.textContent = 'Chưa tải được dữ liệu cũ nên chưa lưu — hãy tải lại trang.'; return; }
     statusEl.textContent = 'Đang lưu...';
     try {
       // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
@@ -307,7 +288,6 @@ html.pw-locked #pwGate{display:flex;}
       statusEl.textContent = 'Lưu lỗi: ' + err.message;
     }
   }
-  document.getElementById('ghSaveBtn').addEventListener('click', saveToGithub);
 
   const bksList = document.getElementById('bksList');
   const BKS_SET = new Set(BUSES.map(b => b.bks));
@@ -317,72 +297,6 @@ html.pw-locked #pwGate{display:flex;}
     opt.textContent = b.bks + (b.tuyen_chinh ? ' — ' + b.tuyen_chinh : '');
     bksList.appendChild(opt);
   });
-
-  const today = new Date();
-  const iso = d => d.toISOString().slice(0,10);
-  const plusDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate()+n); return x; };
-  document.getElementById('f-ngaybd').value = iso(today);
-  document.getElementById('f-ngaykt').value = iso(plusDays(today, 6));
-
-  // chọn nhanh tuần (Thứ 2 - Chủ nhật) — tính bằng chuỗi ngày UTC để tránh lệch múi giờ
-  function todayISO(){
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  }
-  const OPEN_ENDED_DATE = '9999-12-31';
-  function addDaysISO(isoStr, n){
-    const [y,m,d] = isoStr.split('-').map(Number);
-    const dt = new Date(Date.UTC(y, m-1, d));
-    dt.setUTCDate(dt.getUTCDate() + n);
-    return dt.toISOString().slice(0,10);
-  }
-  function mondayOfISO(isoStr){
-    const [y,m,d] = isoStr.split('-').map(Number);
-    const day = new Date(Date.UTC(y, m-1, d)).getUTCDay();
-    return addDaysISO(isoStr, day === 0 ? -6 : 1 - day);
-  }
-  function fmtDM(isoStr){ const [,m,d] = isoStr.split('-'); return `${d}/${m}`; }
-
-  const weekSel = document.getElementById('f-weekQuick');
-  const thisMonday = mondayOfISO(todayISO());
-  for (let w = 0; w < 10; w++){
-    const start = addDaysISO(thisMonday, w*7);
-    const end = addDaysISO(start, 6);
-    const opt = document.createElement('option');
-    opt.value = start;
-    const label = w === 0 ? 'Tuần này' : w === 1 ? 'Tuần sau' : `Tuần +${w}`;
-    opt.textContent = `${label} (${fmtDM(start)} - ${fmtDM(end)})`;
-    weekSel.appendChild(opt);
-  }
-  weekSel.addEventListener('change', () => {
-    if (!weekSel.value) return;
-    document.getElementById('f-ngaybd').value = weekSel.value;
-    document.getElementById('f-ngaykt').value = addDaysISO(weekSel.value, 6);
-  });
-
-  function updateFieldVisibility(){
-    const loai = document.querySelector('input[name="loai"]:checked').value;
-    const isBD = loai === 'baoduong';
-    document.getElementById('f-ngaybd-label').textContent = isBD ? 'Từ ngày (đầu tuần)' : 'Từ ngày';
-    document.getElementById('f-ngaykt-label').textContent = isBD ? 'Đến ngày (cuối tuần)' : 'Đến ngày';
-    document.getElementById('f-sogio-wrap').style.display = isBD ? '' : 'none';
-    // "Hỏng — cắt hẳn" không bắt buộc chọn ngày: để trống nghĩa là cắt vô thời hạn
-    document.getElementById('f-ngaybd').required = isBD;
-    document.getElementById('f-ngaykt').required = isBD;
-    document.getElementById('f-ngaykt-hint').style.display = isBD ? 'none' : '';
-  }
-  document.querySelectorAll('input[name="loai"]').forEach(r => r.addEventListener('change', updateFieldVisibility));
-  updateFieldVisibility();
-
-  function fmtRange(e){
-    const range = e.ngaykt === OPEN_ENDED_DATE ? `${e.ngaybd} → chưa xác định`
-      : (e.ngaybd === e.ngaykt ? e.ngaybd : `${e.ngaybd} → ${e.ngaykt}`);
-    if (e.loai === 'baoduong'){
-      const sched = e.scheduled ? ` — đã xếp ${e.scheduled.date} lúc ${String(e.scheduled.startHour).padStart(2,'0')}:00` : ' — chưa xếp giờ';
-      return `${range} · ${e.sogio} tiếng${sched}`;
-    }
-    return range;
-  }
 
   function downloadBlob(blob, filename){
     const url = URL.createObjectURL(blob);
@@ -616,106 +530,99 @@ html.pw-locked #pwGate{display:flex;}
     downloadBlob(buildXlsxBlob(sheets), filename);
   }
 
+  const rowsForList = () => {
+    const showDone = document.getElementById('showDone').checked;
+    // đỏ (chờ xử lý) trước, rồi vàng (đã xếp), rồi xanh (hoàn thành); trong mỗi nhóm ưu tiên lên đầu
+    const order = {wait:0, arranged:1, done:2};
+    return entries.filter(e => showDone || e.trangthai !== 'done')
+      .sort((a,b) => order[a.trangthai] - order[b.trangthai] || (b.uutien - a.uutien) || a.bks.localeCompare(b.bks));
+  };
+
   function exportCSV(){
-    const rows = entries.slice().sort((a,b) => a.ngaybd.localeCompare(b.ngaybd)).map(e => [
-      e.bks, e.loai === 'baoduong' ? 'Bảo dưỡng' : 'Hỏng', fmtRange(e),
-      e.noidung || '', STATE_LABEL[e.trangthai], e.ghichu || '',
-    ]);
-    const header = ['BKS', 'Loại', 'Thời gian', 'Nội dung', 'Trạng thái', 'Ghi chú'];
-    downloadXlsx(`gara_bao_duong_${new Date().toISOString().slice(0,10)}.xlsx`, [
-      { name: 'Gara', header, rows, colWidths: [14, 12, 24, 30, 16, 30] },
+    const rows = rowsForList().map(e => [e.bks, e.noidung, e.uutien ? 'Ưu tiên' : '', STATE_LABEL[e.trangthai]]);
+    downloadXlsx(`gara_xe_hong_${todayISO()}.xlsx`, [
+      { name: 'Gara', header: ['BKS', 'Hỏng gì', 'Ưu tiên', 'Trạng thái'], rows, colWidths: [14, 40, 12, 18] },
     ]);
   }
   function exportPDF(){
-    const rows = entries.slice().sort((a,b) => a.ngaybd.localeCompare(b.ngaybd));
-    const body = rows.map(e => `<tr><td>${e.bks}</td><td>${e.loai === 'baoduong' ? 'Bảo dưỡng' : 'Hỏng'}</td><td>${fmtRange(e)}</td><td>${e.noidung || '—'}</td><td>${STATE_LABEL[e.trangthai]}</td><td>${e.ghichu || '—'}</td></tr>`).join('');
+    const body = rowsForList().map(e => `<tr><td>${esc(e.bks)}</td><td>${esc(e.noidung) || '—'}</td><td>${e.uutien ? 'Ưu tiên' : ''}</td><td>${STATE_LABEL[e.trangthai]}</td></tr>`).join('');
     document.getElementById('printArea').innerHTML =
-      `<h2>Danh sách Gara báo bảo dưỡng / xe hỏng — ${new Date().toLocaleDateString('vi-VN')}</h2>` +
-      `<table><thead><tr><th>BKS</th><th>Loại</th><th>Thời gian</th><th>Nội dung</th><th>Trạng thái</th><th>Ghi chú</th></tr></thead><tbody>${body}</tbody></table>`;
+      `<h2>Danh sách xe Gara báo hỏng — ${new Date().toLocaleDateString('vi-VN')}</h2>` +
+      `<table><thead><tr><th>BKS</th><th>Hỏng gì</th><th>Ưu tiên</th><th>Trạng thái</th></tr></thead><tbody>${body}</tbody></table>`;
     window.print();
   }
   document.getElementById('exportCsvBtn').addEventListener('click', exportCSV);
   document.getElementById('exportPdfBtn').addEventListener('click', exportPDF);
+  document.getElementById('showDone').addEventListener('change', render);
 
   function render(){
     const wrap = document.getElementById('listWrap');
-    document.getElementById('countLabel').textContent = entries.length;
-    if (!entries.length){
-      wrap.innerHTML = '<div class="empty">Chưa có mục nào — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
-    } else {
-      const stateOptions = id => Object.keys(STATE_LABEL).map(k =>
-        `<option value="${k}" ${entries.find(x=>x.id===id).trangthai===k?'selected':''}>${STATE_LABEL[k]}</option>`).join('');
-      const rows = entries.slice().sort((a,b) => a.ngaybd.localeCompare(b.ngaybd)).map(e => `
-        <tr>
-          <td class="tabular" style="font-weight:700;">${e.bks}</td>
-          <td>${e.loai === 'baoduong' ? '<span class="tag warn">🔧 Bảo dưỡng</span>' : '<span class="tag danger">🚫 Hỏng</span>'}</td>
-          <td class="tabular">${fmtRange(e)}</td>
-          <td>${e.noidung ? e.noidung.replace(/</g,'&lt;') : '<span class="note">—</span>'}</td>
-          <td><select class="state ${e.trangthai}" data-state="${e.id}">${stateOptions(e.id)}</select></td>
-          <td>${e.ghichu ? e.ghichu.replace(/</g,'&lt;') : ''}</td>
-          <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
-        </tr>`).join('');
-      wrap.innerHTML = `<table>
-        <thead><tr><th>BKS</th><th>Loại</th><th>Thời gian</th><th>Nội dung</th><th>Trạng thái</th><th>Ghi chú</th><th></th></tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-      wrap.querySelectorAll('[data-del]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const entry = entries.find(e => e.id === Number(btn.dataset.del));
-          if (!confirm(`Xoá mục "${entry ? entry.bks : ''}" này?`)) return;
-          entries = entries.filter(e => e.id !== Number(btn.dataset.del));
-          render();
-          if (entry && entry.loai === 'hong'){
-            returnVehicleToHanoi(entry.bks);   // xe hỏng sửa xong luôn về lại Hà Nội
-          }
-        });
-      });
-      wrap.querySelectorAll('[data-state]').forEach(sel => {
-        sel.addEventListener('change', () => {
-          const entry = entries.find(x => x.id === Number(sel.dataset.state));
-          entry.trangthai = sel.value;
-          sel.className = 'state ' + sel.value;
-        });
-      });
+    const list = rowsForList();
+    document.getElementById('countLabel').textContent = entries.filter(e => e.trangthai !== 'done').length;
+    if (!list.length){
+      wrap.innerHTML = '<div class="empty">Chưa có xe nào báo hỏng — điền form bên trên rồi bấm "Thêm vào danh sách".</div>';
+      return;
     }
+    const rows = list.map(e => `
+      <tr class="${e.uutien && e.trangthai !== 'done' ? 'pri' : ''}">
+        <td class="tabular" style="font-weight:700;">${esc(e.bks)}</td>
+        <td>${e.noidung ? esc(e.noidung) : '<span class="note">—</span>'}</td>
+        <td><label class="pri-chk"><input type="checkbox" data-pri="${e.id}" ${e.uutien ? 'checked' : ''}> 🔥</label></td>
+        <td><select class="state ${e.trangthai}" data-state="${e.id}">${Object.keys(STATE_LABEL).map(k =>
+          `<option value="${k}" ${e.trangthai===k?'selected':''}>${STATE_LABEL[k]}</option>`).join('')}</select></td>
+        <td><button class="rowbtn" data-del="${e.id}" title="Xoá mục này">×</button></td>
+      </tr>`).join('');
+    wrap.innerHTML = `<table>
+      <thead><tr><th>BKS</th><th>Hỏng gì</th><th>Ưu tiên</th><th>Trạng thái</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+    wrap.querySelectorAll('[data-del]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const entry = entries.find(e => e.id === Number(btn.dataset.del));
+        if (!confirm(`Xoá mục "${entry ? entry.bks : ''}" này?`)) return;
+        entries = entries.filter(e => e.id !== Number(btn.dataset.del));
+        render(); save();
+        if (entry && entry.trangthai !== 'done') returnVehicleToHanoi(entry.bks);
+      });
+    });
+    wrap.querySelectorAll('[data-state]').forEach(sel => {
+      sel.addEventListener('change', () => {
+        const entry = entries.find(x => x.id === Number(sel.dataset.state));
+        const was = entry.trangthai;
+        entry.trangthai = sel.value;
+        render(); save();
+        if (sel.value === 'done' && was !== 'done') returnVehicleToHanoi(entry.bks);
+      });
+    });
+    wrap.querySelectorAll('[data-pri]').forEach(cb => {
+      cb.addEventListener('change', () => {
+        entries.find(x => x.id === Number(cb.dataset.pri)).uutien = cb.checked;
+        render(); save();
+      });
+    });
   }
 
-  document.getElementById('entryForm').addEventListener('submit', e => {
-    e.preventDefault();
-    const loai = document.querySelector('input[name="loai"]:checked').value;
+  document.getElementById('entryForm').addEventListener('submit', ev => {
+    ev.preventDefault();
     const bksVal = document.getElementById('f-bks').value.trim();
     if (!BKS_SET.has(bksVal)){
       alert('Không tìm thấy biển số "' + bksVal + '" trong danh sách xe. Gõ để chọn đúng biển từ gợi ý.');
       return;
     }
-    const rawNgaybd = document.getElementById('f-ngaybd').value;
-    const rawNgaykt = document.getElementById('f-ngaykt').value;
-    const entry = {
-      id: counter++,
-      bks: bksVal,
-      loai,
-      // "Hỏng — cắt hẳn" cho phép để trống ngày: không ghi gì thì coi là cắt vô thời hạn từ hôm nay
-      ngaybd: rawNgaybd || (loai === 'hong' ? todayISO() : ''),
-      ngaykt: rawNgaykt || (loai === 'hong' ? OPEN_ENDED_DATE : ''),
-      sogio: loai === 'baoduong' ? Number(document.getElementById('f-sogio').value) : null,
-      scheduled: null,
+    if (!loadedOk){ alert('Chưa tải được dữ liệu cũ — tải lại trang rồi nhập tiếp để tránh ghi đè.'); return; }
+    entries.push({
+      id: counter++, bks: bksVal,
       noidung: document.getElementById('f-noidung').value.trim(),
+      uutien: document.getElementById('f-uutien').checked,
       trangthai: 'wait',
-      ghichu: document.getElementById('f-ghichu').value.trim(),
-    };
-    if (!entry.ngaybd || !entry.ngaykt || (entry.ngaykt !== OPEN_ENDED_DATE && entry.ngaykt < entry.ngaybd)){
-      alert('Kiểm tra lại "Từ ngày" / "Đến ngày" (đến ngày phải từ ngày bắt đầu trở đi).'); return;
-    }
-    if (loai === 'baoduong' && (!entry.sogio || entry.sogio <= 0)){
-      alert('Nhập số giờ cần bảo dưỡng.'); return;
-    }
-    entries.push(entry);
+    });
+    document.getElementById('f-bks').value = '';
     document.getElementById('f-noidung').value = '';
-    document.getElementById('f-ghichu').value = '';
-    render();
+    document.getElementById('f-uutien').checked = false;
+    render(); save();
   });
 
   render();
-  loadFromGithub();
+  loadFromSheet();
 })();
 </script>
