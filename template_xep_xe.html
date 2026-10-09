@@ -2178,7 +2178,7 @@ html.pw-locked #pwGate{display:flex;}
       group.className = 'slotgroup';
       const ghead = document.createElement('div');
       ghead.className = 'ghead';
-      ghead.style.color = `var(--rt${idx})`;
+      ghead.style.color = VIP_TAG_RE.test(route) ? '#c62828' : `var(--rt${idx})`;
       ghead.textContent = route;
       group.appendChild(ghead);
 
@@ -2195,7 +2195,7 @@ html.pw-locked #pwGate{display:flex;}
         const rr = document.createElement('div');
         rr.className = 'route';
         rr.textContent = `${t.from} → ${t.to}`;
-        rr.style.color = `var(--rt${idx})`;
+        rr.style.color = t.vip ? '#c62828' : `var(--rt${idx})`;
         row.appendChild(rr);
 
         const dzWrap = document.createElement('div');
