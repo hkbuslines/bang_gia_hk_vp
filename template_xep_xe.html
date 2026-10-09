@@ -136,8 +136,7 @@ button.ghost:hover{background:var(--page);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
 /* chuyến VIP (HN-SP VIP): đỏ sáng ở mọi tab */
-.vipbg{background-color:#ff5252 !important; color:#fff !important;}
-.slotrow.viprow{box-shadow:inset 3px 0 0 #ff5252; background:rgba(255,82,82,0.10);}
+.vipbg{background-color:#c62828 !important; color:#fff !important;}
 .addtriprow{padding:6px 12px;}
 .addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
 .addtriprow .addtrip-btn:hover{background:var(--surface-2); color:var(--ink);}
@@ -1837,11 +1836,11 @@ html.pw-locked #pwGate{display:flex;}
     // xe VIP (HN-SP VIP) vẫn nằm chung nốt giờ với xe Hà Nội - Sa Pa khác nhưng tô màu cam của nhóm để nhận ra ngay
     const isVip = (busByBks[bks] && busByBks[bks].group_key === 'VIP') || tripByIdByDay[date][tripId].vip;
     if (isVip){
-      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#ff5252';
+      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#c62828';
       el.style.color = '#fff';
       el.title = 'Xe VIP (HN-SP)';
     }
-    el.innerHTML = `<span class="tabular">${bks}</span>${isVip ? '<span style="margin-left:auto; font-size:10px; opacity:0.9;">VIP</span>' : ''}`;
+    el.innerHTML = `<span class="tabular">${bks}</span>`;
     el.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-slotmove', JSON.stringify({tripId, bks}));
       el.classList.add('dragging');
@@ -2185,14 +2184,14 @@ html.pw-locked #pwGate{display:flex;}
       group.className = 'slotgroup';
       const ghead = document.createElement('div');
       ghead.className = 'ghead';
-      ghead.style.color = `var(--rt${idx})`;
+      ghead.style.color = VIP_TAG_RE.test(route) ? '#c62828' : `var(--rt${idx})`;
       ghead.textContent = route;
       group.appendChild(ghead);
 
       ids.forEach(id => {
         const t = tripById[id];
         const row = document.createElement('div');
-        row.className = 'slotrow' + (t.vip ? ' viprow' : '');
+        row.className = 'slotrow';
 
         const time = document.createElement('div');
         time.className = 'time tabular';
@@ -2204,8 +2203,7 @@ html.pw-locked #pwGate{display:flex;}
         rr.textContent = `${t.from} → ${t.to}`;
         rr.style.color = `var(--rt${idx})`;
         if (t.vip){
-          rr.style.color = '#d32f2f';
-          rr.style.fontWeight = '700';
+          rr.style.color = '#c62828';
         }
         row.appendChild(rr);
 
