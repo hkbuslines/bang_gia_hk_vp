@@ -591,6 +591,12 @@ html.pw-locked #pwGate{display:flex;}
       // điểm đi/đến Odoo ghi kèm "(VIP Royal)" ("Sa Pa (VIP Royal)") — bỏ đi để so khớp vị trí xe đúng
       // (xe VIP đang ở Sa Pa thì chạy tiếp chuyến Sa Pa - Hà Nội là hợp lệ, không phải "sai vị trí")
       ['from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, '').trim(); });
+      // thời lượng chuyến VIP cũng chỉ 6 tiếng như tuyến Hà Nội - Sa Pa thường (Odoo ghi 6h–6h30) — cắt cả thanh hiển thị lẫn giờ về
+      if (t.dep != null && t.arr > t.dep + 360){
+        t.arr = t.dep + 360;
+        const m = t.arr % 1440;
+        t.arrStr = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+      }
     }
   }));
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
