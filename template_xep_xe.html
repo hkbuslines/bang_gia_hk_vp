@@ -135,6 +135,7 @@ button.ghost:hover{background:var(--page);}
 .slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
+.slotrow.viprow{box-shadow:inset 3px 0 0 #ffa94d; background:rgba(255,169,77,0.10);}
 .addtriprow{padding:6px 12px;}
 .addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
 .addtriprow .addtrip-btn:hover{background:var(--surface-2); color:var(--ink);}
@@ -578,6 +579,15 @@ html.pw-locked #pwGate{display:flex;}
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
   const DAYS = JSON.parse(document.getElementById('day-data').textContent);
+  // Odoo ghi chuyến VIP là tuyến riêng "Hà Nội - Sa Pa (VIP Royal)" / "Sa Pa - Hà Nội (VIP Royal)": gộp vào đúng tuyến
+  // Hà Nội - Sa Pa / Sa Pa - Hà Nội (xếp chung theo giờ), chỉ đánh dấu t.vip để tô màu cam khác đi
+  const VIP_TAG_RE = /\s*\(\s*VIP\s*Royal\s*\)/i;
+  DAYS.forEach(d => (d.trips || []).forEach(t => {
+    if (VIP_TAG_RE.test(t.route || '') || VIP_TAG_RE.test(t.to || '') || VIP_TAG_RE.test(t.from || '')){
+      t.vip = true;
+      ['route', 'from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, ''); });
+    }
+  }));
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
   // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
   let DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
@@ -1816,7 +1826,14 @@ html.pw-locked #pwGate{display:flex;}
     el.className = 'assignedchip';
     el.style.background = `var(--rt${routeIdx(tripByIdByDay[date][tripId].route)})`;
     el.draggable = true;
-    el.innerHTML = `<span class="tabular">${bks}</span>`;
+    // xe VIP (HN-SP VIP) vẫn nằm chung nốt giờ với xe Hà Nội - Sa Pa khác nhưng tô màu cam của nhóm để nhận ra ngay
+    const isVip = busByBks[bks] && busByBks[bks].group_key === 'VIP';
+    if (isVip){
+      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#ffa94d';
+      el.style.color = '#4a2a00';   // nền cam sáng → chữ nâu đậm cho dễ đọc
+      el.title = 'Xe VIP (HN-SP)';
+    }
+    el.innerHTML = `<span class="tabular">${bks}</span>${isVip ? '<span style="margin-left:auto; font-size:10px; opacity:0.9;">VIP</span>' : ''}`;
     el.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-slotmove', JSON.stringify({tripId, bks}));
       el.classList.add('dragging');
@@ -2167,7 +2184,7 @@ html.pw-locked #pwGate{display:flex;}
       ids.forEach(id => {
         const t = tripById[id];
         const row = document.createElement('div');
-        row.className = 'slotrow';
+        row.className = 'slotrow' + (t.vip ? ' viprow' : '');
 
         const time = document.createElement('div');
         time.className = 'time tabular';
@@ -2178,6 +2195,11 @@ html.pw-locked #pwGate{display:flex;}
         rr.className = 'route';
         rr.textContent = `${t.from} → ${t.to}`;
         rr.style.color = `var(--rt${idx})`;
+        if (t.vip){
+          rr.textContent += ' · VIP';
+          rr.style.color = '#c26a00';
+          rr.style.fontWeight = '700';
+        }
         row.appendChild(rr);
 
         const dzWrap = document.createElement('div');
