@@ -1628,7 +1628,11 @@ html.pw-locked #pwGate{display:flex;}
     tray.innerHTML = '';
     const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
     const present = new Set(activeBuses.map(corridorOf));
-    const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
+    // khay "Xe chưa dùng" (theo nốt giờ): nhóm VIP nằm ngay trên Limo; tab Theo xe giữ thứ tự gốc (VIP dưới Cố Định MT)
+    const trayOrder = GROUP_ORDER.filter(g => g !== 'VIP');
+    const limoAt = trayOrder.indexOf('LIMO');
+    trayOrder.splice(limoAt < 0 ? trayOrder.length : limoAt, 0, 'VIP');
+    const groups = [...trayOrder.filter(g => present.has(g)), ...[...present].filter(g => !trayOrder.includes(g)).sort()];
     groups.forEach(g => {
       const group = document.createElement('div');
       group.className = 'rgroup';
