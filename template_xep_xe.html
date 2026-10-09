@@ -581,16 +581,13 @@ html.pw-locked #pwGate{display:flex;}
 (function(){
   const BUSES = JSON.parse(document.getElementById('bus-data').textContent);
   const DAYS = JSON.parse(document.getElementById('day-data').textContent);
-  // Odoo ghi chuyến VIP là tuyến riêng "Hà Nội - Sa Pa (VIP Royal)" / "Sa Pa - Hà Nội (VIP Royal)": gộp vào đúng tuyến
-  // Hà Nội - Sa Pa / Sa Pa - Hà Nội (xếp chung theo giờ), chỉ đánh dấu t.vip để tô màu cam khác đi
-  const VIP_TAG_RE = /\s*\(\s*VIP\s*Royal\s*\)/i;
+  // Odoo ghi chuyến VIP là tuyến riêng "Hà Nội - Sa Pa (VIP Royal)" / "Sa Pa - Hà Nội (VIP Royal)": giữ nguyên tên tuyến,
+  // chỉ đánh dấu t.vip để tô màu đỏ sáng; trong tab Theo nốt giờ các tuyến VIP xếp ngay trên tuyến Limousine (xem routesInDay)
+  const VIP_TAG_RE = /\(\s*VIP\s*Royal\s*\)/i;
   const VIP_TRIP_IDS = new Set();
   const isVipTrip = id => VIP_TRIP_IDS.has(id);
   DAYS.forEach(d => (d.trips || []).forEach(t => {
-    if (VIP_TAG_RE.test(t.route || '') || VIP_TAG_RE.test(t.to || '') || VIP_TAG_RE.test(t.from || '')){
-      t.vip = true; VIP_TRIP_IDS.add(t.id);
-      ['route', 'from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, ''); });
-    }
+    if (VIP_TAG_RE.test(t.route || '')){ t.vip = true; VIP_TRIP_IDS.add(t.id); }
   }));
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
   // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
@@ -696,7 +693,14 @@ html.pw-locked #pwGate{display:flex;}
     const present = new Set(day.trips.map(t => t.route));
     const ordered = ROUTE_ORDER.filter(r => present.has(r));
     const extra = [...present].filter(r => !ROUTE_ORDER.includes(r)).sort();
-    return [...ordered, ...extra];
+    const all = [...ordered, ...extra];
+    // tuyến VIP Royal nằm ngay trên các tuyến Limousine (nếu không có Limousine thì cuối danh sách)
+    const vipRoutes = all.filter(r => VIP_TAG_RE.test(r));
+    if (!vipRoutes.length) return all;
+    const rest = all.filter(r => !VIP_TAG_RE.test(r));
+    const limoAt = rest.findIndex(r => /limousine/i.test(r));
+    rest.splice(limoAt < 0 ? rest.length : limoAt, 0, ...vipRoutes);
+    return rest;
   }
 
   // khai báo sớm (trước khi stateByDay dùng dropIfOnLeave lúc dựng lịch lần đầu) — nếu để driverLeaves
@@ -1628,11 +1632,7 @@ html.pw-locked #pwGate{display:flex;}
     tray.innerHTML = '';
     const activeBuses = BUSES.filter(b => !st.broken.has(b.bks) && !garaBroken.has(b.bks));
     const present = new Set(activeBuses.map(corridorOf));
-    // khay "Xe chưa dùng" (theo nốt giờ): nhóm VIP nằm ngay trên Limo; tab Theo xe giữ thứ tự gốc (VIP dưới Cố Định MT)
-    const trayOrder = GROUP_ORDER.filter(g => g !== 'VIP');
-    const limoAt = trayOrder.indexOf('LIMO');
-    trayOrder.splice(limoAt < 0 ? trayOrder.length : limoAt, 0, 'VIP');
-    const groups = [...trayOrder.filter(g => present.has(g)), ...[...present].filter(g => !trayOrder.includes(g)).sort()];
+    const groups = [...GROUP_ORDER.filter(g => present.has(g)), ...[...present].filter(g => !GROUP_ORDER.includes(g)).sort()];
     groups.forEach(g => {
       const group = document.createElement('div');
       group.className = 'rgroup';
@@ -2204,7 +2204,6 @@ html.pw-locked #pwGate{display:flex;}
         rr.textContent = `${t.from} → ${t.to}`;
         rr.style.color = `var(--rt${idx})`;
         if (t.vip){
-          rr.textContent += ' · VIP';
           rr.style.color = '#d32f2f';
           rr.style.fontWeight = '700';
         }
@@ -2393,7 +2392,7 @@ html.pw-locked #pwGate{display:flex;}
     if (forLane && allIssuesFor(originDate, forLane, trip.id).length) el.classList.add('conflict');
     const label = document.createElement('span');
     label.className = 'chiptext';
-    label.textContent = forLane ? `${trip.depStr} · ${trip.route}${trip.vip ? ' (VIP)' : ''}` : trip.depStr;
+    label.textContent = forLane ? `${trip.depStr} · ${trip.route}` : trip.depStr;
     if (forLane){
       const iss = allIssuesFor(originDate, forLane, trip.id);
       const drv = ensureState(originDate).drivers[trip.id];
