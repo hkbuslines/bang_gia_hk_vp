@@ -7,9 +7,9 @@
       "phan_loai": "HỢP ĐỒNG",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "",
       "lai2": ""
     },
@@ -436,9 +436,9 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "Nguyễn Minh Tuấn",
       "lai2": "Lê Ngọc Lân"
     },
@@ -527,9 +527,9 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "Trần Văn Sơn",
       "lai2": ""
     },
@@ -579,9 +579,9 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "Phạm Đình Hải",
       "lai2": ""
     },
@@ -657,9 +657,9 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "Nhâm Gia Đạt",
       "lai2": "Mai Ngọc Biên"
     },
@@ -670,9 +670,9 @@
       "phan_loai": "LUÂN CHUYỂN",
       "limo": false,
       "group_key": "VIP",
-      "group_label": "VIP Royal",
-      "group_name": "VIP Royal",
-      "group_color": "#b8860b",
+      "group_label": "HN-SP (VIP)",
+      "group_name": "HN-SP (VIP)",
+      "group_color": "#ff9800",
       "lai1": "",
       "lai2": ""
     },
@@ -841,9 +841,9 @@
       "color": "#f57c00"
     },
     "VIP": {
-      "label": "VIP Royal",
-      "name": "VIP Royal",
-      "color": "#b8860b"
+      "label": "HN-SP (VIP)",
+      "name": "HN-SP (VIP)",
+      "color": "#ff9800"
     }
   }
 }
