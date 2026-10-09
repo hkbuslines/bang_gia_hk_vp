@@ -135,8 +135,6 @@ button.ghost:hover{background:var(--page);}
 .slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
-/* chuyến VIP (HN-SP VIP): đỏ sáng ở mọi tab */
-.vipbg{background-color:#c62828 !important; color:#fff !important;}
 .addtriprow{padding:6px 12px;}
 .addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
 .addtriprow .addtrip-btn:hover{background:var(--surface-2); color:var(--ink);}
@@ -584,7 +582,6 @@ html.pw-locked #pwGate{display:flex;}
   // chỉ đánh dấu t.vip để tô màu đỏ sáng; trong tab Theo nốt giờ các tuyến VIP xếp ngay trên tuyến Limousine (xem routesInDay)
   const VIP_TAG_RE = /\(\s*VIP\s*Royal\s*\)/i;
   const VIP_TRIP_IDS = new Set();
-  const isVipTrip = id => VIP_TRIP_IDS.has(id);
   DAYS.forEach(d => (d.trips || []).forEach(t => {
     if (VIP_TAG_RE.test(t.route || '')){ t.vip = true; VIP_TRIP_IDS.add(t.id); }
   }));
@@ -676,7 +673,8 @@ html.pw-locked #pwGate{display:flex;}
   }
 
   function routeIdx(route){
-    const i = ROUTE_ORDER.indexOf(route);
+    // tuyến VIP Royal dùng đúng màu của tuyến gốc (Hà Nội - Sa Pa / Sa Pa - Hà Nội)
+    const i = ROUTE_ORDER.indexOf((route || '').replace(VIP_TAG_RE, '').trim());
     return i === -1 ? FALLBACK_IDX : i;
   }
   const GROUP_META = __GROUP_META_JS__;
@@ -1833,13 +1831,6 @@ html.pw-locked #pwGate{display:flex;}
     el.className = 'assignedchip';
     el.style.background = `var(--rt${routeIdx(tripByIdByDay[date][tripId].route)})`;
     el.draggable = true;
-    // xe VIP (HN-SP VIP) vẫn nằm chung nốt giờ với xe Hà Nội - Sa Pa khác nhưng tô màu cam của nhóm để nhận ra ngay
-    const isVip = (busByBks[bks] && busByBks[bks].group_key === 'VIP') || tripByIdByDay[date][tripId].vip;
-    if (isVip){
-      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#c62828';
-      el.style.color = '#fff';
-      el.title = 'Xe VIP (HN-SP)';
-    }
     el.innerHTML = `<span class="tabular">${bks}</span>`;
     el.addEventListener('dragstart', e => {
       e.dataTransfer.setData('application/x-slotmove', JSON.stringify({tripId, bks}));
@@ -2184,7 +2175,7 @@ html.pw-locked #pwGate{display:flex;}
       group.className = 'slotgroup';
       const ghead = document.createElement('div');
       ghead.className = 'ghead';
-      ghead.style.color = VIP_TAG_RE.test(route) ? '#c62828' : `var(--rt${idx})`;
+      ghead.style.color = `var(--rt${idx})`;
       ghead.textContent = route;
       group.appendChild(ghead);
 
@@ -2202,9 +2193,6 @@ html.pw-locked #pwGate{display:flex;}
         rr.className = 'route';
         rr.textContent = `${t.from} → ${t.to}`;
         rr.style.color = `var(--rt${idx})`;
-        if (t.vip){
-          rr.style.color = '#c62828';
-        }
         row.appendChild(rr);
 
         const dzWrap = document.createElement('div');
@@ -2382,7 +2370,7 @@ html.pw-locked #pwGate{display:flex;}
   function chipEl(trip, originDate, forLane){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
-    el.className = (forLane ? 'block' : 'chip') + (trip.vip ? ' vipbg' : '');
+    el.className = forLane ? 'block' : 'chip';
     el.style.background = `var(--rt${idx})`;
     el.draggable = true;
     el.dataset.tripId = trip.id;
@@ -2433,7 +2421,7 @@ html.pw-locked #pwGate{display:flex;}
   function carryoverBlockEl(trip, endMin){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
-    el.className = 'block carryover' + (trip.vip ? ' vipbg' : '');
+    el.className = 'block carryover';
     el.style.backgroundColor = `var(--rt${idx})`; // dùng backgroundColor (longhand), không phải
     // background (shorthand) — shorthand sẽ tự xoá mất background-image (sọc chéo) khai báo trong CSS
     el.style.left = '0px';
@@ -2627,7 +2615,7 @@ html.pw-locked #pwGate{display:flex;}
       const t = tripById[id];
       const idx = routeIdx(t.route);
       const chip = document.createElement('div');
-      chip.className = 'tripchip' + (t.vip ? ' vipbg' : '');
+      chip.className = 'tripchip';
       chip.style.background = `var(--rt${idx})`;
       chip.draggable = true;
       chip.innerHTML = `<span class="tabular">${t.depStr}</span><span class="route">${t.route}</span>`;
@@ -3215,7 +3203,7 @@ html.pw-locked #pwGate{display:flex;}
       const idx = routeIdx(leg.route);
       const el = document.createElement('div');
       const warnMsgs = warnByTrip[r.name + '|' + leg.tripId] || [];
-      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '') + (isVipTrip(leg.tripId) ? ' vipbg' : '');
+      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '');
       el.style.backgroundColor = `var(--rt${idx})`;
       el.style.left = (leg.dep * PX_PER_MIN) + 'px';
       el.style.width = Math.max(8, leg.arr - leg.dep) * PX_PER_MIN + 'px';
