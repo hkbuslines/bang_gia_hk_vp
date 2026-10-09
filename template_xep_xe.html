@@ -135,6 +135,8 @@ button.ghost:hover{background:var(--page);}
 .slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
+/* chuyến VIP (HN-SP VIP): cam sáng ở mọi tab, chữ nâu đậm cho dễ đọc */
+.vipbg{background-color:#ffa94d !important; color:#4a2a00 !important;}
 .slotrow.viprow{box-shadow:inset 3px 0 0 #ffa94d; background:rgba(255,169,77,0.10);}
 .addtriprow{padding:6px 12px;}
 .addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
@@ -582,9 +584,11 @@ html.pw-locked #pwGate{display:flex;}
   // Odoo ghi chuyến VIP là tuyến riêng "Hà Nội - Sa Pa (VIP Royal)" / "Sa Pa - Hà Nội (VIP Royal)": gộp vào đúng tuyến
   // Hà Nội - Sa Pa / Sa Pa - Hà Nội (xếp chung theo giờ), chỉ đánh dấu t.vip để tô màu cam khác đi
   const VIP_TAG_RE = /\s*\(\s*VIP\s*Royal\s*\)/i;
+  const VIP_TRIP_IDS = new Set();
+  const isVipTrip = id => VIP_TRIP_IDS.has(id);
   DAYS.forEach(d => (d.trips || []).forEach(t => {
     if (VIP_TAG_RE.test(t.route || '') || VIP_TAG_RE.test(t.to || '') || VIP_TAG_RE.test(t.from || '')){
-      t.vip = true;
+      t.vip = true; VIP_TRIP_IDS.add(t.id);
       ['route', 'from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, ''); });
     }
   }));
@@ -1827,7 +1831,7 @@ html.pw-locked #pwGate{display:flex;}
     el.style.background = `var(--rt${routeIdx(tripByIdByDay[date][tripId].route)})`;
     el.draggable = true;
     // xe VIP (HN-SP VIP) vẫn nằm chung nốt giờ với xe Hà Nội - Sa Pa khác nhưng tô màu cam của nhóm để nhận ra ngay
-    const isVip = busByBks[bks] && busByBks[bks].group_key === 'VIP';
+    const isVip = (busByBks[bks] && busByBks[bks].group_key === 'VIP') || tripByIdByDay[date][tripId].vip;
     if (isVip){
       el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#ffa94d';
       el.style.color = '#4a2a00';   // nền cam sáng → chữ nâu đậm cho dễ đọc
@@ -2377,7 +2381,7 @@ html.pw-locked #pwGate{display:flex;}
   function chipEl(trip, originDate, forLane){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
-    el.className = forLane ? 'block' : 'chip';
+    el.className = (forLane ? 'block' : 'chip') + (trip.vip ? ' vipbg' : '');
     el.style.background = `var(--rt${idx})`;
     el.draggable = true;
     el.dataset.tripId = trip.id;
@@ -2385,7 +2389,7 @@ html.pw-locked #pwGate{display:flex;}
     if (forLane && allIssuesFor(originDate, forLane, trip.id).length) el.classList.add('conflict');
     const label = document.createElement('span');
     label.className = 'chiptext';
-    label.textContent = forLane ? `${trip.depStr} · ${trip.route}` : trip.depStr;
+    label.textContent = forLane ? `${trip.depStr} · ${trip.route}${trip.vip ? ' (VIP)' : ''}` : trip.depStr;
     if (forLane){
       const iss = allIssuesFor(originDate, forLane, trip.id);
       const drv = ensureState(originDate).drivers[trip.id];
@@ -2428,7 +2432,7 @@ html.pw-locked #pwGate{display:flex;}
   function carryoverBlockEl(trip, endMin){
     const idx = routeIdx(trip.route);
     const el = document.createElement('div');
-    el.className = 'block carryover';
+    el.className = 'block carryover' + (trip.vip ? ' vipbg' : '');
     el.style.backgroundColor = `var(--rt${idx})`; // dùng backgroundColor (longhand), không phải
     // background (shorthand) — shorthand sẽ tự xoá mất background-image (sọc chéo) khai báo trong CSS
     el.style.left = '0px';
@@ -2622,7 +2626,7 @@ html.pw-locked #pwGate{display:flex;}
       const t = tripById[id];
       const idx = routeIdx(t.route);
       const chip = document.createElement('div');
-      chip.className = 'tripchip';
+      chip.className = 'tripchip' + (t.vip ? ' vipbg' : '');
       chip.style.background = `var(--rt${idx})`;
       chip.draggable = true;
       chip.innerHTML = `<span class="tabular">${t.depStr}</span><span class="route">${t.route}</span>`;
@@ -3210,7 +3214,7 @@ html.pw-locked #pwGate{display:flex;}
       const idx = routeIdx(leg.route);
       const el = document.createElement('div');
       const warnMsgs = warnByTrip[r.name + '|' + leg.tripId] || [];
-      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '');
+      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '') + (isVipTrip(leg.tripId) ? ' vipbg' : '');
       el.style.backgroundColor = `var(--rt${idx})`;
       el.style.left = (leg.dep * PX_PER_MIN) + 'px';
       el.style.width = Math.max(8, leg.arr - leg.dep) * PX_PER_MIN + 'px';

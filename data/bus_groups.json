@@ -794,16 +794,7 @@
       "lai2": ""
     }
   ],
-  "group_order": [
-    "CD_HNSP",
-    "CD_HL",
-    "CD_NB",
-    "HD_MB",
-    "CD_MT",
-    "VIP",
-    "HD_NVS",
-    "LIMO"
-  ],
+  "group_order": [ "CD_HNSP", "VIP", "CD_HL", "CD_NB", "HD_MB", "CD_MT", "HD_NVS", "LIMO" ],
   "group_meta": {
     "CD_HNSP": {
       "label": "Cố Định SP",
