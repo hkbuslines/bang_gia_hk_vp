@@ -586,7 +586,12 @@ html.pw-locked #pwGate{display:flex;}
   const VIP_TRIP_IDS = new Set();
   const isVipTrip = id => VIP_TRIP_IDS.has(id);
   DAYS.forEach(d => (d.trips || []).forEach(t => {
-    if (VIP_TAG_RE.test(t.route || '')){ t.vip = true; VIP_TRIP_IDS.add(t.id); }
+    if (VIP_TAG_RE.test(t.route || '')){
+      t.vip = true; VIP_TRIP_IDS.add(t.id);
+      // điểm đi/đến Odoo ghi kèm "(VIP Royal)" ("Sa Pa (VIP Royal)") — bỏ đi để so khớp vị trí xe đúng
+      // (xe VIP đang ở Sa Pa thì chạy tiếp chuyến Sa Pa - Hà Nội là hợp lệ, không phải "sai vị trí")
+      ['from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, '').trim(); });
+    }
   }));
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
   // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
@@ -657,7 +662,8 @@ html.pw-locked #pwGate{display:flex;}
     'Nha Trang - Huế': 720, 'Huế - Nha Trang': 720,
   };
   function effArr(t){
-    const cap = ROUTE_DURATION_CAP_MIN[t.route];
+    // tuyến VIP Royal tính thời lượng theo tuyến gốc (Hà Nội - Sa Pa = 6h), không dùng giờ về Odoo ghi 6h30
+    const cap = ROUTE_DURATION_CAP_MIN[(t.route || '').replace(VIP_TAG_RE, '').trim()];
     return cap != null ? Math.min(t.arr, t.dep + cap) : t.arr;
   }
 
@@ -1283,7 +1289,7 @@ html.pw-locked #pwGate{display:flex;}
         if (overlaps(win, t)) add(id, `🔧 Trùng giờ bảo dưỡng đã xếp (${String(e.scheduled.startHour).padStart(2,'0')}:00, ~${e.sogio}h)`);
       });
       // xe cố định Hà Nội - Sa Pa chỉ được chạy đúng tuyến này
-      if (CD_HNSP_BKS.has(bks) && t.route !== 'Hà Nội - Sa Pa' && t.route !== 'Sa Pa - Hà Nội'){
+      if (CD_HNSP_BKS.has(bks) && !['Hà Nội - Sa Pa', 'Sa Pa - Hà Nội'].includes((t.route || '').replace(VIP_TAG_RE, '').trim())){
         add(id, `🚫 Xe cố định Hà Nội - Sa Pa nhưng đang xếp tuyến ${t.route}`);
       }
       // xe cố định Ninh Bình chỉ được chạy đúng 2 khung giờ cố định của nó — cho phép lệch nhẹ
@@ -2194,7 +2200,7 @@ html.pw-locked #pwGate{display:flex;}
 
         const rr = document.createElement('div');
         rr.className = 'route';
-        rr.textContent = `${t.from} → ${t.to}`;
+        rr.textContent = `${t.from} → ${t.to}` + (t.vip ? ' (VIP Royal)' : '');
         rr.style.color = t.vip ? '#c62828' : `var(--rt${idx})`;
         row.appendChild(rr);
 
