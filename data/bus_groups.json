@@ -9,7 +9,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "",
       "lai2": ""
     },
@@ -438,7 +438,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "Nguyễn Minh Tuấn",
       "lai2": "Lê Ngọc Lân"
     },
@@ -529,7 +529,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "Trần Văn Sơn",
       "lai2": ""
     },
@@ -581,7 +581,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "Phạm Đình Hải",
       "lai2": ""
     },
@@ -659,7 +659,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "Nhâm Gia Đạt",
       "lai2": "Mai Ngọc Biên"
     },
@@ -672,7 +672,7 @@
       "group_key": "VIP",
       "group_label": "HN-SP (VIP)",
       "group_name": "HN-SP (VIP)",
-      "group_color": "#ffa94d",
+      "group_color": "#ff5252",
       "lai1": "",
       "lai2": ""
     },
@@ -834,7 +834,7 @@
     "VIP": {
       "label": "HN-SP (VIP)",
       "name": "HN-SP (VIP)",
-      "color": "#ffa94d"
+      "color": "#ff5252"
     }
   }
 }

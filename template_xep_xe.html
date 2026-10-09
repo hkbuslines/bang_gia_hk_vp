@@ -135,9 +135,9 @@ button.ghost:hover{background:var(--page);}
 .slotgroup .ghead{display:flex; align-items:center; gap:8px; padding:8px 12px; background:var(--surface-2); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-muted);}
 .slotrow{display:flex; align-items:center; gap:10px; padding:6px 12px; border-bottom:0.5px solid var(--line);}
 .slotrow:hover{background:var(--surface-2);}
-/* chuyến VIP (HN-SP VIP): cam sáng ở mọi tab, chữ nâu đậm cho dễ đọc */
-.vipbg{background-color:#ffa94d !important; color:#4a2a00 !important;}
-.slotrow.viprow{box-shadow:inset 3px 0 0 #ffa94d; background:rgba(255,169,77,0.10);}
+/* chuyến VIP (HN-SP VIP): đỏ sáng ở mọi tab */
+.vipbg{background-color:#ff5252 !important; color:#fff !important;}
+.slotrow.viprow{box-shadow:inset 3px 0 0 #ff5252; background:rgba(255,82,82,0.10);}
 .addtriprow{padding:6px 12px;}
 .addtriprow .addtrip-btn{border:1px dashed var(--line-strong); border-radius:6px; padding:5px 10px; font-size:12px; color:var(--ink-muted);}
 .addtriprow .addtrip-btn:hover{background:var(--surface-2); color:var(--ink);}
@@ -1833,8 +1833,8 @@ html.pw-locked #pwGate{display:flex;}
     // xe VIP (HN-SP VIP) vẫn nằm chung nốt giờ với xe Hà Nội - Sa Pa khác nhưng tô màu cam của nhóm để nhận ra ngay
     const isVip = (busByBks[bks] && busByBks[bks].group_key === 'VIP') || tripByIdByDay[date][tripId].vip;
     if (isVip){
-      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#ffa94d';
-      el.style.color = '#4a2a00';   // nền cam sáng → chữ nâu đậm cho dễ đọc
+      el.style.background = (GROUP_META.VIP && GROUP_META.VIP.color) || '#ff5252';
+      el.style.color = '#fff';
       el.title = 'Xe VIP (HN-SP)';
     }
     el.innerHTML = `<span class="tabular">${bks}</span>${isVip ? '<span style="margin-left:auto; font-size:10px; opacity:0.9;">VIP</span>' : ''}`;
@@ -2201,7 +2201,7 @@ html.pw-locked #pwGate{display:flex;}
         rr.style.color = `var(--rt${idx})`;
         if (t.vip){
           rr.textContent += ' · VIP';
-          rr.style.color = '#c26a00';
+          rr.style.color = '#d32f2f';
           rr.style.fontWeight = '700';
         }
         row.appendChild(rr);
