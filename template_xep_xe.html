@@ -585,20 +585,22 @@ html.pw-locked #pwGate{display:flex;}
   const VIP_TAG_RE = /\(\s*VIP\s*Royal\s*\)/i;
   const VIP_TRIP_IDS = new Set();
   const isVipTrip = id => VIP_TRIP_IDS.has(id);
-  DAYS.forEach(d => (d.trips || []).forEach(t => {
-    if (VIP_TAG_RE.test(t.route || '')){
-      t.vip = true; VIP_TRIP_IDS.add(t.id);
-      // điểm đi/đến Odoo ghi kèm "(VIP Royal)" ("Sa Pa (VIP Royal)") — bỏ đi để so khớp vị trí xe đúng
-      // (xe VIP đang ở Sa Pa thì chạy tiếp chuyến Sa Pa - Hà Nội là hợp lệ, không phải "sai vị trí")
-      ['from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, '').trim(); });
-      // thời lượng chuyến VIP cũng chỉ 6 tiếng như tuyến Hà Nội - Sa Pa thường (Odoo ghi 6h–6h30) — cắt cả thanh hiển thị lẫn giờ về
-      if (t.dep != null && t.arr > t.dep + 360){
-        t.arr = t.dep + 360;
-        const m = t.arr % 1440;
-        t.arrStr = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
-      }
+  // đánh dấu + chuẩn hoá 1 chuyến VIP (dùng cho chuyến từ Odoo lẫn chuyến thêm tay / đã lưu)
+  function normalizeVipTrip(t){
+    if (!t || !VIP_TAG_RE.test(t.route || '')) return t;
+    t.vip = true; VIP_TRIP_IDS.add(t.id);
+    // điểm đi/đến Odoo ghi kèm "(VIP Royal)" ("Sa Pa (VIP Royal)") — bỏ đi để so khớp vị trí xe đúng
+    // (xe VIP đang ở Sa Pa thì chạy tiếp chuyến Sa Pa - Hà Nội là hợp lệ, không phải "sai vị trí")
+    ['from', 'to'].forEach(k => { if (t[k]) t[k] = t[k].replace(VIP_TAG_RE, '').trim(); });
+    // thời lượng chuyến VIP cũng chỉ 6 tiếng như tuyến Hà Nội - Sa Pa thường (Odoo ghi 6h–6h30) — cắt cả thanh hiển thị lẫn giờ về
+    if (t.dep != null && t.arr > t.dep + 360){
+      t.arr = t.dep + 360;
+      const m = t.arr % 1440;
+      t.arrStr = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
     }
-  }));
+    return t;
+  }
+  DAYS.forEach(d => (d.trips || []).forEach(normalizeVipTrip));
   // danh sách lái xe gốc nhúng sẵn; có thể bị ghi đè bởi bản đã lưu qua tab "Quản lý lái xe" bên trang
   // Xin nghỉ (Sheet key 'drivers') khi tải trang — để `let` vì có thể đổi sau khi tải xong
   let DRIVERS_FULL = JSON.parse(document.getElementById('driver-data').textContent);
@@ -823,7 +825,7 @@ html.pw-locked #pwGate{display:flex;}
     const tripMap = ensureTripMap(dateStr);
     manualTrips.forEach(mt => {
       if (tripMap[mt.id]) return;
-      const t = Object.assign({}, mt, { assignedBks: null, odooLai1: null, odooLai2: null, manual: true });
+      const t = normalizeVipTrip(Object.assign({}, mt, { assignedBks: null, odooLai1: null, odooLai2: null, manual: true }));
       day.trips.push(t);
       tripMap[mt.id] = t;
     });
@@ -2321,13 +2323,13 @@ html.pw-locked #pwGate{display:flex;}
   function addManualTrip(dateStr, route, depStr, arrStr, dep, arr){
     const day = DAYS.find(d => d.date === dateStr);
     if (!day) return;
-    const baseRoute = route.replace(/\s*\(Limousine\)\s*$/, '').trim();
+    const baseRoute = route.replace(/\s*\(Limousine\)\s*$/, '').replace(VIP_TAG_RE, '').trim();
     const parts = baseRoute.split(' - ');
     const from = (parts[0] || route).trim();
     const to = (parts[1] || route).trim();
     const arrAdj = arr < dep ? arr + 1440 : arr; // qua đêm — đến trước giờ đi thì cộng thêm 1 ngày
     const id = newManualTripId();
-    const t = { id, route, dep, arr: arrAdj, depStr, arrStr, from, to, assignedBks: null, odooLai1: null, odooLai2: null, manual: true };
+    const t = normalizeVipTrip({ id, route, dep, arr: arrAdj, depStr, arrStr, from, to, assignedBks: null, odooLai1: null, odooLai2: null, manual: true });
     day.trips.push(t);
     ensureTripMap(dateStr)[id] = t;
     ensureState(dateStr).unassigned.add(id);
