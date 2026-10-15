@@ -1118,7 +1118,7 @@ html.pw-locked #pwGate{display:flex;}
           const b = busByBks[c.bks];
           if (b){ b.lai1 = c.lai1 || ''; b.lai2 = c.lai2 || ''; b.lai2_type = c.lai2_type || ''; }
         });
-        if (activeTab === 'buscrew') renderBusCrewTab();
+        if (activeTab === 'buscrew') renderBusCrewTab(); else renderAll();
       }
     } catch(err){ /* chưa có dữ liệu hoặc mạng lỗi — im lặng bỏ qua, dùng định biên gốc */ }
   }
@@ -1664,7 +1664,7 @@ html.pw-locked #pwGate{display:flex;}
         chip.className = 'bchip' + (pendingCount ? ' pending' : '');
         chip.draggable = true;
         chip.innerHTML = `<span class="tabular">${b.bks}</span>${n ? `<span class="count">×${n}</span>` : ''}${pendingCount ? '<span class="gbadge">🔧</span>' : ''}`;
-        let chipTitle = (b.cap_lai_nha || '');
+        let chipTitle = busCrewText(b);
         if (pendingCount) chipTitle += ' — Gara cần bảo dưỡng, chưa xếp giờ (xem tab Theo xe)';
         if (leave1) chipTitle += ' — ' + leaveTooltip(b, leave1, day.date);
         chip.title = chipTitle;
@@ -2471,6 +2471,11 @@ html.pw-locked #pwGate{display:flex;}
   // gom tên lái thực tế đang chạy các chuyến hôm nay của 1 xe (st.drivers, theo Odoo) — dùng cho
   // nhãn xe ở tab "Theo xe" để luôn khớp với tab "Theo nốt giờ". Xe rảnh hôm nay thì không có chuyến
   // nào để tra, trả về định biên mặc định (cap_lai_nha) cho có thông tin thay vì để trống.
+  // định biên hiện hành của xe (lái 1 + lái 2 theo tab "Định biên xe", đã đồng bộ từ Sheet) — KHÔNG dùng
+  // cap_lai_nha nhúng sẵn vì chuỗi đó không đổi khi sửa định biên
+  function busCrewText(b){
+    return [b.lai1, b.lai2].map(x => (x || '').trim()).filter(Boolean).join(' + ');
+  }
   function crewLabelFor(b, st){
     const ids = st.assignments[b.bks] || [];
     const names = [];
@@ -2481,7 +2486,7 @@ html.pw-locked #pwGate{display:flex;}
         if (drv.lai2 && !names.includes(drv.lai2)) names.push(drv.lai2);
       }
     });
-    return names.length ? names.join(' + ') : (b.cap_lai_nha || '');
+    return names.length ? names.join(' + ') : busCrewText(b);
   }
   // xây 1 dòng (lane) cho đúng 1 xe trong tab "Theo xe" — dùng chung cho cả nhóm tuyến bình thường
   // và nhóm tổng hợp "Xe chưa dùng hôm nay" ở trên cùng, để 2 chỗ luôn hiện giống hệt nhau
@@ -2810,7 +2815,7 @@ html.pw-locked #pwGate{display:flex;}
       const chip = document.createElement('div');
       chip.className = 'izchip tabular';
       chip.textContent = b.bks;
-      chip.title = b.cap_lai_nha || '';
+      chip.title = busCrewText(b);
       chips.appendChild(chip);
     });
   }
