@@ -1289,6 +1289,24 @@ html.pw-locked #pwGate{display:flex;}
         if (gap < MIN_TURNAROUND) add(b.id, `⏱ Chỉ ${gap} phút quay đầu (nên ≥ ${MIN_TURNAROUND}p)`);
       }
     }
+    // vị trí đầu ngày: chuyến đầu tiên hôm nay phải xuất phát đúng nơi xe đang đứng sau chuyến cuối của đêm qua
+    // (hoặc những ngày trước) — kể cả khi 2 chuyến không hề chồng giờ. Chạy rỗng Hà Nội ↔ Ninh Bình được phép như luật chung.
+    if (ids.length){
+      const first = tripById[ids[0]];
+      const carry = getCarryover(date, bks);
+      let prevTo = null, prevDesc = '', gap = null;
+      if (carry){
+        prevTo = carry.trip.to; prevDesc = `chuyến qua đêm ${carry.trip.depStr} ${carry.trip.route}`; gap = first.dep - carry.endMin;
+      } else {
+        const loc = lastKnownLocation(date, bks);
+        if (loc){ prevTo = loc.to; prevDesc = `chuyến cuối ${fmtDMY(loc.date)} ${loc.depStr} ${loc.route}`; }
+      }
+      if (prevTo && !sameCity(prevTo, first.from)){
+        if (!(isHnNbPair(prevTo, first.from) && (gap == null || gap >= NB_HN_MIN))){
+          add(first.id, `📍 Sai vị trí đầu ngày — xe đang ở ${prevTo} (${prevDesc}), chuyến này xuất phát từ ${first.from}`);
+        }
+      }
+    }
     const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
     ids.forEach(id => {
       const t = tripById[id];
