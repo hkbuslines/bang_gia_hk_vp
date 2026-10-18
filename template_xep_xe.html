@@ -3498,22 +3498,14 @@ html.pw-locked #pwGate{display:flex;}
     const cls = b.diff === 0 ? 'ok' : 'bad';
     const sgn = n => n > 0 ? '+' + n : String(n);
     const meaning = b.diff === 0 ? 'Cân bằng' : (b.diff > 0 ? `Lên nhiều hơn về ${b.diff} nốt` : `Về nhiều hơn lên ${-b.diff} nốt`);
-    const detail = o => `Hà Nội ${o.HN} · Hạ Long ${o.HL} · Ninh Bình ${o.NB}`;
-    const monday = mondayOfISO(currentDate);
-    let weekRows = '';
-    for (let i = 0; i < 7; i++){
-      const d = addDays(monday, i), w = balanceFor(d), dc = w.diff === 0 ? 'ok' : 'bad';
-      weekRows += `<tr data-d="${d}" class="${d === currentDate ? 'cur' : ''}"><td>${weekdayOf(d)} ${ddOf(d)}</td><td>${w.upN}</td><td>${w.downN}</td><td class="diff ${dc}">${sgn(w.diff)}</td></tr>`;
-    }
     el.innerHTML = `<div class="bhead"><b>⚖ Cân bằng xe lên / về Sa Pa — ${weekdayOf(currentDate)} ${ddOf(currentDate)}</b>
       <span>Lên: từ <input type="time" id="balFrom" value="${balCut.from}"> tối ${ddOf(addDays(currentDate, -1))} đến <input type="time" id="balTo" value="${balCut.to}"> chiều ${ddOf(currentDate)}</span>
       <span>Về: cả ngày ${ddOf(currentDate)} · Hà Nội, Hạ Long, Ninh Bình · không tính Limousine</span></div>
       <div class="bmain">
-        <div class="bbox"><div class="bn">${b.upN}</div><div class="bl">nốt LÊN Sa Pa</div><div class="bs">${detail(b.up)}</div></div>
-        <div class="bbox"><div class="bn">${b.downN}</div><div class="bl">nốt VỀ từ Sa Pa</div><div class="bs">${detail(b.down)}</div></div>
-        <div class="bbox ${cls}"><div class="bn">${sgn(b.diff)}</div><div class="bl">Chênh lệch (Lên − Về)</div><div class="bs">${meaning}</div></div>
-      </div>
-      <table><thead><tr><th>Cả tuần</th><th>Lên</th><th>Về</th><th>Chênh</th></tr></thead><tbody>${weekRows}</tbody></table>`;
+        <div class="bbox"><div class="bn">${b.upN}</div><div class="bl">nốt LÊN Sa Pa</div></div>
+        <div class="bbox"><div class="bn">${b.downN}</div><div class="bl">nốt VỀ từ Sa Pa</div></div>
+        <div class="bbox ${cls}"><div class="bn">${sgn(b.diff)}</div><div class="bl">Chênh lệch (Lên − Về) · ${meaning}</div></div>
+      </div>`;
     ['balFrom', 'balTo'].forEach(id => {
       const inp = document.getElementById(id);
       inp.addEventListener('change', () => {
@@ -3523,7 +3515,6 @@ html.pw-locked #pwGate{display:flex;}
         renderBalance();
       });
     });
-    el.querySelectorAll('tr[data-d]').forEach(tr => tr.addEventListener('click', () => setDate(tr.dataset.d)));
   }
   function renderDayBanner(){
     const day = dayFor(currentDate);
