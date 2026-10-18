@@ -16,6 +16,10 @@ HISTORY_DAYS = 14      # tối thiểu số ngày quá khứ giữ lại lịch 
 LOOKBACK_DAYS = 28      # phạm vi quét quá khứ để tìm ngày tham chiếu cùng thứ (phải >= HISTORY_DAYS)
 MIN_REF_TRIPS = 50      # 1 ngày quá khứ được coi là "đủ dữ liệu" để làm mẫu nếu có >= số chuyến này
 
+# các khoảng ngày LỊCH SỬ cần giữ nguyên trên trang (vd. đếm lượt / tính lương cả tháng cũ) — ngoài cửa sổ 2 tháng gần nhất.
+# Mỗi khoảng chỉ lấy lịch thật đã chạy (ngày không có chuyến thì bỏ qua), sửa tại đây khi cần thêm/bớt tháng.
+EXTRA_RANGES = [("2026-02-01", "2026-02-28")]
+
 WEEKDAY_VN = {0: "T2", 1: "T3", 2: "T4", 3: "T5", 4: "T6", 5: "T7", 6: "CN"}
 
 
@@ -179,6 +183,28 @@ def main():
             days_out.append({"date": ds, "weekday": wd, "dd": f"{d.day:02d}/{d.month:02d}",
                               "trips": trips, "real": False, "refDate": ref_date})
         d += datetime.timedelta(days=1)
+
+    # khoảng lịch sử bổ sung (EXTRA_RANGES): ngày đã qua, chỉ giữ lịch thật; bỏ ngày trùng cửa sổ chính
+    have_dates = {x["date"] for x in days_out}
+    for a, b in EXTRA_RANGES:
+        a_d, b_d = datetime.date.fromisoformat(a), datetime.date.fromisoformat(b)
+        ex_rows = call("vexere.trip", "search_read",
+                       [["date", ">=", a], ["date", "<=", b]],
+                       ["id", "date", "departure_time", "arrival_date", "arrival_time", "route_id", "vehicle_id",
+                        "driver_id", "driver2_id"])
+        ex_rows = [r for r in ex_rows if r.get("departure_time") and r.get("arrival_time")]
+        ex_by = {}
+        for r in ex_rows:
+            ex_by.setdefault(r["date"], []).append(r)
+        d = a_d
+        while d <= b_d:
+            ds = d.isoformat()
+            if ds not in have_dates and ex_by.get(ds):
+                trips = sorted((build_trip(t) for t in ex_by[ds]), key=lambda x: x["dep"])
+                days_out.append({"date": ds, "weekday": WEEKDAY_VN[d.weekday()], "dd": f"{d.day:02d}/{d.month:02d}",
+                                  "trips": trips, "real": True})
+            d += datetime.timedelta(days=1)
+    days_out.sort(key=lambda x: x["date"])
 
     # ---- load static config committed in repo ----
     with open(os.path.join(REPO_ROOT, "data", "bus_groups.json"), encoding="utf-8") as f:
