@@ -68,6 +68,23 @@ h1{font-size:19px; font-weight:600; margin:0;}
 .stat.warn b{color:var(--danger);}
 
 .daystrip{display:flex; align-items:center; gap:6px; margin:14px 0 10px;}
+.balpanel{background:var(--surface); border:0.5px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 12px;}
+.balpanel .bhead{display:flex; align-items:center; gap:10px; flex-wrap:wrap; font-size:12.5px; color:var(--ink-muted);}
+.balpanel .bhead b{color:var(--ink); font-size:13px;}
+.balpanel .bhead input[type=time]{font-size:12.5px; padding:3px 6px; border:0.5px solid var(--line-strong); border-radius:6px; background:var(--surface); color:var(--ink);}
+.balpanel .bmain{display:grid; grid-template-columns:repeat(3, minmax(150px, 1fr)); gap:10px; margin-top:10px;}
+.balpanel .bbox{border:0.5px solid var(--line); border-radius:10px; padding:10px 12px; background:var(--surface-2);}
+.balpanel .bbox .bn{font-size:26px; font-weight:700; font-variant-numeric:tabular-nums;}
+.balpanel .bbox .bl{font-size:12px; color:var(--ink-muted); margin-top:2px;}
+.balpanel .bbox .bs{font-size:12px; margin-top:6px; font-variant-numeric:tabular-nums;}
+.balpanel .bbox.ok{background:var(--ok-fill);} .balpanel .bbox.ok .bn{color:var(--ok);}
+.balpanel .bbox.bad{background:var(--danger-fill);} .balpanel .bbox.bad .bn{color:var(--danger);}
+.balpanel table{width:100%; border-collapse:collapse; margin-top:10px; font-size:12.5px;}
+.balpanel th{text-align:right; font-weight:600; color:var(--ink-muted); padding:4px 8px; border-bottom:1px solid var(--line-strong);} .balpanel th:first-child, .balpanel td:first-child{text-align:left;}
+.balpanel td{text-align:right; padding:4px 8px; border-bottom:0.5px solid var(--line); font-variant-numeric:tabular-nums;}
+.balpanel tr.cur td{background:var(--surface-2); font-weight:700; cursor:default;} .balpanel tr[data-d]{cursor:pointer;}
+.balpanel td.diff.bad{color:var(--danger); font-weight:700;} .balpanel td.diff.ok{color:var(--ok); font-weight:700;}
+@media (max-width:640px){.balpanel .bmain{grid-template-columns:1fr;}}
 .daystrip .navbtn{flex-shrink:0; width:30px; height:30px; border-radius:50%; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink); cursor:pointer; font-size:14px;}
 .daystrip .navbtn:hover{background:var(--surface-2);}
 .daystrip .pills{display:flex; gap:6px; overflow-x:auto; padding:2px; flex:1;}
@@ -401,6 +418,8 @@ html.pw-locked #pwGate{display:flex;}
   </div>
 
   <div id="dayBanner"></div>
+
+  <div class="balpanel" id="balancePanel"></div>
 
   <div class="tabbar">
     <button class="tabbtn active" id="tabSlots" type="button">Theo nốt giờ</button>
@@ -3449,6 +3468,63 @@ html.pw-locked #pwGate{display:flex;}
     document.getElementById('statDriversWorking').textContent = driversWorking.size;
   }
 
+  // ---------------- Cân bằng xe LÊN / VỀ Sa Pa (Miền Bắc, không tính Limousine) ----------------
+  // LÊN của ngày D = mọi nốt đi Sa Pa (Hà Nội / Hạ Long / Ninh Bình → Sa Pa) xuất bến từ 19:30 tối D-1 đến 17:00 chiều D;
+  // VỀ của ngày D = mọi nốt Sa Pa → Hà Nội / Hạ Long / Ninh Bình xuất bến trong ngày D (cả ngày). Chênh = Lên − Về.
+  const BAL_UP = {'Hà Nội - Sa Pa': 'HN', 'Hạ Long - Sa Pa': 'HL', 'Ninh Bình - Sa Pa': 'NB'};
+  const BAL_DOWN = {'Sa Pa - Hà Nội': 'HN', 'Sa Pa - Hạ Long': 'HL', 'Sa Pa - Ninh Bình': 'NB'};
+  let balCut = { from: '19:30', to: '17:00' };
+  try { const c = JSON.parse(localStorage.getItem('balCut') || 'null'); if (c && c.from && c.to) balCut = c; } catch(e){}
+  function balRouteKey(route){ return (route || '').replace(VIP_TAG_RE, '').trim(); }
+  function balanceFor(dateStr){
+    const fromMin = hhmmToMin(balCut.from), toMin = hhmmToMin(balCut.to);
+    const up = {HN: 0, HL: 0, NB: 0}, down = {HN: 0, HL: 0, NB: 0};
+    dayFor(addDays(dateStr, -1)).trips.forEach(t => {
+      const k = BAL_UP[balRouteKey(t.route)];
+      if (k && t.dep >= fromMin) up[k]++;
+    });
+    dayFor(dateStr).trips.forEach(t => {
+      const r = balRouteKey(t.route);
+      if (BAL_UP[r] && t.dep <= toMin) up[BAL_UP[r]]++;
+      if (BAL_DOWN[r]) down[BAL_DOWN[r]]++;
+    });
+    const sum = o => o.HN + o.HL + o.NB;
+    return { up, down, upN: sum(up), downN: sum(down), diff: sum(up) - sum(down) };
+  }
+  function renderBalance(){
+    const el = document.getElementById('balancePanel');
+    if (!el) return;
+    const b = balanceFor(currentDate);
+    const cls = b.diff === 0 ? 'ok' : 'bad';
+    const sgn = n => n > 0 ? '+' + n : String(n);
+    const meaning = b.diff === 0 ? 'Cân bằng' : (b.diff > 0 ? `Lên nhiều hơn về ${b.diff} nốt` : `Về nhiều hơn lên ${-b.diff} nốt`);
+    const detail = o => `Hà Nội ${o.HN} · Hạ Long ${o.HL} · Ninh Bình ${o.NB}`;
+    const monday = mondayOfISO(currentDate);
+    let weekRows = '';
+    for (let i = 0; i < 7; i++){
+      const d = addDays(monday, i), w = balanceFor(d), dc = w.diff === 0 ? 'ok' : 'bad';
+      weekRows += `<tr data-d="${d}" class="${d === currentDate ? 'cur' : ''}"><td>${weekdayOf(d)} ${ddOf(d)}</td><td>${w.upN}</td><td>${w.downN}</td><td class="diff ${dc}">${sgn(w.diff)}</td></tr>`;
+    }
+    el.innerHTML = `<div class="bhead"><b>⚖ Cân bằng xe lên / về Sa Pa — ${weekdayOf(currentDate)} ${ddOf(currentDate)}</b>
+      <span>Lên: từ <input type="time" id="balFrom" value="${balCut.from}"> tối ${ddOf(addDays(currentDate, -1))} đến <input type="time" id="balTo" value="${balCut.to}"> chiều ${ddOf(currentDate)}</span>
+      <span>Về: cả ngày ${ddOf(currentDate)} · Hà Nội, Hạ Long, Ninh Bình · không tính Limousine</span></div>
+      <div class="bmain">
+        <div class="bbox"><div class="bn">${b.upN}</div><div class="bl">nốt LÊN Sa Pa</div><div class="bs">${detail(b.up)}</div></div>
+        <div class="bbox"><div class="bn">${b.downN}</div><div class="bl">nốt VỀ từ Sa Pa</div><div class="bs">${detail(b.down)}</div></div>
+        <div class="bbox ${cls}"><div class="bn">${sgn(b.diff)}</div><div class="bl">Chênh lệch (Lên − Về)</div><div class="bs">${meaning}</div></div>
+      </div>
+      <table><thead><tr><th>Cả tuần</th><th>Lên</th><th>Về</th><th>Chênh</th></tr></thead><tbody>${weekRows}</tbody></table>`;
+    ['balFrom', 'balTo'].forEach(id => {
+      const inp = document.getElementById(id);
+      inp.addEventListener('change', () => {
+        if (!inp.value) return;
+        balCut = { from: document.getElementById('balFrom').value, to: document.getElementById('balTo').value };
+        try { localStorage.setItem('balCut', JSON.stringify(balCut)); } catch(e){}
+        renderBalance();
+      });
+    });
+    el.querySelectorAll('tr[data-d]').forEach(tr => tr.addEventListener('click', () => setDate(tr.dataset.d)));
+  }
   function renderDayBanner(){
     const day = dayFor(currentDate);
     const el = document.getElementById('dayBanner');
@@ -3463,6 +3539,7 @@ html.pw-locked #pwGate{display:flex;}
 
   function renderAll(){
     renderDayBanner();
+    renderBalance();
     buildLegend();
     renderBrokenZone();
     renderIdleZone();
