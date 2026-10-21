@@ -380,49 +380,49 @@
     "refDate": null
   },
   "2026-10-19": {
-    "kip": 114,
+    "kip": 112,
     "real": true,
     "refDate": null
   },
   "2026-10-20": {
-    "kip": 125,
+    "kip": 111,
     "real": true,
     "refDate": null
   },
   "2026-10-21": {
-    "kip": 112,
-    "real": false,
-    "refDate": "2026-10-14"
+    "kip": 113,
+    "real": true,
+    "refDate": null
   },
   "2026-10-22": {
-    "kip": 112,
-    "real": false,
-    "refDate": "2026-10-15"
+    "kip": 113,
+    "real": true,
+    "refDate": null
   },
   "2026-10-23": {
-    "kip": 110,
-    "real": false,
-    "refDate": "2026-10-16"
+    "kip": 115,
+    "real": true,
+    "refDate": null
   },
   "2026-10-24": {
-    "kip": 113,
-    "real": false,
-    "refDate": "2026-10-17"
+    "kip": 116,
+    "real": true,
+    "refDate": null
   },
   "2026-10-25": {
-    "kip": 115,
-    "real": false,
-    "refDate": "2026-10-11"
+    "kip": 113,
+    "real": true,
+    "refDate": null
   },
   "2026-10-26": {
-    "kip": 113,
-    "real": false,
-    "refDate": "2026-10-12"
-  },
-  "2026-10-27": {
     "kip": 112,
     "real": false,
-    "refDate": "2026-10-13"
+    "refDate": "2026-10-19"
+  },
+  "2026-10-27": {
+    "kip": 111,
+    "real": false,
+    "refDate": "2026-10-20"
   },
   "2026-10-28": {
     "kip": 112,
@@ -443,5 +443,20 @@
     "kip": 113,
     "real": false,
     "refDate": "2026-10-17"
+  },
+  "2026-11-01": {
+    "kip": 115,
+    "real": false,
+    "refDate": "2026-10-18"
+  },
+  "2026-11-02": {
+    "kip": 112,
+    "real": false,
+    "refDate": "2026-10-19"
+  },
+  "2026-11-03": {
+    "kip": 111,
+    "real": false,
+    "refDate": "2026-10-20"
   }
 }
