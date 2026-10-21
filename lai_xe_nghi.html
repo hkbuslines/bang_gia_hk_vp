@@ -433,16 +433,22 @@ html.pw-locked #pwGate{display:flex;}
   // ---------------- tab "Quản lý lái xe" — thêm/sửa/xoá, lưu qua Sheet key 'drivers' để bên xếp xe
   // và các máy khác cũng thấy đúng danh sách mới nhất khi tải lại trang ----------------
   const DRIVERS_SHEET_KEY = 'drivers';
+  // chỉ cho lưu lên Sheet khi ĐÃ tải được danh sách trên Sheet — nếu lưu khi chưa tải (mạng chậm/lỗi) thì danh sách gốc
+  // nhúng sẵn trong trang (cũ hơn) sẽ ghi đè mất các lái xe mới thêm trên Sheet
+  let driversLoaded = false;
   // cùng 1 tên mà có 2 dòng (vd. lỡ thêm 2 lần, rồi mới đổi 1 dòng sang "Đã nghỉ") → chỉ giữ 1 dòng:
-  // ưu tiên dòng có mã NV, sau đó dòng "Đã nghỉ" (thông tin mới hơn), còn lại giữ dòng đầu
+  // ưu tiên dòng có mã NV, sau đó dòng "Đã nghỉ" (thông tin mới hơn), còn lại giữ dòng đầu.
+  // CHỈ gộp khi tên giống hệt (không phân biệt hoa/thường) — KHÔNG bỏ dấu, vì "Nguyễn Văn Cương" và
+  // "Nguyễn Văn Cường" là 2 người khác nhau (trước đây bỏ dấu nên 1 người bị mất khỏi danh sách rồi mất khỏi Sheet).
+  const exactNameKey = s => (s || '').normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
   function dedupeDrivers(list){
     const rank = d => (d.ma_nv ? 2 : 0) + (d.trang_thai === 'Đã nghỉ' ? 1 : 0);
     const best = new Map();
     list.forEach(d => {
-      const k = normName(d.ten);
+      const k = exactNameKey(d.ten);
       if (!best.has(k) || rank(d) > rank(best.get(k))) best.set(k, d);
     });
-    return list.filter(d => best.get(normName(d.ten)) === d);
+    return list.filter(d => best.get(exactNameKey(d.ten)) === d);
   }
   async function loadDriversFromSheet(){
     const statusEl = document.getElementById('driverGhStatus');
@@ -450,6 +456,7 @@ html.pw-locked #pwGate{display:flex;}
       const res = await fetch(`${SHEET_API_URL}?key=${DRIVERS_SHEET_KEY}&t=${Date.now()}`, {cache: 'no-store'});
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      driversLoaded = true;
       if (data.list && data.list.length){
         DRIVERS = dedupeDrivers(data.list);
         rebuildDriverIndexes();
@@ -468,6 +475,10 @@ html.pw-locked #pwGate{display:flex;}
   }
   async function saveDriversToSheet(){
     const statusEl = document.getElementById('driverGhStatus');
+    if (!driversLoaded){
+      statusEl.textContent = '⚠ Chưa tải được danh sách lái xe từ Sheet nên CHƯA lưu (để khỏi ghi đè mất dữ liệu) — tải lại trang rồi thử lại.';
+      return false;
+    }
     statusEl.textContent = 'Đang lưu...';
     try{
       const res = await fetch(SHEET_API_URL, {
@@ -543,6 +554,7 @@ html.pw-locked #pwGate{display:flex;}
     e.preventDefault();
     const ten = document.getElementById('d-ten').value.trim();
     if (!ten) return;
+    if (!driversLoaded){ alert('Chưa tải xong danh sách lái xe từ Sheet — đợi vài giây (hoặc tải lại trang) rồi thêm, để khỏi ghi đè mất dữ liệu.'); return; }
     DRIVERS.push({
       ma_nv: document.getElementById('d-manv').value.trim(),
       ten,
