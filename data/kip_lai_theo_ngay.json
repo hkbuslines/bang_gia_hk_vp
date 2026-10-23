@@ -405,7 +405,7 @@
     "refDate": null
   },
   "2026-10-24": {
-    "kip": 115,
+    "kip": 114,
     "real": true,
     "refDate": null
   },
@@ -420,9 +420,9 @@
     "refDate": null
   },
   "2026-10-27": {
-    "kip": 111,
-    "real": false,
-    "refDate": "2026-10-20"
+    "kip": 113,
+    "real": true,
+    "refDate": null
   },
   "2026-10-28": {
     "kip": 112,
