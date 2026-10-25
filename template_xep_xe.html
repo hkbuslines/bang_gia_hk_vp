@@ -3607,52 +3607,120 @@ html.pw-locked #pwGate{display:flex;}
   }
   // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
   // GitHub trong Script Properties), trình duyệt không cần token gì cả
-  // Nút "Làm mới từ Odoo": nhờ GitHub Actions lấy lịch mới từ Odoo rồi build lại trang. AN TOÀN: chỉ XOÁ lịch đã lưu của
-  // ngày đang xem SAU KHI GitHub báo lấy dữ liệu thành công — trước đây xoá trước, nên nếu Odoo chặn / lỗi (vd 403) thì mất
-  // lịch đã xếp mà trang vẫn không có dữ liệu mới. Trong lúc chờ, trang tự hỏi GitHub xem lần chạy xong chưa.
-  const GH_REPO = 'hkbuslines/bang_gia_hk_vp', GH_WORKFLOW = 'refresh-odoo.yml';
-  async function waitForRefreshRun(startedAtMs, onStatus){
-    const deadline = Date.now() + 150000;
-    while (Date.now() < deadline){
-      await new Promise(r => setTimeout(r, 8000));
-      try{
-        const res = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/runs?event=workflow_dispatch&per_page=5&t=${Date.now()}`, {cache:'no-store'});
-        if (!res.ok) continue;
-        const data = await res.json();
-        const run = (data.workflow_runs || []).find(r => new Date(r.created_at).getTime() >= startedAtMs - 15000);
-        if (!run){ onStatus('Đang chờ GitHub nhận lệnh...'); continue; }
-        if (run.status !== 'completed'){ onStatus('GitHub đang lấy dữ liệu từ Odoo...'); continue; }
-        return { ok: run.conclusion === 'success', conclusion: run.conclusion, url: run.html_url };
-      } catch(e){ /* mạng chập chờn — thử lại vòng sau */ }
+  // ---------------- Nút "Làm mới từ Odoo" — lấy lịch trực tiếp từ Odoo (qua Google Apps Script), KHÔNG cần bot GitHub ----------------
+  // Trang gọi Apps Script (action 'odooTrips'); Apps Script giữ tài khoản Odoo trong Script Properties và trả về các dòng chuyến thô;
+  // trang tự dựng lại chuyến (giống scripts/refresh_odoo_data.py) cho từng ngày trong khoảng, rồi áp lại lịch đã lưu trong Sheet.
+  function odooToMin(hhmm){ const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + m; }
+  function odooParseFromTo(route){
+    const r = (route || '').replace(/\s*\(Limousine\)\s*$/, '').trim();
+    const p = r.split(' - ');
+    return p.length === 2 ? [p[0].trim(), p[1].trim()] : [route, route];
+  }
+  function odooStripMarks(s){ return (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim(); }
+  function odooBuildTrip(t){
+    let dep = odooToMin(t.departure_time), arr = odooToMin(t.arrival_time);
+    if (t.arrival_date && t.arrival_date !== t.date) arr += 1440; else if (arr < dep) arr += 1440;
+    if (arr - dep > 1500) arr = dep + 1500;      // trần an toàn chống dữ liệu Odoo lỗi (Hà Nội - Nha Trang đúng 24h = 1440p)
+    const route = t.route_id ? t.route_id[1] : '?';
+    const [f, to] = odooParseFromTo(route);
+    return { id: t.id, route, dep, arr, depStr: t.departure_time, arrStr: t.arrival_time, from: f, to,
+             assignedBks: t.vehicle_id ? t.vehicle_id[1] : null,
+             odooLai1: t.driver_id ? t.driver_id[1] : null, odooLai2: t.driver2_id ? t.driver2_id[1] : null };
+  }
+  // Odoo đôi khi trả tên không dấu — khớp lại tên có dấu theo danh sách lái xe chính thức (ưu tiên khớp nguyên văn trước)
+  function odooNormalizeNames(trips){
+    const exact = new Set(DRIVERS_FULL.map(d => d.ten));
+    const canon = new Map();
+    DRIVERS_FULL.forEach(d => { const k = odooStripMarks(d.ten); if (!canon.has(k)) canon.set(k, d.ten); });
+    trips.forEach(t => ['odooLai1', 'odooLai2'].forEach(k => {
+      const n = t[k];
+      if (n && !exact.has(n)) t[k] = canon.get(odooStripMarks(n)) || n;
+    }));
+  }
+  // thay chuyến Odoo của các ngày trong khoảng, giữ chuyến thêm tay; dựng lại state theo Odoo rồi áp lại lịch đã lưu trên Sheet
+  async function applyLiveOdoo(rows, from, to){
+    const byDate = {};
+    rows.filter(r => r.departure_time && r.arrival_time).forEach(r => (byDate[r.date] = byDate[r.date] || []).push(r));
+    const dates = Object.keys(byDate).filter(d => d >= from && d <= to).sort();
+    dates.forEach(d => {
+      let day = dayByDate[d];
+      if (!day){ day = { date: d, weekday: weekdayOf(d), dd: ddOf(d), trips: [], real: true }; DAYS.push(day); dayByDate[d] = day; }
+      const keepManual = day.trips.filter(t => t.manual);
+      const fresh = byDate[d].map(odooBuildTrip);
+      odooNormalizeNames(fresh);
+      fresh.forEach(normalizeVipTrip);
+      day.trips = fresh.sort((a, b) => a.dep - b.dep).concat(keepManual);
+      day.real = true; delete day.empty; delete day.refDate;
+      const m = {}; day.trips.forEach(t => m[t.id] = t); tripByIdByDay[d] = m;
+      const assignments = {}; BUSES.forEach(b => assignments[b.bks] = []);
+      const unassigned = new Set(), drivers = {};
+      day.trips.forEach(t => {
+        if (t.assignedBks && assignments[t.assignedBks]){ assignments[t.assignedBks].push(t.id); drivers[t.id] = initialDriversFor(t, t.assignedBks, d); }
+        else unassigned.add(t.id);
+      });
+      stateByDay[d] = { assignments, unassigned, broken: new Set(), drivers };
+      touchedDays.delete(d);
+    });
+    DAYS.sort((a, b) => a.date.localeCompare(b.date));
+    // áp lại lịch đã lưu trên Sheet cho đúng các ngày vừa làm mới (giống lúc mở trang)
+    const res = await fetch(`${SHEET_API_URL}?key=${XEPXE_SHEET_KEY}&t=${Date.now()}`, {cache: 'no-store'});
+    if (res.ok){
+      const saved = (await res.json()).days || {};
+      dates.forEach(d => { if (saved[d]){ applyXepXeOverride(d, saved[d]); touchedDays.add(d); } });
     }
-    return { ok: false, conclusion: 'timeout', url: `https://github.com/${GH_REPO}/actions` };
+    return dates;
+  }
+  // Nếu đã cài extension "Xếp xe - Lấy lịch từ Odoo" (thư mục odoo-extension), lấy thẳng qua trình duyệt của bạn; không thì qua Apps Script.
+  const hasOdooExtension = () => document.documentElement.getAttribute('data-xepxe-ext') === '1';
+  function fetchOdooRowsViaExtension(from, to){
+    return new Promise((resolve, reject) => {
+      const id = String(Date.now()) + Math.random();
+      const timer = setTimeout(() => { window.removeEventListener('message', onMsg); reject(new Error('Extension không phản hồi (thử tải lại trang)')); }, 90000);
+      function onMsg(ev){
+        const d = ev.data;
+        if (ev.source !== window || !d || d.source !== 'xepxe-ext' || d.id !== id) return;
+        clearTimeout(timer); window.removeEventListener('message', onMsg);
+        d.ok ? resolve(d) : reject(new Error(d.error || 'Extension báo lỗi'));
+      }
+      window.addEventListener('message', onMsg);
+      window.postMessage({ source: 'xepxe-page', type: 'odooTrips', id, from, to }, window.location.origin);
+    });
   }
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
-    if (!confirm(`Làm mới lịch từ Odoo?\nNếu lấy được dữ liệu mới, lịch ĐÃ LƯU của ngày ${currentDate} sẽ bị xoá để lấy thuần dữ liệu Odoo (không hoàn tác được). Nếu Odoo lỗi thì mọi thứ giữ nguyên.`)) return;
+    if (!confirm('Làm mới lịch từ Odoo?\nChuyến, xe và lái Odoo mới nhất sẽ được nạp. Lịch bạn đã LƯU trên Sheet vẫn giữ (chuyến đã lưu giữ xe/lái đã lưu), chỉ chuyến mới/chưa lưu lấy theo Odoo.\nThay đổi bạn CHƯA bấm "Lưu & đồng bộ" ở các ngày được làm mới sẽ mất — nên lưu trước.')) return;
     const btn = document.getElementById('refreshOdooBtn');
     const oldText = btn.textContent;
     const reset = () => { btn.textContent = oldText; btn.disabled = false; };
     btn.disabled = true;
-    btn.textContent = 'Đang gửi yêu cầu...';
-    const startedAt = Date.now();
+    btn.textContent = 'Đang lấy từ Odoo...';
     try{
-      // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
-      const res = await fetch(SHEET_API_URL, { method: 'POST', body: JSON.stringify({ action: 'triggerRefresh' }) });
-      const result = await res.json();
-      if (!result.ok){ alert('Lỗi: ' + result.error); reset(); return; }
-      const out = await waitForRefreshRun(startedAt, t => { btn.textContent = t; });
-      if (!out.ok){
-        alert(out.conclusion === 'timeout'
-          ? 'Chờ quá lâu mà GitHub chưa báo xong. Lịch đã lưu của bạn vẫn giữ nguyên. Xem tại: ' + out.url
-          : 'KHÔNG làm mới được: lần lấy dữ liệu từ Odoo thất bại (thường do Odoo đang chặn/lỗi). Lịch đã lưu của bạn vẫn giữ nguyên, chưa xoá gì.\nChi tiết: ' + out.url);
+      const from = addDays(todayISO(), -2);
+      const last = DAYS.reduce((m, d) => d.date > m ? d.date : m, '');
+      const to = last > from ? last : addDays(from, 30);
+      let result;
+      if (hasOdooExtension()){
+        try{ result = await fetchOdooRowsViaExtension(from, to); }
+        catch(err){ result = { ok: false, error: err.message }; }
+      } else {
+        // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
+        const res = await fetch(SHEET_API_URL, { method: 'POST', body: JSON.stringify({ action: 'odooTrips', from, to }) });
+        try{ result = await res.json(); } catch(e){ throw new Error('Apps Script chưa trả về dữ liệu hợp lệ — kiểm tra đã Deploy bản mới chưa'); }
+      }
+      if (!result.ok){
+        alert(/Không rõ action/.test(result.error || '')
+          ? 'Apps Script chưa được cập nhật để hỗ trợ lấy Odoo. Dán lại gsheet/Code.gs và Deploy bản mới (xem hướng dẫn đầu file), rồi bấm lại.'
+          : 'KHÔNG làm mới được: ' + result.error + '\nLịch hiện tại giữ nguyên, chưa đổi gì.');
         reset(); return;
       }
-      btn.textContent = 'Đang xoá lịch đã lưu của ngày...';
-      await clearSavedDayForRefresh(currentDate);
-      btn.textContent = 'Xong ✓ — đợi ~1 phút cho trang cập nhật rồi tải lại (Cmd+Shift+R)';
-      setTimeout(reset, 25000);
+      btn.textContent = 'Đang nạp ' + result.rows.length + ' chuyến...';
+      const dates = await applyLiveOdoo(result.rows, from, to);
+      buildDayPills();
+      renderAll();
+      updateXepXeStatus();
+      btn.textContent = `Xong ✓ — đã nạp ${result.rows.length} chuyến (${dates.length} ngày) lúc ${new Date().toLocaleTimeString('vi-VN')}`;
+      setTimeout(reset, 15000);
     } catch(err){
-      alert('Lỗi: ' + err.message);
+      alert('Lỗi: ' + err.message + '\nLịch hiện tại giữ nguyên.');
       reset();
     }
   });
