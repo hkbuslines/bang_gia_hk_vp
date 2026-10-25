@@ -3607,28 +3607,53 @@ html.pw-locked #pwGate{display:flex;}
   }
   // nút bấm chạy lại Action lấy dữ liệu Odoo — gửi lệnh "chạy ngay" qua Apps Script (giữ token
   // GitHub trong Script Properties), trình duyệt không cần token gì cả
+  // Nút "Làm mới từ Odoo": nhờ GitHub Actions lấy lịch mới từ Odoo rồi build lại trang. AN TOÀN: chỉ XOÁ lịch đã lưu của
+  // ngày đang xem SAU KHI GitHub báo lấy dữ liệu thành công — trước đây xoá trước, nên nếu Odoo chặn / lỗi (vd 403) thì mất
+  // lịch đã xếp mà trang vẫn không có dữ liệu mới. Trong lúc chờ, trang tự hỏi GitHub xem lần chạy xong chưa.
+  const GH_REPO = 'hkbuslines/bang_gia_hk_vp', GH_WORKFLOW = 'refresh-odoo.yml';
+  async function waitForRefreshRun(startedAtMs, onStatus){
+    const deadline = Date.now() + 150000;
+    while (Date.now() < deadline){
+      await new Promise(r => setTimeout(r, 8000));
+      try{
+        const res = await fetch(`https://api.github.com/repos/${GH_REPO}/actions/workflows/${GH_WORKFLOW}/runs?event=workflow_dispatch&per_page=5&t=${Date.now()}`, {cache:'no-store'});
+        if (!res.ok) continue;
+        const data = await res.json();
+        const run = (data.workflow_runs || []).find(r => new Date(r.created_at).getTime() >= startedAtMs - 15000);
+        if (!run){ onStatus('Đang chờ GitHub nhận lệnh...'); continue; }
+        if (run.status !== 'completed'){ onStatus('GitHub đang lấy dữ liệu từ Odoo...'); continue; }
+        return { ok: run.conclusion === 'success', conclusion: run.conclusion, url: run.html_url };
+      } catch(e){ /* mạng chập chờn — thử lại vòng sau */ }
+    }
+    return { ok: false, conclusion: 'timeout', url: `https://github.com/${GH_REPO}/actions` };
+  }
   document.getElementById('refreshOdooBtn').addEventListener('click', async () => {
-    if (!confirm(`Xoá sạch lịch đã lưu của ngày ${currentDate} và chỉ lấy thuần dữ liệu Odoo? Không hoàn tác được.`)) return;
+    if (!confirm(`Làm mới lịch từ Odoo?\nNếu lấy được dữ liệu mới, lịch ĐÃ LƯU của ngày ${currentDate} sẽ bị xoá để lấy thuần dữ liệu Odoo (không hoàn tác được). Nếu Odoo lỗi thì mọi thứ giữ nguyên.`)) return;
     const btn = document.getElementById('refreshOdooBtn');
     const oldText = btn.textContent;
+    const reset = () => { btn.textContent = oldText; btn.disabled = false; };
     btn.disabled = true;
-    btn.textContent = 'Đang xoá lịch đã lưu...';
+    btn.textContent = 'Đang gửi yêu cầu...';
+    const startedAt = Date.now();
     try{
-      await clearSavedDayForRefresh(currentDate);
-      btn.textContent = 'Đang yêu cầu...';
       // không set Content-Type để tránh CORS preflight (Apps Script không xử lý được OPTIONS)
       const res = await fetch(SHEET_API_URL, { method: 'POST', body: JSON.stringify({ action: 'triggerRefresh' }) });
       const result = await res.json();
-      if (result.ok){
-        btn.textContent = 'Đã yêu cầu ✓ — đợi ~20-30s rồi tải lại trang';
-        setTimeout(() => { btn.textContent = oldText; btn.disabled = false; }, 25000);
-      } else {
-        alert('Lỗi: ' + result.error);
-        btn.textContent = oldText; btn.disabled = false;
+      if (!result.ok){ alert('Lỗi: ' + result.error); reset(); return; }
+      const out = await waitForRefreshRun(startedAt, t => { btn.textContent = t; });
+      if (!out.ok){
+        alert(out.conclusion === 'timeout'
+          ? 'Chờ quá lâu mà GitHub chưa báo xong. Lịch đã lưu của bạn vẫn giữ nguyên. Xem tại: ' + out.url
+          : 'KHÔNG làm mới được: lần lấy dữ liệu từ Odoo thất bại (thường do Odoo đang chặn/lỗi). Lịch đã lưu của bạn vẫn giữ nguyên, chưa xoá gì.\nChi tiết: ' + out.url);
+        reset(); return;
       }
+      btn.textContent = 'Đang xoá lịch đã lưu của ngày...';
+      await clearSavedDayForRefresh(currentDate);
+      btn.textContent = 'Xong ✓ — đợi ~1 phút cho trang cập nhật rồi tải lại (Cmd+Shift+R)';
+      setTimeout(reset, 25000);
     } catch(err){
       alert('Lỗi: ' + err.message);
-      btn.textContent = oldText; btn.disabled = false;
+      reset();
     }
   });
 
