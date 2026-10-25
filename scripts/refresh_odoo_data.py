@@ -27,6 +27,21 @@ def vn_today():
     return (datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=7)).date()
 
 
+def with_retry(fn, what, tries=3, wait=20):
+    """Gọi Odoo, thử lại tối đa `tries` lần khi lỗi mạng/máy chủ tạm thời (502, 503, timeout...)."""
+    import time
+    for i in range(1, tries + 1):
+        try:
+            return fn()
+        except xmlrpc.client.Fault:
+            raise            # lỗi nghiệp vụ của Odoo (quyền, tên field...) — thử lại cũng không hết
+        except Exception as e:
+            print(f"[{what}] lần {i}/{tries} lỗi: {type(e).__name__}: {e}")
+            if i == tries:
+                raise
+            time.sleep(wait * i)
+
+
 def odoo_call():
     url = os.environ["ODOO_URL"]
     db = os.environ["ODOO_DB"]
@@ -39,11 +54,14 @@ def odoo_call():
             super().send_headers(conn, headers)
 
     common = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/common", transport=_UA())
-    uid = common.authenticate(db, user, key, {})
+    uid = with_retry(lambda: common.authenticate(db, user, key, {}), "đăng nhập Odoo")
+    if not uid:
+        # Odoo trả về False khi sai tên đăng nhập / API key / tên database (hoặc API key đã bị thu hồi)
+        raise RuntimeError(f"Odoo từ chối đăng nhập (user={user!r}, db={db!r}) — kiểm tra lại ODOO_USER / ODOO_PASSWORD (API key) trong GitHub Secrets")
     models = xmlrpc.client.ServerProxy(f"{url}/xmlrpc/2/object", transport=_UA())
 
     def call(model, method, *args, **kw):
-        return models.execute_kw(db, uid, key, model, method, list(args), kw)
+        return with_retry(lambda: models.execute_kw(db, uid, key, model, method, list(args), kw), f"đọc {model}")
     return call
 
 
@@ -251,4 +269,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        # ghi lỗi thành annotation của GitHub Actions để đọc ngay trên trang Actions (không cần mở log)
+        msg = f"{type(e).__name__}: {e}".replace("\n", " ")[:900]
+        print(f"::error title=Làm mới lịch xe lỗi::{msg}")
+        raise
