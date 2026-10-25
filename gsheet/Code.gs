@@ -15,16 +15,6 @@
 //    trái) > Script Properties > Add script property > tên GITHUB_TOKEN, dán 1 token GitHub
 //    (fine-grained, quyền "Actions: Read and write" cho repo hkbuslines/bang_gia_hk_vp) > Save.
 //    Token này chỉ nằm trong Script Properties, không trang HTML nào đọc được.
-// 6. (Chỉ cần nếu muốn nút "Làm mới từ Odoo" trên trang xếp xe tự lấy lịch từ Odoo, không qua GitHub):
-//    cũng trong Script Properties, thêm 4 thuộc tính:
-//        ODOO_URL       = https://odoo.nicesupport.net
-//        ODOO_DB        = hkbuslines
-//        ODOO_USER      = (email đăng nhập Odoo của bạn)
-//        ODOO_PASSWORD  = (API key Odoo — KHÔNG gửi cho ai, chỉ dán vào đây)
-//    Rồi chạy thử hàm testOdoo (chọn trong danh sách hàm phía trên → Run → xem "Execution log"):
-//    thấy "OK" nghĩa là Odoo cho phép máy chủ Google; thấy "403" nghĩa là Odoo/Cloudflare đang chặn Google.
-//    Sau khi sửa file này nhớ Deploy > Manage deployments > (bút chì) > Version: New version > Deploy
-//    để URL cũ nhận mã mới.
 
 const SHEET_NAME = 'Data';
 const REPO = 'hkbuslines/bang_gia_hk_vp';
@@ -36,52 +26,6 @@ const REPO = 'hkbuslines/bang_gia_hk_vp';
 // (mỗi ô ≤ CHUNK_SIZE ký tự, chừa biên an toàn) — bỏ hẳn giới hạn thay vì né nó, và luôn báo lỗi rõ
 // ràng nếu ghi thất bại vì lý do khác (quota, mạng...) thay vì báo "ok" giả.
 const CHUNK_SIZE = 40000;
-
-// ---------------- Lấy lịch chuyến từ Odoo (cho nút "Làm mới từ Odoo") ----------------
-const ODOO_FIELDS = ['id', 'date', 'departure_time', 'arrival_date', 'arrival_time', 'route_id', 'vehicle_id', 'driver_id', 'driver2_id'];
-
-function odooProp_(name) {
-  const v = PropertiesService.getScriptProperties().getProperty(name);
-  if (!v) throw new Error('Chưa cấu hình ' + name + ' trong Script Properties (xem hướng dẫn bước 6 ở đầu file)');
-  return v;
-}
-
-function odooRpc_(service, method, args) {
-  const res = UrlFetchApp.fetch(odooProp_('ODOO_URL').replace(/\/$/, '') + '/jsonrpc', {
-    method: 'post',
-    contentType: 'application/json',
-    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-    payload: JSON.stringify({ jsonrpc: '2.0', method: 'call', params: { service: service, method: method, args: args }, id: 1 }),
-    muteHttpExceptions: true,
-  });
-  const code = res.getResponseCode();
-  const text = res.getContentText();
-  if (code !== 200) {
-    throw new Error('Odoo trả về HTTP ' + code + (code === 403 ? ' — Odoo/Cloudflare đang CHẶN máy chủ Google (cần nhờ bên Odoo mở chặn, hoặc dùng cách chạy trên máy)' : '') + ': ' + text.slice(0, 160));
-  }
-  const j = JSON.parse(text);
-  if (j.error) throw new Error('Odoo báo lỗi: ' + ((j.error.data && j.error.data.message) || j.error.message || 'không rõ'));
-  return j.result;
-}
-
-// Trả về các dòng chuyến thô của Odoo trong khoảng ngày [from, to] (YYYY-MM-DD)
-function fetchOdooTrips_(from, to) {
-  const db = odooProp_('ODOO_DB'), user = odooProp_('ODOO_USER'), key = odooProp_('ODOO_PASSWORD');
-  const uid = odooRpc_('common', 'authenticate', [db, user, key, {}]);
-  if (!uid) throw new Error('Odoo từ chối đăng nhập — kiểm tra lại ODOO_USER / ODOO_PASSWORD / ODOO_DB trong Script Properties');
-  return odooRpc_('object', 'execute_kw', [db, uid, key, 'vexere.trip', 'search_read',
-    [[['date', '>=', from], ['date', '<=', to]]], { fields: ODOO_FIELDS }]);
-}
-
-// Chạy thử trong editor Apps Script (Run → testOdoo → xem Execution log) để biết Odoo có cho Google vào không.
-function testOdoo() {
-  try {
-    const rows = fetchOdooTrips_('2026-03-01', '2026-03-01');
-    Logger.log('OK — Odoo cho phép, lấy được ' + rows.length + ' chuyến ngày 01/03/2026.');
-  } catch (err) {
-    Logger.log('LỖI: ' + err.message);
-  }
-}
 
 function getSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -238,23 +182,6 @@ function doPost(e) {
     const code = res.getResponseCode();
     if (code === 204) return jsonOut_({ ok: true });
     return jsonOut_({ ok: false, error: 'GitHub trả về HTTP ' + code + ': ' + res.getContentText() });
-  }
-
-  if (body.action === 'odooTrips') {
-    // Lấy chuyến Odoo trực tiếp (không qua GitHub). Chặn gọi dồn dập: tối đa 1 lần / 15 giây.
-    const from = String(body.from || ''), to = String(body.to || '');
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
-      return jsonOut_({ ok: false, error: 'Khoảng ngày không hợp lệ (cần from, to dạng YYYY-MM-DD)' });
-    }
-    const cache = CacheService.getScriptCache();
-    if (cache.get('odooTripsBusy')) return jsonOut_({ ok: false, error: 'Vừa lấy xong, đợi khoảng 15 giây rồi bấm lại.' });
-    cache.put('odooTripsBusy', '1', 15);
-    try {
-      const rows = fetchOdooTrips_(from, to);
-      return jsonOut_({ ok: true, fetched_at: new Date().toISOString(), from: from, to: to, rows: rows });
-    } catch (err) {
-      return jsonOut_({ ok: false, error: err.message });
-    }
   }
 
   return jsonOut_({ ok: false, error: 'Không rõ action: ' + body.action });
