@@ -3148,7 +3148,9 @@ html.pw-locked #pwGate{display:flex;}
       e.textContent = 'Không có lái nào khớp bộ lọc.';
       inner.appendChild(e);
     }
-    inner.querySelectorAll('.block.dtl .chiptext').forEach(label => {
+    // KHÔNG nới khối carryover (đêm qua): độ rộng của nó thể hiện đúng giờ xe/lái rảnh (vd "về 01:00"); nới theo chữ sẽ
+    // khiến nhìn nhầm là bận tới giờ xa hơn thực tế (chữ của nó được chọn lại theo độ rộng thật ở layoutDriverGaps).
+    inner.querySelectorAll('.block.dtl:not(.carryover) .chiptext').forEach(label => {
       const block = label.parentElement;
       const needed = label.scrollWidth + 14;
       if (needed > block.offsetWidth) block.style.width = needed + 'px';
