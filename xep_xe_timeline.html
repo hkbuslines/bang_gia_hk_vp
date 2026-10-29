@@ -165,7 +165,6 @@ button.ghost:hover{background:var(--page);}
 .slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center; gap:6px;}
 .dropzone{flex:1; min-height:30px; border:1.5px dashed var(--line-strong); border-radius:6px; display:flex; align-items:center; padding:0 8px; font-size:11.5px; color:var(--ink-faint);}
 .bksTypeWrap{position:relative; flex-shrink:0;}
-.bksType.leave-warn{border-color:var(--danger); background:var(--danger-fill); color:var(--danger); font-weight:700;}
 .bksType{width:98px; font-size:11.5px; padding:5px 7px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
 .bksType.driverType{width:150px;}
 .bksType:focus{outline:none; border-color:var(--ink);}
@@ -304,6 +303,9 @@ tr[draggable="true"]:active{cursor:grabbing;}
 .block .chiptext{overflow:visible; flex-shrink:0;}
 .block:active{cursor:grabbing;}
 .block.conflict{outline:2px solid var(--danger); outline-offset:1px;}
+.label.dtl-leave{background:var(--danger-fill); box-shadow:inset 3px 0 0 var(--danger);}
+.label.dtl-leave .bks, .label.dtl-leave .crew{color:var(--danger); font-weight:700;}
+.block.dtl.leave-conflict{outline:2px solid var(--danger); outline-offset:1px; box-shadow:0 0 0 4px var(--danger-fill);}
 .block.conflict::before{content:"⚠ "; }
 .block.dragging{opacity:0.35;}
 /* Tab "Theo xe": khung = đúng 1 màn hình (ghim khi cuộn tới), khay nốt chưa xếp ở trên, bảng xe bên dưới cuộn riêng
@@ -1348,15 +1350,6 @@ html.pw-locked #pwGate{display:flex;}
         }
       }
     }
-    // lái đang NGHỈ PHÉP nhưng vẫn bị xếp/gán vào chuyến → báo đỏ (lái Odoo gán thật, đã lưu, hoặc người xếp xe tự chọn)
-    ids.forEach(id => {
-      const drv = st.drivers[id] || {};
-      ['lai1', 'lai2'].forEach(slot => {
-        const name = drv[slot];
-        const lv = name ? driverLeaveFor(name, date) : null;
-        if (lv) add(id, `🌴 ${slot === 'lai1' ? 'Lái 1' : 'Lái 2'} ${name} đang NGHỈ PHÉP (${fmtLeaveRangeVN(lv)}${lv.loai ? ', ' + lv.loai : ''}) nhưng vẫn bị gán chuyến này`);
-      });
-    });
     const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
     ids.forEach(id => {
       const t = tripById[id];
@@ -2330,8 +2323,6 @@ html.pw-locked #pwGate{display:flex;}
             dInput.placeholder = ph;
             dInput.value = drv[slot] || '';
             dInput.title = ph;
-            { const lv = drv[slot] ? driverLeaveFor(drv[slot], day.date) : null;
-              if (lv){ dInput.classList.add('leave-warn'); dInput.title = `${drv[slot]} đang NGHỈ PHÉP (${fmtLeaveRangeVN(lv)}) nhưng vẫn bị gán chuyến này`; } }
             dWrap.appendChild(dInput);
             attachDriverAutocomplete(dInput, busByBks[bks], slot, day.date, selected => setTripDriver(day.date, id, slot, selected));
             dInput.addEventListener('blur', () => setTripDriver(day.date, id, slot, dInput.value));
@@ -3228,10 +3219,12 @@ html.pw-locked #pwGate{display:flex;}
     lane.className = 'lane';
     const label = document.createElement('div');
     label.className = 'label dtl-label';
+    if (r.status === 'working' && r.leave) label.classList.add('dtl-leave');
     const info = document.createElement('div');
     info.className = 'info';
+    const onLeaveWorking = r.status === 'working' && !!r.leave;   // đang nghỉ phép nhưng vẫn bị gán chuyến → báo đỏ
     const sub = r.status === 'working'
-      ? `${r.legs.length} chuyến · ${[...new Set(r.legs.map(l => l.bks.slice(-6)))].join(', ')}`
+      ? (onLeaveWorking ? `🌴 NGHỈ PHÉP (${fmtLeaveRangeVN(r.leave)}) nhưng bị gán ` : '') + `${r.legs.length} chuyến · ${[...new Set(r.legs.map(l => l.bks.slice(-6)))].join(', ')}`
       : r.status === 'leave' ? `Nghỉ ${r.leave.loai} (${fmtLeaveRange(r.leave)})`
       : (r.prev ? `Đang ở ${r.prev.arrc}${r.carryEnd != null ? ' · về ' + fmtHM(r.carryEnd) : ''}` : 'Chưa rõ vị trí');
     info.innerHTML = `<div class="bks" style="font-size:12px;">${r.name}</div><div class="crew">${(maByName[r.name] || '')}${maByName[r.name] ? ' · ' : ''}${sub}</div>`;
@@ -3302,7 +3295,7 @@ html.pw-locked #pwGate{display:flex;}
       const idx = routeIdx(leg.route);
       const el = document.createElement('div');
       const warnMsgs = warnByTrip[r.name + '|' + leg.tripId] || [];
-      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '') + (isVipTrip(leg.tripId) ? ' vipbg' : '');
+      el.className = 'block dtl' + (warnMsgs.length ? ' conflict' : '') + (r.leave ? ' leave-conflict' : '') + (isVipTrip(leg.tripId) ? ' vipbg' : '');
       el.style.backgroundColor = `var(--rt${idx})`;
       el.style.left = (leg.dep * PX_PER_MIN) + 'px';
       el.style.width = Math.max(8, leg.arr - leg.dep) * PX_PER_MIN + 'px';
