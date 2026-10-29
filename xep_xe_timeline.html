@@ -165,6 +165,7 @@ button.ghost:hover{background:var(--page);}
 .slotrow .dz{flex:1; min-height:34px; display:flex; align-items:center; gap:6px;}
 .dropzone{flex:1; min-height:30px; border:1.5px dashed var(--line-strong); border-radius:6px; display:flex; align-items:center; padding:0 8px; font-size:11.5px; color:var(--ink-faint);}
 .bksTypeWrap{position:relative; flex-shrink:0;}
+.bksType.leave-warn{border-color:var(--danger); background:var(--danger-fill); color:var(--danger); font-weight:700;}
 .bksType{width:98px; font-size:11.5px; padding:5px 7px; border-radius:6px; border:0.5px solid var(--line-strong); background:var(--surface); color:var(--ink);}
 .bksType.driverType{width:150px;}
 .bksType:focus{outline:none; border-color:var(--ink);}
@@ -757,7 +758,9 @@ html.pw-locked #pwGate{display:flex;}
   // (khác với Odoo) thì vẫn về định biên của xe mới vì tài xế Odoo gán là cho xe cũ, không còn đúng
   function initialDriversFor(t, bks, dateStr){
     if (t.assignedBks === bks && t.odooLai1){
-      return { lai1: dropIfOnLeave(t.odooLai1, dateStr), lai2: dropIfOnLeave(t.odooLai2 || '', dateStr) };
+      // lái Odoo đã gán thật cho chuyến: GIỮ NGUYÊN kể cả đang nghỉ phép — để hiện cảnh báo đỏ "nghỉ phép nhưng vẫn bị gán"
+      // thay vì âm thầm xoá tên (chỉ lái tự điền theo định biên mới bị bỏ qua khi đang nghỉ — xem defaultDrivers)
+      return { lai1: t.odooLai1, lai2: t.odooLai2 || '' };
     }
     return defaultDrivers(bks, dateStr);
   }
@@ -911,6 +914,7 @@ html.pw-locked #pwGate{display:flex;}
       const days = data.days || {};
       xepxeSavedAt = data.updated_at || null;
       Object.keys(days).forEach(dateStr => {
+        Object.keys(days[dateStr].drivers || {}).forEach(id => savedDrvKeys.add(dateStr + '|' + id));
         injectManualTrips(dateStr, days[dateStr].manualTrips);
         applyXepXeOverride(dateStr, days[dateStr]);
         touchedDays.add(dateStr); // ngày đã có sẵn trong Sheet — giữ nguyên khi lưu lại lần sau
@@ -974,6 +978,12 @@ html.pw-locked #pwGate{display:flex;}
     if (!name) return null;
     return driverLeaves.find(e => e.ten === name && e.tungay <= dateStr && dateStr <= e.denngay) || null;
   }
+  // ngày nghỉ hiển thị dạng dd/mm/yyyy (cho các cảnh báo "nghỉ phép nhưng vẫn bị gán chuyến")
+  function fmtLeaveRangeVN(leave){
+    const f = d => { const [y, m, dd] = d.split('-'); return `${dd}/${m}/${y}`; };
+    if (leave.denngay === OPEN_ENDED_DATE) return `${f(leave.tungay)} → chưa xác định`;
+    return leave.tungay === leave.denngay ? f(leave.tungay) : `${f(leave.tungay)} → ${f(leave.denngay)}`;
+  }
   function fmtLeaveRange(leave){
     if (leave.denngay === OPEN_ENDED_DATE) return `${leave.tungay} → chưa xác định`;
     return leave.tungay === leave.denngay ? leave.tungay : `${leave.tungay} → ${leave.denngay}`;
@@ -982,15 +992,27 @@ html.pw-locked #pwGate{display:flex;}
   // ban đầu, driverLeaves còn rỗng và initialDriversFor/defaultDrivers chưa kịp lọc được ai đang
   // nghỉ. Quét lại toàn bộ 1 lần ngay khi tải xong danh sách nghỉ để gỡ nốt các tên đã lỡ điền vào
   // (kể cả tên đã lưu tay trên Sheet) — chỉ sửa trong bộ nhớ để hiện đúng, không tự lưu lên Sheet.
+  // CHỈ gỡ lái "tự điền theo định biên" đang nghỉ (đã lỡ điền trước khi tải xong lịch nghỉ). KHÔNG đụng tới lái do Odoo gán thật,
+  // lái đã lưu tay trên Sheet, hay lái người xếp xe tự chọn — những trường hợp đó nếu đang nghỉ thì báo ĐỎ (xem computeBksIssues).
+  // Chỉ chạy 1 lần sau lần tải lịch nghỉ đầu tiên (không chạy lại mỗi 3 phút, để không xoá lựa chọn tay).
+  let leaveStripDone = false;
+  const savedDrvKeys = new Set();   // 'ngày|mãChuyến' có lái đã lưu tay trên Sheet
   function stripLeaveDriversEverywhere(){
+    if (leaveStripDone) return;
+    leaveStripDone = true;
     Object.keys(stateByDay).forEach(dateStr => {
-      const drivers = stateByDay[dateStr].drivers;
-      Object.keys(drivers).forEach(tripId => {
-        const d = drivers[tripId];
-        if (!d) return;
-        d.lai1 = dropIfOnLeave(d.lai1, dateStr);
-        d.lai2 = dropIfOnLeave(d.lai2, dateStr);
-      });
+      const st = stateByDay[dateStr], tm = ensureTripMap(dateStr);
+      Object.entries(st.assignments).forEach(([bks, ids]) => (ids || []).forEach(id => {
+        const d = st.drivers[id];
+        if (!d || savedDrvKeys.has(dateStr + '|' + id)) return;
+        const t = tm[id] || {}, b = busByBks[bks] || {};
+        ['lai1', 'lai2'].forEach(slot => {
+          const name = d[slot];
+          if (!name || !driverLeaveFor(name, dateStr)) return;
+          const odoo = slot === 'lai1' ? t.odooLai1 : t.odooLai2;
+          if (name === (b[slot] || '') && name !== (odoo || '')) d[slot] = '';
+        });
+      }));
     });
   }
   async function loadDriverLeaves(){
@@ -1326,6 +1348,15 @@ html.pw-locked #pwGate{display:flex;}
         }
       }
     }
+    // lái đang NGHỈ PHÉP nhưng vẫn bị xếp/gán vào chuyến → báo đỏ (lái Odoo gán thật, đã lưu, hoặc người xếp xe tự chọn)
+    ids.forEach(id => {
+      const drv = st.drivers[id] || {};
+      ['lai1', 'lai2'].forEach(slot => {
+        const name = drv[slot];
+        const lv = name ? driverLeaveFor(name, date) : null;
+        if (lv) add(id, `🌴 ${slot === 'lai1' ? 'Lái 1' : 'Lái 2'} ${name} đang NGHỈ PHÉP (${fmtLeaveRangeVN(lv)}${lv.loai ? ', ' + lv.loai : ''}) nhưng vẫn bị gán chuyến này`);
+      });
+    });
     const scheduledToday = garaEntriesFor(bks, date).filter(e => e.loai === 'baoduong' && e.scheduled && e.scheduled.date === date);
     ids.forEach(id => {
       const t = tripById[id];
@@ -1419,6 +1450,11 @@ html.pw-locked #pwGate{display:flex;}
     const prevChains = buildDriverChains(addDays(dateStr, -1));
     const warnings = [];
     Object.entries(chains).forEach(([name, legs]) => {
+      const lv = driverLeaveFor(name, dateStr);
+      if (lv && legs.length){
+        legs.forEach(l => warnings.push({ name, tripId: l.tripId, dep: l.dep,
+          message: `🌴 NGHỈ PHÉP nhưng vẫn bị gán chuyến: ${name} nghỉ ${fmtLeaveRangeVN(lv)}${lv.loai ? ' (' + lv.loai + ')' : ''} — ${l.route} ${l.depStr} (xe ${l.bks})` }));
+      }
       for (let i = 0; i < legs.length - 1; i++){
         const a = legs[i], b = legs[i + 1];
         const swapNote = a.bks !== b.bks ? ` — đổi xe ${a.bks}→${b.bks}` : '';
@@ -2294,6 +2330,8 @@ html.pw-locked #pwGate{display:flex;}
             dInput.placeholder = ph;
             dInput.value = drv[slot] || '';
             dInput.title = ph;
+            { const lv = drv[slot] ? driverLeaveFor(drv[slot], day.date) : null;
+              if (lv){ dInput.classList.add('leave-warn'); dInput.title = `${drv[slot]} đang NGHỈ PHÉP (${fmtLeaveRangeVN(lv)}) nhưng vẫn bị gán chuyến này`; } }
             dWrap.appendChild(dInput);
             attachDriverAutocomplete(dInput, busByBks[bks], slot, day.date, selected => setTripDriver(day.date, id, slot, selected));
             dInput.addEventListener('blur', () => setTripDriver(day.date, id, slot, dInput.value));
